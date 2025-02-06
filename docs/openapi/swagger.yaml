@@ -1,0 +1,26 @@
+basePath: /api/v1
+host: localhost:10086
+info:
+  contact: {}
+  description: DroneSphere API
+  license:
+    name: Apache 2.0
+  title: DroneSphere API
+  version: "1.0"
+paths:
+  /user/login:
+    post:
+      consumes:
+      - application/json
+      description: User login
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: login
+      tags:
+      - user
+swagger: "2.0"

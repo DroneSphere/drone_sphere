@@ -1,0 +1,44 @@
+# 忽略 Go 编译生成的文件
+/bin/
+/dist/
+/coverage.out
+
+# 忽略依赖管理文件
+/vendor/
+
+# 忽略 IDE 和编辑器相关文件
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 忽略环境变量文件
+.env
+.env.local
+
+# 忽略日志文件
+*.log
+
+# 忽略测试生成的临时文件
+/tmp/
+
+# 忽略 Go 测试缓存
+/.test_cache/
+
+# 忽略 Go 模块缓存
+/.go/
+
+# 忽略 macOS 系统文件
+.DS_Store
+
+# 忽略 Windows 系统文件
+Thumbs.db
+
+# 忽略其他生成文件
+*.exe
+*.test
+*.prof
+*.trace
+
+# 临时数据库文件
+*.db
