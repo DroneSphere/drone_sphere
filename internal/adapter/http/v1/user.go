@@ -30,13 +30,14 @@ func newUserRouter(handler fiber.Router, svc service.UserSvc, eb EventBus.Bus, l
 
 // login godoc
 //
-//	@Summary		login
-//	@Description	User login
-//	@Tags			user
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	v1.Response{data=string}	"success"
-//	@Router			/user/login [post]
+//		@Summary		login
+//		@Description	User login
+//		@Tags			user
+//		@Accept			json
+//		@Produce		json
+//	    @Param request	body		v1.LoginRequest 	true	"登录参数"
+//		@Success		200	{object}	v1.Response{data=string}	"success"
+//		@Router			/user/login [post]
 func (r *UserRouter) login(c *fiber.Ctx) error {
 	r.l.Debug("login")
 	ctx := context.WithValue(context.Background(), "sn", "111")
