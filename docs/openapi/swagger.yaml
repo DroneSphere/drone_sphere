@@ -1,5 +1,18 @@
 basePath: /api/v1
 definitions:
+  entity.Drone:
+    properties:
+      domain:
+        type: string
+      sn:
+        type: string
+      status:
+        type: integer
+      sub_type:
+        type: integer
+      type:
+        type: integer
+    type: object
   v1.LoginRequest:
     properties:
       password:
@@ -33,11 +46,33 @@ info:
   title: DroneSphere API
   version: "1.0"
 paths:
+  /drone/list:
+    get:
+      consumes:
+      - application/json
+      description: 列出所有绑定的无人机，包含不在线的无人机
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Drone'
+                  type: array
+              type: object
+      summary: 列出所有无人机
+      tags:
+      - drone
   /user/login:
     post:
       consumes:
       - application/json
-      description: User login
+      description: Web/Pilot端统一用户登录，根据是否携带 SN 切换登录方式
       parameters:
       - description: 登录参数
         in: body
@@ -49,7 +84,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: success
+          description: 成功
           schema:
             allOf:
             - $ref: '#/definitions/v1.Response'
@@ -57,7 +92,7 @@ paths:
                 data:
                   type: string
               type: object
-      summary: login
+      summary: Web/Pilot端统一用户登录
       tags:
       - user
 swagger: "2.0"

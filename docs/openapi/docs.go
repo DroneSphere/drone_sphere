@@ -18,9 +18,47 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/drone/list": {
+            "get": {
+                "description": "列出所有绑定的无人机，包含不在线的无人机",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drone"
+                ],
+                "summary": "列出所有无人机",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.Drone"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/user/login": {
             "post": {
-                "description": "User login",
+                "description": "Web/Pilot端统一用户登录，根据是否携带 SN 切换登录方式",
                 "consumes": [
                     "application/json"
                 ],
@@ -30,7 +68,7 @@ const docTemplate = `{
                 "tags": [
                     "user"
                 ],
-                "summary": "login",
+                "summary": "Web/Pilot端统一用户登录",
                 "parameters": [
                     {
                         "description": "登录参数",
@@ -44,7 +82,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "success",
+                        "description": "成功",
                         "schema": {
                             "allOf": [
                                 {
@@ -66,6 +104,26 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "entity.Drone": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string"
+                },
+                "sn": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "sub_type": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
         "v1.LoginRequest": {
             "type": "object",
             "required": [

@@ -16,6 +16,7 @@ import (
 	"github.com/asaskevich/EventBus"
 	"github.com/dronesphere/configs"
 	"github.com/dronesphere/internal/repo"
+	slogGorm "github.com/orandin/slog-gorm"
 	"gorm.io/gorm"
 )
 
@@ -33,8 +34,15 @@ func Run(cfg *configs.Config) {
 	eb := EventBus.New()
 
 	// Postgres
+	gormLogger := slogGorm.New(
+		slogGorm.WithHandler(logger.Handler()),                        // since v1.3.0
+		slogGorm.WithTraceAll(),                                       // trace all messages
+		slogGorm.SetLogLevel(slogGorm.DefaultLogType, slog.Level(32)), // Define the default logging level
+	)
 	dsn := "host=47.245.40.222 user=admin password=thF@AHgy3SUR dbname=drone_sphere port=5432 sslmode=disable TimeZone=Asia/Shanghai"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: gormLogger,
+	})
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -47,6 +55,15 @@ func Run(cfg *configs.Config) {
 	opts.SetClientID("go_mqtt_client")
 	opts.SetUsername("server")
 	opts.SetPassword("server")
+	opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
+		logger.Info("Received message", slog.Any("topic", msg.Topic()), slog.Any("message", string(msg.Payload())))
+	})
+	opts.SetOnConnectHandler(func(client mqtt.Client) {
+		logger.Info("Connected to MQTT broker")
+	})
+	opts.SetConnectionLostHandler(func(client mqtt.Client, err error) {
+		logger.Error("Connection lost", slog.Any("err", err.Error()))
+	})
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
@@ -63,11 +80,11 @@ func Run(cfg *configs.Config) {
 	droneSvc := service.NewDroneImpl(droneRepo, logger, client)
 
 	// Event Handlers
-	eventhandler.NewHandler(eb, logger, droneSvc)
+	eventhandler.NewHandler(eb, logger, client, droneSvc)
 
 	// Servers
 	http := fiber.New()
-	v1.NewRouter(http, eb, logger, userSvc)
+	v1.NewRouter(http, eb, logger, userSvc, droneSvc)
 
 	// Run
 	err = http.Listen(":10086")

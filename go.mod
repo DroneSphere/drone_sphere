@@ -10,6 +10,7 @@ require (
 	github.com/gofiber/contrib/swagger v1.2.0
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/lmittmann/tint v1.0.7
+	github.com/orandin/slog-gorm v1.4.0
 	github.com/samber/slog-fiber v1.17.2
 	github.com/stretchr/testify v1.10.0
 	github.com/swaggo/swag v1.16.4

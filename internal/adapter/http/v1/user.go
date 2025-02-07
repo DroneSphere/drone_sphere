@@ -46,6 +46,7 @@ func (r *UserRouter) login(c *fiber.Ctx) error {
 		c.Status(fiber.StatusBadRequest)
 		return c.JSON(Fail(InvalidParams))
 	}
+	r.l.Info("Login", slog.Any("req", req))
 
 	token, err := r.svc.Login(req.Username, req.Password)
 	if err != nil {
@@ -55,7 +56,7 @@ func (r *UserRouter) login(c *fiber.Ctx) error {
 	}
 
 	if req.SN != "" {
-		ctx := context.WithValue(context.Background(), "sn", c.FormValue("sn"))
+		ctx := context.WithValue(context.Background(), "sn", req.SN)
 		r.eb.Publish(event.UserLoginSuccessEvent, ctx)
 	}
 
