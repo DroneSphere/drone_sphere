@@ -35,7 +35,7 @@ jobs:
             type=sha,prefix=,suffix=,format=short
 
       - name: Build and push Docker image (for push to branch)
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -52,4 +52,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
-            ghcr.io/${{ github.repository }}:${{ github.ref_name || replace('v', '') }}
+            ghcr.io/${{ github.repository }}:${{ replace(github.ref_name, 'v', '') }}
