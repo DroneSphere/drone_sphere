@@ -24,7 +24,7 @@ type DroneImpl struct {
 	mqtt mqtt.Client
 }
 
-func NewDroneSvc(r DroneRepo, l *slog.Logger, mqtt mqtt.Client) DroneSvc {
+func NewDroneImpl(r DroneRepo, l *slog.Logger, mqtt mqtt.Client) DroneSvc {
 	return &DroneImpl{
 		r:    r,
 		l:    l,
@@ -39,8 +39,8 @@ func (s *DroneImpl) OnTopoUpdate(ctx context.Context) error {
 	topic := "topo/" + sn
 	s.mqtt.Subscribe(topic, 0, func(c mqtt.Client, m mqtt.Message) {
 		s.l.Info("Received message", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
+		s.mqtt.Publish(topic, 0, false, m.Payload())
 	})
-	s.mqtt.Publish(topic, 0, false, "hello")
 	return nil
 }
 

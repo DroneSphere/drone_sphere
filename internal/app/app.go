@@ -60,7 +60,7 @@ func Run(cfg *configs.Config) {
 
 	// Services
 	userSvc := service.NewUserSvc(userRepo, logger)
-	droneSvc := service.NewDroneSvc(droneRepo, logger, client)
+	droneSvc := service.NewDroneImpl(droneRepo, logger, client)
 
 	// Event Handlers
 	eventhandler.NewHandler(eb, logger, droneSvc)
