@@ -35,11 +35,11 @@ func newUserRouter(handler fiber.Router, svc service.UserSvc, eb EventBus.Bus, l
 //	@Tags			user
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	string
+//	@Success		200	{object}	Success{data=string}	"success"
 //	@Router			/user/login [post]
 func (r *UserRouter) login(c *fiber.Ctx) error {
 	r.l.Debug("login")
 	ctx := context.WithValue(context.Background(), "sn", "111")
 	r.eb.Publish(event.UserLoginSuccessEvent, ctx)
-	return c.SendString("login")
+	return c.JSON(Success("login"))
 }
