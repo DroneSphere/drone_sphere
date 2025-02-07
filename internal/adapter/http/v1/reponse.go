@@ -13,6 +13,7 @@ type ErrorBody struct {
 
 var (
 	InternalError = ErrorBody{Code: 500, Msg: "Internal Error"}
+	InvalidParams = ErrorBody{Code: 400, Msg: "Invalid Params"}
 	Unauthorized  = ErrorBody{Code: 401, Msg: "Unauthorized"}
 	NotFound      = ErrorBody{Code: 404, Msg: "Not Found"}
 )

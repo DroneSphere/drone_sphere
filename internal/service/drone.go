@@ -35,10 +35,10 @@ func NewDroneSvc(r DroneRepo, l *slog.Logger, mqtt mqtt.Client) DroneSvc {
 func (s *DroneImpl) OnTopoUpdate(ctx context.Context) error {
 	s.l.Info("OnTopoUpdate")
 	sn := ctx.Value("sn").(string)
-	s.l.Info("Get sn", sn)
+	s.l.Info("Get sn", slog.Any("sn", sn))
 	topic := "topo/" + sn
 	s.mqtt.Subscribe(topic, 0, func(c mqtt.Client, m mqtt.Message) {
-		s.l.Info("Received message", string(m.Payload()))
+		s.l.Info("Received message", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
 	})
 	s.mqtt.Publish(topic, 0, false, "hello")
 	return nil

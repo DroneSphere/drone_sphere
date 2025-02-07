@@ -25,5 +25,12 @@ func NewUserSvc(r UserRepo, l *slog.Logger) UserSvc {
 }
 
 func (s *UserImpl) Login(username, password string) (string, error) {
-	return s.r.GetByUsername(username)
+	u, err := s.r.GetByUsername(username)
+	if err != nil {
+		return "", err
+	}
+	if u != password {
+		return "", nil
+	}
+	return "token", nil
 }
