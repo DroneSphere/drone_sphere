@@ -26,9 +26,15 @@ func registerDroneHandlers(eb EventBus.Bus, l *slog.Logger, mqtt mqtt.Client, dr
 		svc:  drone,
 		mqtt: mqtt,
 	}
-	err := eb.Subscribe(event.UserLoginSuccessEvent, handler.HandleTopoUpdate)
+	var err error
+	err = eb.Subscribe(event.UserLoginSuccessEvent, handler.HandleTopoUpdate)
 	if err != nil {
 		l.Error(fmt.Sprintf("subscribe event %s failed: %v", event.UserLoginSuccessEvent, err))
+	}
+	err = eb.Subscribe(event.DroneOnlineEvent, handler.HandleDroneOSD)
+	if err != nil {
+		l.Error(fmt.Sprintf("subscribe event %s failed: %v", event.DroneOnlineEvent, err))
+		panic(err)
 	}
 }
 
@@ -60,6 +66,14 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 			return
 		}
 
+		// 当有子设备时，发布设备上线事件
+		if len(p.Data.SubDevices) > 0 {
+			droneSN := p.Data.SubDevices[0].SN
+			d.l.Info("Publish drone online event", slog.Any("droneSN", droneSN))
+			ctx := context.WithValue(context.Background(), event.DroneEventSNKey, droneSN)
+			d.eb.Publish(event.DroneOnlineEvent, ctx)
+		}
+
 		// 发布成功消息响应
 		res := struct {
 			dto.MessageCommon
@@ -88,5 +102,23 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 	}
 
 	d.l.Info("Subscribe topic success", slog.Any("topic", topic))
+	return nil
+}
+
+func (d *DroneEventHandler) HandleDroneOSD(ctx context.Context) error {
+	droneSN := ctx.Value(event.DroneEventSNKey).(string)
+	d.l.Info("Handle drone OSD event", slog.Any("droneSN", droneSN))
+	template := "thing/product/%s/osd"
+	topic := fmt.Sprintf(template, droneSN)
+	d.l.Info("Subscribe drone OSD topic", slog.Any("topic", topic))
+
+	token := d.mqtt.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
+		d.l.Info("Received message", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
+	})
+	if token.Wait() && token.Error() != nil {
+		d.l.Error("Subscribe topic failed", slog.Any("err", token.Error()))
+		return token.Error()
+	}
+
 	return nil
 }
