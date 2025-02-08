@@ -33,7 +33,7 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 //	@Tags			drone
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	v1.Response{data={array}entity.Drone}	"成功"
+//	@Success		200	{object}	v1.Response{data=[]entity.Drone}	"成功"
 func (r *DroneRouter) list(c *fiber.Ctx) error {
 	drones, err := r.svc.ListAll()
 	if err != nil {
