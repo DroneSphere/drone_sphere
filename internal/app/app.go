@@ -17,6 +17,7 @@ import (
 	"github.com/dronesphere/configs"
 	"github.com/dronesphere/internal/repo"
 	slogGorm "github.com/orandin/slog-gorm"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -70,10 +71,17 @@ func Run(cfg *configs.Config) {
 	}
 
 	// TODO: Prepare Redis
+	opt, err := redis.ParseURL("redis://:thF@AHgy3SUR@47.245.40.222:6379")
+	if err != nil {
+		logger.Error(err.Error())
+		panic(err)
+	}
+	rds := redis.NewClient(opt)
+	logger.Info("Redis connected")
 
 	// Repos
 	userRepo := repo.NewUserGormRepo(db, logger)
-	droneRepo := repo.NewDroneGormRepo(db, logger)
+	droneRepo := repo.NewDroneGormRepo(db, rds, logger)
 
 	// Services
 	userSvc := service.NewUserSvc(userRepo, logger)

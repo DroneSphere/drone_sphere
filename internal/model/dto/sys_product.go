@@ -1,5 +1,7 @@
 package dto
 
+const SNKey = "sn"
+
 type ProductTopo struct {
 	Domain       string `json:"domain"`
 	Type         int    `json:"type"`

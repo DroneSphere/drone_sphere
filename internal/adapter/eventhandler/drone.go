@@ -54,7 +54,7 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 		d.l.Info("Unmarshal message", slog.Any("updatePayload", p))
 
 		// 处理网络拓扑
-		err := d.svc.SaveDroneTopo(p.Data)
+		err := d.svc.SaveDroneTopo(ctx, p.Data)
 		if err != nil {
 			d.l.Error("SaveDroneTopo failed", slog.Any("err", err))
 			return
