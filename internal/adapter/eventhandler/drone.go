@@ -114,6 +114,12 @@ func (d *DroneEventHandler) HandleDroneOSD(ctx context.Context) error {
 
 	token := d.mqtt.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
 		d.l.Info("Received message", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
+		err := d.svc.UpdateOnline(ctx, droneSN)
+		if err != nil {
+			d.l.Error("Update drone online failed", slog.Any("err", err))
+			return
+		}
+		d.l.Info("Update drone online success", slog.Any("droneSN", droneSN))
 	})
 	if token.Wait() && token.Error() != nil {
 		d.l.Error("Subscribe topic failed", slog.Any("err", token.Error()))

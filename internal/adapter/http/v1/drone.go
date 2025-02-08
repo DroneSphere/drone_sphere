@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"github.com/asaskevich/EventBus"
 	"github.com/dronesphere/internal/service"
 	"github.com/gofiber/fiber/v2"
@@ -35,7 +36,8 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 //	@Produce		json
 //	@Success		200	{object}	v1.Response{data=[]entity.Drone}	"成功"
 func (r *DroneRouter) list(c *fiber.Ctx) error {
-	drones, err := r.svc.ListAll()
+	ctx := context.Background()
+	drones, err := r.svc.ListAll(ctx)
 	if err != nil {
 		r.l.Warn("ListError", slog.Any("err", err))
 		c.Status(fiber.StatusInternalServerError)

@@ -11,13 +11,16 @@ import (
 type (
 	DroneSvc interface {
 		SaveDroneTopo(ctx context.Context, update dto.UpdateTopoPayload) error
-		ListAll() ([]entity.Drone, error)
+		ListAll(ctx context.Context) ([]entity.Drone, error)
+		UpdateOnline(ctx context.Context, sn string) error
+		UpdateOffline(ctx context.Context, sn string) error
 	}
 
 	DroneRepo interface {
-		ListAll() ([]entity.Drone, error)
+		ListAll(ctx context.Context) ([]entity.Drone, error)
 		RemoveDroneBySN(ctx context.Context, rc string) error
 		Save(ctx context.Context, d *entity.Drone, rc string) error
+		SaveRealtimeStatus(ctx context.Context, sn string, isOnline bool) error
 	}
 )
 
@@ -58,6 +61,14 @@ func (s *DroneImpl) SaveDroneTopo(ctx context.Context, data dto.UpdateTopoPayloa
 	return nil
 }
 
-func (s *DroneImpl) ListAll() ([]entity.Drone, error) {
-	return s.r.ListAll()
+func (s *DroneImpl) ListAll(ctx context.Context) ([]entity.Drone, error) {
+	return s.r.ListAll(ctx)
+}
+
+func (s *DroneImpl) UpdateOnline(ctx context.Context, sn string) error {
+	return s.r.SaveRealtimeStatus(ctx, sn, true)
+}
+
+func (s *DroneImpl) UpdateOffline(ctx context.Context, sn string) error {
+	return s.r.SaveRealtimeStatus(ctx, sn, false)
 }

@@ -2,11 +2,13 @@ package repo
 
 import (
 	"context"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/persist"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"log/slog"
+	"time"
 )
 
 type DroneGormRepo struct {
@@ -26,7 +28,7 @@ func NewDroneGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *DroneGorm
 		tx:        db,
 		rds:       rds,
 		l:         l,
-		rdsPrefix: "drone",
+		rdsPrefix: "drone:",
 	}
 }
 
@@ -35,10 +37,10 @@ func (r *DroneGormRepo) buildRCKeyPrefix() string {
 }
 
 func (r *DroneGormRepo) buildDroneKeyPrefix() string {
-	return r.rdsPrefix + ":drone:"
+	return r.rdsPrefix + "drone:"
 }
 
-func (r *DroneGormRepo) ListAll() ([]entity.Drone, error) {
+func (r *DroneGormRepo) ListAll(ctx context.Context) ([]entity.Drone, error) {
 	var ps []persist.Drone
 	err := r.tx.Find(&ps).Error
 	if err != nil {
@@ -49,18 +51,24 @@ func (r *DroneGormRepo) ListAll() ([]entity.Drone, error) {
 		d := p.Drone
 		ds = append(ds, d)
 	}
+	r.l.Info("List all drones", slog.Any("drones", ds))
 	// 获取在线状态
-	key := r.buildDroneKeyPrefix() + "*" // 获取所有无人机状态
-	status, err := r.rds.HGetAll(nil, key).Result()
+	keys, err := r.rds.Keys(ctx, r.buildDroneKeyPrefix()+"*").Result()
 	if err != nil {
-		r.l.Error("Failed to get drone status from redis", slog.Any("err", err))
+		r.l.Error("Failed to get drone onlineSet from redis", slog.Any("err", err))
 		return nil, err
 	}
-	slog.Info("Drone status from redis", slog.Any("status", status))
+	r.l.Info("Drone keys", slog.Any("keys", keys))
+	onlineSet := mapset.NewSet[string]()
+	for _, k := range keys {
+		sn := k[len(r.buildDroneKeyPrefix()):]
+		onlineSet.Add(sn)
+	}
+	slog.Info("Drone onlineSet from redis", slog.Any("onlineSet", onlineSet))
 	for i, d := range ds {
-		if e, ok := status[d.SN]; ok {
+		if onlineSet.Contains(d.SN) {
 			ds[i].Status = entity.DroneStatusOnline
-			r.l.Info("Drone online", slog.Any("sn", d.SN), slog.Any("status", e))
+			r.l.Info("Drone online", slog.Any("sn", d.SN))
 		} else {
 			ds[i].Status = entity.DroneStatusOffline
 		}
@@ -102,13 +110,48 @@ func (r *DroneGormRepo) Save(ctx context.Context, d *entity.Drone, rc string) er
 		r.l.Error("Save rc side status to redis failed", slog.Any("err", err))
 		return err
 	}
+	r.rds.Expire(ctx, rcKey, 60*time.Second)
 	slog.Info("Update RC Side status success", slog.Any("rc", rc), slog.Any("sn", d.SN), slog.Any("status", entity.DroneStatusOnline))
 	droneKey := r.buildDroneKeyPrefix() + d.SN
-	err = r.rds.HSet(ctx, droneKey, "status", entity.DroneStatusOnline).Err()
+	err = r.rds.HSet(ctx, droneKey, "status", entity.DroneStatusOnline, "rc", rc).Err()
 	if err != nil {
 		r.l.Error("Save drone side status to redis failed", slog.Any("err", err))
 		return err
 	}
+	r.rds.Expire(ctx, droneKey, 60*time.Second)
 	slog.Info("Update Drone Side status success", slog.Any("sn", d.SN), slog.Any("status", entity.DroneStatusOnline))
+	return nil
+}
+
+func (r *DroneGormRepo) SaveRealtimeStatus(ctx context.Context, sn string, isOnline bool) error {
+	// 获取无人机信息
+	droneKey := r.buildDroneKeyPrefix() + sn
+	drone, err := r.rds.HGetAll(ctx, droneKey).Result()
+	if err != nil {
+		r.l.Error("Failed to get drone status from redis", slog.Any("err", err))
+		return err
+	}
+	if len(drone) == 0 {
+		r.l.Error("Drone not found", slog.Any("sn", sn))
+		return nil
+	}
+
+	// 更新状态
+	if isOnline {
+		r.rds.Expire(ctx, droneKey, 60*time.Second)
+	} else {
+		r.rds.Del(ctx, droneKey)
+	}
+
+	// 更新遥控器状态
+	rc := drone["rc"]
+	rcKey := r.buildRCKeyPrefix() + rc
+	err = r.rds.HSet(ctx, rcKey, sn, isOnline).Err()
+	if err != nil {
+		r.l.Error("Save rc side status to redis failed", slog.Any("err", err))
+		return err
+	}
+	r.rds.Expire(ctx, rcKey, 60*time.Second)
+
 	return nil
 }
