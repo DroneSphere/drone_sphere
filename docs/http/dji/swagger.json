@@ -1,0 +1,181 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "上云API需要的API模块接口",
+        "title": "上云API模块API",
+        "contact": {},
+        "license": {
+            "name": "Apache 2.0"
+        },
+        "version": "1.0"
+    },
+    "host": "example",
+    "basePath": "/api/dji",
+    "paths": {
+        "/manage/api/v1/workspaces/{workspace_id}/devices/topologies": {
+            "get": {
+                "description": "PILOT在首次上线后，会发送http请求去获取同一个工作空间下的所有设备列表及其拓扑，\n服务端需要把整个设备列表发给PILOT。\n同时，当接收到websocket指令通知设备online/offline/update的时候，\n也是需要调用该接口进行请求设备拓扑列表进行更新。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dji"
+                ],
+                "summary": "获取设备拓扑列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工作空间ID",
+                        "name": "workspace_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dji.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dji.DeviceTopoRsp"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dji.DeviceModelRsp": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "sub_type": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "dji.DeviceTopoRsp": {
+            "type": "object",
+            "properties": {
+                "hosts": {
+                    "description": "Hosts 飞机设备拓扑集合",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dji.TopoHostDeviceRsp"
+                    }
+                },
+                "parents": {
+                    "description": "Gateways 网关设备拓扑集合，json key 为 parents",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dji.TopoGatewayDeviceRsp"
+                    }
+                }
+            }
+        },
+        "dji.Response": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {},
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "dji.TopoGatewayDeviceRsp": {
+            "type": "object",
+            "properties": {
+                "device_callsign": {
+                    "type": "string"
+                },
+                "device_model": {
+                    "$ref": "#/definitions/dji.DeviceModelRsp"
+                },
+                "icon_urls": {
+                    "type": "object",
+                    "properties": {
+                        "normal_icon_url": {
+                            "type": "string"
+                        },
+                        "selected_icon_url": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "online_status": {
+                    "type": "boolean"
+                },
+                "sn": {
+                    "type": "string"
+                },
+                "user_callsign": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dji.TopoHostDeviceRsp": {
+            "type": "object",
+            "properties": {
+                "device_callsign": {
+                    "type": "string"
+                },
+                "device_model": {
+                    "$ref": "#/definitions/dji.DeviceModelRsp"
+                },
+                "icon_urls": {
+                    "type": "object",
+                    "properties": {
+                        "normal_icon_url": {
+                            "type": "string"
+                        },
+                        "selected_icon_url": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "online_status": {
+                    "type": "boolean"
+                },
+                "sn": {
+                    "type": "string"
+                },
+                "user_callsign": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

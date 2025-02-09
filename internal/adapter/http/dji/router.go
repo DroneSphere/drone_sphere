@@ -1,13 +1,13 @@
-package v1
+package dji
 
 import (
+	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"log/slog"
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/asaskevich/EventBus"
 	"github.com/dronesphere/internal/service"
-	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	slogfiber "github.com/samber/slog-fiber"
@@ -16,13 +16,13 @@ import (
 // NewRouter -.
 // Swagger spec:
 //
-//	@title			DroneSphere API
-//	@description	DroneSphere API
+//	@title			上云API模块API
+//	@description	上云API需要的API模块接口
 //	@version		1.0
 //	@license.name	Apache 2.0
-//	@host			lqhirwdzgkvv.sealoshzh.site
-//	@BasePath		/api/v1
-func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.UserSvc, drone service.DroneSvc) {
+//	@host			example
+//	@BasePath		/api/dji
+func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, drone service.DroneSvc) {
 	sfCfg := slogfiber.Config{
 		WithTraceID: true,
 	}
@@ -33,9 +33,9 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 	// Swagger
 	app.Use(swagger.New(swagger.Config{
 		BasePath: "/",
-		FilePath: "./docs/http/v1/swagger.json",
+		FilePath: "./docs/http/dji/swagger.json",
 		Path:     "swagger",
-		Title:    "Server Swagger API Docs",
+		Title:    "DJI Swagger API Docs",
 	}))
 
 	// Prometheus metrics
@@ -49,9 +49,8 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 	})
 
 	// Routers
-	api := app.Group("/api/v1")
+	api := app.Group("/api/dji")
 	{
-		newUserRouter(api, user, eb, l)
-		newDroneRouter(api, drone, eb, l)
+		newTSARouter(api, drone, eb, l)
 	}
 }

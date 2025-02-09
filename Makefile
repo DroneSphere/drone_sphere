@@ -11,12 +11,16 @@ SWAG := swag
 BUILD_DIR := ./bin
 
 # 文档目录
-DOCS_DIR := ./docs/openapi
+DOCS_DIR := ./docs/http
+
+# 当前目录
+PWD := $(shell pwd)
 
 # 默认目标
 all: build
 
 # 构建项目
+.PHONY: build
 build:
 	@echo "Building $(PROJECT_NAME)..."
 	@mkdir -p $(BUILD_DIR)
@@ -24,11 +28,13 @@ build:
 	@echo "Build complete. Binary saved to $(BUILD_DIR)/$(PROJECT_NAME)"
 
 # 运行项目
+.PHONY: run
 run:
 	@echo "Running $(PROJECT_NAME)..."
 	@$(GO) run ./cmd/$(PROJECT_NAME)
 
 # 清理构建文件和文档
+.PHONY: clean
 clean:
 	@echo "Cleaning up..."
 	@rm -rf $(BUILD_DIR)
@@ -36,30 +42,39 @@ clean:
 	@echo "Cleanup complete."
 
 # 运行测试
+.PHONY: test
 test:
 	@echo "Running tests..."
 	@$(GO) test -v ./...
 	@echo "Tests complete."
 
 # 格式化代码
+.PHONY: fmt
 fmt:
 	@echo "Formatting code..."
 	@$(GO) fmt ./...
+	@$(SWAG) fmt
 	@echo "Code formatted."
 
 # 生成 OpenAPI 文档
+.PHONY: swag
 swag:
 	@echo "Generating OpenAPI docs..."
-	@$(SWAG) init -g internal/adapter/http/v1/router.go -o $(DOCS_DIR)
+	@$(SWAG) init -g router.go -o $(DOCS_DIR)/v1 --dir internal/adapter/http/v1,api/http/v1
+	@$(SWAG) init -g router.go -o $(DOCS_DIR)/dji --dir internal/adapter/http/dji,api/http/dji
 	@echo "OpenAPI docs generated in $(DOCS_DIR)"
 
 # 安装依赖
+.PHONY: deps
 deps:
 	@echo "Installing dependencies..."
 	@$(GO) mod download
+	@$(GO) mod tidy
+	@$(GO) mod vendor
 	@echo "Dependencies installed."
 
 # 安装 Swag
+.PHONY: install-swag
 install-swag:
 	@echo "Installing swag..."
 	@$(GO) install github.com/swaggo/swag/cmd/swag@latest
@@ -78,5 +93,3 @@ help:
 	@echo "  deps        - Install dependencies"
 	@echo "  install-swag - Install swag tool"
 	@echo "  help        - Show this help message"
-
-.PHONY: all build run clean test fmt swag deps install-swag help

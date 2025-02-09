@@ -1,8 +1,10 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"github.com/dronesphere/internal/adapter/eventhandler"
+	"github.com/dronesphere/internal/adapter/http/dji"
 	v1 "github.com/dronesphere/internal/adapter/http/v1"
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -11,6 +13,9 @@ import (
 	"gorm.io/driver/postgres"
 	"log/slog"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/asaskevich/EventBus"
@@ -91,12 +96,59 @@ func Run(cfg *configs.Config) {
 	eventhandler.NewHandler(eb, logger, client, droneSvc)
 
 	// Servers
-	http := fiber.New()
-	v1.NewRouter(http, eb, logger, userSvc, droneSvc)
+	httpV1 := fiber.New()
+	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc)
+	httpDJI := fiber.New()
+	dji.NewRouter(httpDJI, eb, logger, droneSvc)
 
-	// Run
-	err = http.Listen(":10086")
-	if err != nil {
-		logger.Error(err.Error())
+	var wg sync.WaitGroup
+
+	// 使用 goroutine 启动第一个服务器
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := httpV1.Listen(":10086"); err != nil {
+			logger.Error("Server v1 failed to start", slog.Any("err", err))
+		}
+	}()
+	// 使用 goroutine 启动第二个服务器
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := httpDJI.Listen(":10087"); err != nil {
+			logger.Error("Server DJI failed to start", slog.Any("err", err))
+		}
+	}()
+
+	logger.Info("Servers all started")
+
+	// 监听系统信号
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// 等待信号
+	<-sigChan
+	logger.Info("Received shutdown signal, gracefully shutting down servers...")
+
+	// 创建一个带有超时的 context
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 关闭第一个服务器
+	if err := httpV1.ShutdownWithContext(ctx); err != nil {
+		logger.Info("Server 1 shutdown error", slog.Any("err", err))
+	} else {
+		logger.Info("Server 1 gracefully stopped")
 	}
+
+	// 关闭第二个服务器
+	if err := httpDJI.ShutdownWithContext(ctx); err != nil {
+		logger.Info("Server 2 shutdown error", slog.Any("err", err))
+	} else {
+		logger.Info("Server 2 gracefully stopped")
+	}
+
+	// 等待所有服务器关闭
+	wg.Wait()
+	logger.Info("All servers have been shut down. Exiting...")
 }
