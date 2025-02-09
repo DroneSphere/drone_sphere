@@ -30,7 +30,7 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 //
 //	@Router			/drone/list [get]
 //	@Summary		列出所有无人机
-//	@Description 	列出所有绑定的无人机，包含不在线的无人机
+//	@Description	列出所有绑定的无人机，包含不在线的无人机
 //	@Tags			drone
 //	@Accept			json
 //	@Produce		json

@@ -9,7 +9,7 @@
         },
         "version": "1.0"
     },
-    "host": "localhost:10086",
+    "host": "lqhirwdzgkvv.sealoshzh.site",
     "basePath": "/api/v1",
     "paths": {
         "/drone/list": {
@@ -86,7 +86,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "string"
+                                            "$ref": "#/definitions/v1.LoginResult"
                                         }
                                     }
                                 }
@@ -140,6 +140,51 @@
                 }
             }
         },
+        "v1.LoginResult": {
+            "type": "object",
+            "properties": {
+                "params": {
+                    "$ref": "#/definitions/v1.ParamsResult"
+                },
+                "platform": {
+                    "$ref": "#/definitions/v1.PlatformResult"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/v1.UserResult"
+                }
+            }
+        },
+        "v1.ParamsResult": {
+            "type": "object",
+            "properties": {
+                "mqtt_host": {
+                    "type": "string"
+                },
+                "mqtt_password": {
+                    "type": "string"
+                },
+                "mqtt_username": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.PlatformResult": {
+            "type": "object",
+            "properties": {
+                "desc": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "workspace": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.Response": {
             "type": "object",
             "properties": {
@@ -148,6 +193,20 @@
                 },
                 "data": {},
                 "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.UserResult": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }

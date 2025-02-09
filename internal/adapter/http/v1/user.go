@@ -31,14 +31,14 @@ func newUserRouter(handler fiber.Router, svc service.UserSvc, eb EventBus.Bus, l
 
 // login 用户登录接口
 //
-//		@Router			/user/login [post]
-//		@Summary		Web/Pilot端统一用户登录
-//		@Description 	Web/Pilot端统一用户登录，根据是否携带 SN 切换登录方式
-//		@Tags			user
-//		@Accept			json
-//		@Produce		json
-//	    @Param request	body		v1.LoginRequest 	true	"登录参数"
-//		@Success		200	{object}	v1.Response{data=string}	"成功"
+//	@Router			/user/login [post]
+//	@Summary		Web/Pilot端统一用户登录
+//	@Description	Web/Pilot端统一用户登录，根据是否携带 SN 切换登录方式
+//	@Tags			user
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		v1.LoginRequest						true	"登录参数"
+//	@Success		200		{object}	v1.Response{data=v1.LoginResult}	"成功"
 func (r *UserRouter) login(c *fiber.Ctx) error {
 	req := new(api.LoginRequest)
 	if err := c.BodyParser(req); err != nil {
@@ -60,5 +60,23 @@ func (r *UserRouter) login(c *fiber.Ctx) error {
 		r.eb.Publish(event.UserLoginSuccessEvent, ctx)
 	}
 
-	return c.JSON(Success(token))
+	res := api.LoginResult{
+		Token: token,
+		User: api.UserResult{
+			ID:       "1",
+			Username: req.Username,
+		},
+		Platform: api.PlatformResult{
+			Platform:  "DroneSphere",
+			Workspace: "default",
+			Desc:      "Default workspace for demo",
+		},
+		Params: api.ParamsResult{
+			MQTTHost:     "tcp://47.245.40.222:1883",
+			MQTTUsername: "drone",
+			MQTTPassword: "drone",
+		},
+	}
+
+	return c.JSON(Success(res))
 }

@@ -92,7 +92,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "string"
+                                            "$ref": "#/definitions/v1.LoginResult"
                                         }
                                     }
                                 }
@@ -146,6 +146,51 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.LoginResult": {
+            "type": "object",
+            "properties": {
+                "params": {
+                    "$ref": "#/definitions/v1.ParamsResult"
+                },
+                "platform": {
+                    "$ref": "#/definitions/v1.PlatformResult"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/v1.UserResult"
+                }
+            }
+        },
+        "v1.ParamsResult": {
+            "type": "object",
+            "properties": {
+                "mqtt_host": {
+                    "type": "string"
+                },
+                "mqtt_password": {
+                    "type": "string"
+                },
+                "mqtt_username": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.PlatformResult": {
+            "type": "object",
+            "properties": {
+                "desc": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "workspace": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.Response": {
             "type": "object",
             "properties": {
@@ -157,6 +202,20 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "v1.UserResult": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
         }
     }
 }`
@@ -164,7 +223,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:10086",
+	Host:             "lqhirwdzgkvv.sealoshzh.site",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "DroneSphere API",

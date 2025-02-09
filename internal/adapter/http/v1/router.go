@@ -20,7 +20,7 @@ import (
 //	@description	DroneSphere API
 //	@version		1.0
 //	@license.name	Apache 2.0
-//	@host			localhost:10086
+//	@host			lqhirwdzgkvv.sealoshzh.site
 //	@BasePath		/api/v1
 func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.UserSvc, drone service.DroneSvc) {
 	sfCfg := slogfiber.Config{
