@@ -2,16 +2,18 @@ package service
 
 import (
 	"context"
+	api "github.com/dronesphere/api/http/v1"
 	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/entity"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/jinzhu/copier"
 	"log/slog"
 )
 
 type (
 	DroneSvc interface {
 		SaveDroneTopo(ctx context.Context, update dto.UpdateTopoPayload) error
-		ListAll(ctx context.Context) ([]entity.Drone, error)
+		ListAll(ctx context.Context) ([]api.DroneItemResult, error)
 		UpdateOnline(ctx context.Context, sn string) error
 		UpdateOffline(ctx context.Context, sn string) error
 	}
@@ -61,8 +63,28 @@ func (s *DroneImpl) SaveDroneTopo(ctx context.Context, data dto.UpdateTopoPayloa
 	return nil
 }
 
-func (s *DroneImpl) ListAll(ctx context.Context) ([]entity.Drone, error) {
-	return s.r.ListAll(ctx)
+func (s *DroneImpl) ListAll(ctx context.Context) ([]api.DroneItemResult, error) {
+	ds, err := s.r.ListAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var res []api.DroneItemResult
+	for _, d := range ds {
+		// 拷贝数据
+		e := api.DroneItemResult{}
+		err := copier.Copy(&e, &d)
+		if err != nil {
+			s.l.Error("ListAll copier failed", slog.Any("err", err))
+			return nil, err
+		}
+		// 计算额外字段
+		e.Status = d.StatusText()
+		e.ProductType = d.ProductType()
+		e.IsRTKAvailable = d.IsRTKAvailable()
+		e.IsThermalAvailable = d.IsThermalAvailable()
+		res = append(res, e)
+	}
+	return res, nil
 }
 
 func (s *DroneImpl) UpdateOnline(ctx context.Context, sn string) error {

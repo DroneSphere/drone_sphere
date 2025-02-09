@@ -34,13 +34,12 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 //	@Tags			drone
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	v1.Response{data=[]entity.Drone}	"成功"
+//	@Success		200	{object}	v1.Response{data=[]v1.DroneItemResult}	"成功"
 func (r *DroneRouter) list(c *fiber.Ctx) error {
 	ctx := context.Background()
 	drones, err := r.svc.ListAll(ctx)
 	if err != nil {
 		r.l.Warn("ListError", slog.Any("err", err))
-		c.Status(fiber.StatusInternalServerError)
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
 

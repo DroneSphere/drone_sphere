@@ -45,7 +45,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/entity.Drone"
+                                                "$ref": "#/definitions/v1.DroneItemResult"
                                             }
                                         }
                                     }
@@ -104,17 +104,38 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "entity.Drone": {
+        "v1.DroneItemResult": {
             "type": "object",
             "properties": {
                 "domain": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "integer"
+                },
+                "is_rtk_available": {
+                    "description": "IsRTKAvailable 是否支持RTK",
+                    "type": "boolean"
+                },
+                "is_thermal_available": {
+                    "description": "IsThermalAvailable 是否支持热成像",
+                    "type": "boolean"
+                },
+                "last_login_at": {
+                    "description": "LastLoginAt 最后登录时间",
+                    "type": "string"
+                },
+                "product_type": {
+                    "description": "ProductType 无人机的型号名称",
+                    "type": "string"
+                },
                 "sn": {
+                    "description": "以下字段来自实体信息",
                     "type": "string"
                 },
                 "status": {
-                    "type": "integer"
+                    "description": "以上字段来自实体信息",
+                    "type": "string"
                 },
                 "sub_type": {
                     "type": "integer"

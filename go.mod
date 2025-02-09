@@ -10,6 +10,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.5.0
 	github.com/gofiber/contrib/swagger v1.2.0
 	github.com/gofiber/fiber/v2 v2.52.6
+	github.com/jinzhu/copier v0.4.0
 	github.com/lmittmann/tint v1.0.7
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/redis/go-redis/v9 v9.7.0
