@@ -5,7 +5,6 @@ import (
 	"github.com/jinzhu/copier"
 	"time"
 
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
 	"github.com/redis/go-redis/v9"
@@ -45,32 +44,26 @@ func (r *DroneGormRepo) buildDroneKeyPrefix() string {
 
 // ListAll 列出所有无人机
 func (r *DroneGormRepo) ListAll(ctx context.Context) ([]entity.Drone, error) {
+	var ds []entity.Drone
 	var ps []po.ORMDrone
 	if err := r.tx.Find(&ps).Error; err != nil {
 		return nil, err
 	}
 
-	var ds []entity.Drone
-	for _, p := range ps {
-		ds = append(ds, p.Drone)
-	}
-	r.l.Info("List all drones", slog.Any("drones", ds))
-
-	keys, err := r.rds.Keys(ctx, r.buildDroneKeyPrefix()+"*").Result()
-	if err != nil {
-		r.l.Error("Failed to get drone onlineSet from redis", slog.Any("err", err))
-		return nil, err
-	}
-	r.l.Info("ORMDrone keys", slog.Any("keys", keys))
-
-	onlineSet := mapset.NewSet[string]()
-	for _, k := range keys {
-		onlineSet.Add(k[len(r.buildDroneKeyPrefix()):])
-	}
-	slog.Info("ORMDrone onlineSet from redis", slog.Any("onlineSet", onlineSet))
-
 	for i, d := range ds {
-		ds[i].OnlineStatus = onlineSet.Contains(d.SN)
+		key := r.buildDroneKeyPrefix() + d.SN
+		var rt po.RTDrone
+		if err := r.rds.HGetAll(ctx, key).Scan(&rt); err != nil {
+			r.l.Error("Get drone from redis failed", slog.Any("err", err))
+			continue
+		}
+		var e entity.Drone
+		if err := copier.Copy(&e, &ps[i]); err != nil {
+			r.l.Error("ListAll copier failed", slog.Any("err", err))
+			return nil, err
+		}
+		e.OnlineStatus = rt.OnlineStatus
+		ds = append(ds, e)
 	}
 	return ds, nil
 }
