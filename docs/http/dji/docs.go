@@ -190,7 +190,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "example",
-	BasePath:         "/api/dji",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "上云API模块API",
 	Description:      "上云API需要的API模块接口",

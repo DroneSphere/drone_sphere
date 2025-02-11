@@ -1,4 +1,4 @@
-basePath: /api/dji
+basePath: /
 definitions:
   dji.DeviceModelRsp:
     properties:

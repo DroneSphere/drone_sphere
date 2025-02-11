@@ -22,7 +22,7 @@ func newTSARouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus, l
 	}
 	h := handler.Group("/")
 	{
-		h.Get("/manage/api/v1/workspaces/ "+workspaceIDParamKey+"/devices/topologies", r.getDeviceTopoByWorkspaceID)
+		h.Get("/manage/api/v1/workspaces/:"+workspaceIDParamKey+"/devices/topologies", r.getDeviceTopoByWorkspaceID)
 	}
 }
 
@@ -44,17 +44,27 @@ const workspaceIDParamKey = "workspace_id"
 func (r *TSARouter) getDeviceTopoByWorkspaceID(c *fiber.Ctx) error {
 	workspaceID := c.Params(workspaceIDParamKey)
 	r.l.Info("getDeviceTopoByWorkspaceID", slog.Any("workspaceID", workspaceID))
+	drones, rcs, err := r.svc.FetchDeviceTopo(c.Context(), workspaceID)
+	if err != nil {
+		r.l.Error("Failed to fetch device topo", slog.Any("err", err))
+		return c.JSON(Fail(InternalError))
+	}
+
+	var hosts []api.TopoHostDeviceRsp
+	for _, d := range drones {
+		hosts = append(hosts, api.TopoHostDeviceRsp{
+			SN: d.SN,
+		})
+	}
+	var gateways []api.TopoGatewayDeviceRsp
+	for _, rc := range rcs {
+		gateways = append(gateways, api.TopoGatewayDeviceRsp{
+			SN: rc.SN,
+		})
+	}
 	rsp := &api.DeviceTopoRsp{
-		Hosts: []api.TopoHostDeviceRsp{
-			{
-				Sn: "123456",
-			},
-		},
-		Gateways: []api.TopoGatewayDeviceRsp{
-			{
-				Sn: "654321",
-			},
-		},
+		Hosts:    hosts,
+		Gateways: gateways,
 	}
 	return c.JSON(Success(rsp))
 

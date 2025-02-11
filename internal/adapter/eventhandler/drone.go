@@ -36,6 +36,11 @@ func registerDroneHandlers(eb EventBus.Bus, l *slog.Logger, mqtt mqtt.Client, dr
 		l.Error(fmt.Sprintf("subscribe event %s failed: %v", event.DroneOnlineEvent, err))
 		panic(err)
 	}
+	err = eb.Subscribe(event.DroneOnlineEvent, handler.HandleDroneState)
+	if err != nil {
+		l.Error(fmt.Sprintf("subscribe event %s failed: %v", event.DroneOnlineEvent, err))
+		panic(err)
+	}
 }
 
 func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
@@ -44,7 +49,7 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 
 	template := "sys/product/%s/status"
 	topic := fmt.Sprintf(template, sn)
-	d.l.Info("Subscribe topic", slog.Any("topic", topic))
+	d.l.Info("Will subscribe topic", slog.Any("topic", topic))
 
 	token := d.mqtt.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
 		d.l.Info("Received message", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
@@ -60,8 +65,7 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 		d.l.Info("Unmarshal message", slog.Any("updatePayload", p))
 
 		// 处理网络拓扑
-		err := d.svc.SaveDroneTopo(ctx, p.Data)
-		if err != nil {
+		if err := d.svc.SaveDroneTopo(ctx, p.Data); err != nil {
 			d.l.Error("SaveDroneTopo failed", slog.Any("err", err))
 			return
 		}
@@ -111,6 +115,40 @@ func (d *DroneEventHandler) HandleDroneOSD(ctx context.Context) error {
 	template := "thing/product/%s/osd"
 	topic := fmt.Sprintf(template, droneSN)
 	d.l.Info("Subscribe drone OSD topic", slog.Any("topic", topic))
+
+	token := d.mqtt.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
+		var p struct {
+			dto.MessageCommon
+			Data dto.DroneHeartBeatPayload `json:"data"`
+		}
+		if err := sonic.Unmarshal(m.Payload(), &p); err != nil {
+			d.l.Error("Unmarshal message failed", slog.Any("err", err))
+			panic(err)
+			return
+		}
+		d.l.Info("Product OSD received message", slog.Any("topic", topic), slog.Any("payload", p))
+
+		err := d.svc.UpdateOnline(ctx, droneSN)
+		if err != nil {
+			d.l.Error("Update drone online failed", slog.Any("err", err))
+			return
+		}
+		d.l.Info("Update drone online success", slog.Any("droneSN", droneSN))
+	})
+	if token.Wait() && token.Error() != nil {
+		d.l.Error("Subscribe topic failed", slog.Any("err", token.Error()))
+		return token.Error()
+	}
+
+	return nil
+}
+
+func (d *DroneEventHandler) HandleDroneState(ctx context.Context) error {
+	droneSN := ctx.Value(event.DroneEventSNKey).(string)
+	d.l.Info("Handle drone state event", slog.Any("droneSN", droneSN))
+	template := "thing/product/%s/state"
+	topic := fmt.Sprintf(template, droneSN)
+	d.l.Info("Subscribe drone state topic", slog.Any("topic", topic))
 
 	token := d.mqtt.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
 		d.l.Info("Received message", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))

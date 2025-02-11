@@ -21,7 +21,7 @@ import (
 //	@version		1.0
 //	@license.name	Apache 2.0
 //	@host			example
-//	@BasePath		/api/dji
+//	@BasePath		/
 func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, drone service.DroneSvc) {
 	sfCfg := slogfiber.Config{
 		WithTraceID: true,
@@ -49,7 +49,7 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, drone service.Dr
 	})
 
 	// Routers
-	api := app.Group("/api/dji")
+	api := app.Group("/")
 	{
 		newTSARouter(api, drone, eb, l)
 	}

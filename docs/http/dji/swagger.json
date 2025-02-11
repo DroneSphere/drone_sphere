@@ -10,7 +10,7 @@
         "version": "1.0"
     },
     "host": "example",
-    "basePath": "/api/dji",
+    "basePath": "/",
     "paths": {
         "/manage/api/v1/workspaces/{workspace_id}/devices/topologies": {
             "get": {

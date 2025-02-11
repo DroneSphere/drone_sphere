@@ -17,7 +17,7 @@ type TopoHostDeviceRsp struct {
 		SelectedIconURL string `json:"selected_icon_url"`
 	} `json:"icon_urls"`
 	OnlineStatus bool   `json:"online_status"`
-	Sn           string `json:"sn"`
+	SN           string `json:"sn"`
 	UserCallsign string `json:"user_callsign"`
 	UserID       string `json:"user_id"`
 }
@@ -31,7 +31,7 @@ type TopoGatewayDeviceRsp struct {
 		SelectedIconURL string `json:"selected_icon_url"`
 	} `json:"icon_urls"`
 	OnlineStatus bool   `json:"online_status"`
-	Sn           string `json:"sn"`
+	SN           string `json:"sn"`
 	UserCallsign string `json:"user_callsign"`
 	UserID       string `json:"user_id"`
 }
