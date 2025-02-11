@@ -70,12 +70,7 @@ func (r *DroneGormRepo) ListAll(ctx context.Context) ([]entity.Drone, error) {
 	slog.Info("ORMDrone onlineSet from redis", slog.Any("onlineSet", onlineSet))
 
 	for i, d := range ds {
-		if onlineSet.Contains(d.SN) {
-			ds[i].Status = entity.DroneStatusOnline
-			r.l.Info("ORMDrone online", slog.Any("sn", d.SN))
-		} else {
-			ds[i].Status = entity.DroneStatusOffline
-		}
+		ds[i].OnlineStatus = onlineSet.Contains(d.SN)
 	}
 	return ds, nil
 }
@@ -101,14 +96,16 @@ func (r *DroneGormRepo) Save(ctx context.Context, d *entity.Drone, rcsn string) 
 	}
 
 	if err := r.SaveRealtimeDrone(ctx, po.RTDrone{
-		SN:   d.SN,
-		RCSN: rcsn,
+		SN:           d.SN,
+		OnlineStatus: false,
+		RCSN:         rcsn,
 	}); err != nil {
 		r.l.Error("Save realtime drone failed", slog.Any("err", err))
 	}
 
 	if err := r.SaveRealtimeRC(ctx, po.RTRC{
-		SN: rcsn,
+		SN:           rcsn,
+		OnlineStatus: false,
 	}); err != nil {
 		r.l.Error("Save realtime rc failed", slog.Any("err", err))
 	}
@@ -138,6 +135,7 @@ func (r *DroneGormRepo) SaveRealtimeDrone(ctx context.Context, data po.RTDrone) 
 	return nil
 }
 
+// SaveRealtimeRC 保存遥控器实时状态
 func (r *DroneGormRepo) SaveRealtimeRC(ctx context.Context, data po.RTRC) error {
 	rcKey := r.buildRCKeyPrefix() + data.SN
 	if err := r.rds.HSet(ctx, rcKey, data).Err(); err != nil {

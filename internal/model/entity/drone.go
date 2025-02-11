@@ -6,29 +6,24 @@ import (
 )
 
 type Drone struct {
-	ID          uint      `json:"id" gorm:"primary_key"`
-	SN          string    `json:"sn"`
-	Domain      string    `json:"domain"`
-	Type        int       `json:"type"`
-	SubType     int       `json:"sub_type"`
-	Status      int       `json:"status" gorm:"-"`
-	LastLoginAt time.Time `json:"last_login_at"`
+	ID           uint      `json:"id" gorm:"primary_key"`
+	SN           string    `json:"sn"`
+	Domain       string    `json:"domain"`
+	Type         int       `json:"type"`
+	SubType      int       `json:"sub_type"`
+	OnlineStatus bool      `json:"status" gorm:"-"`
+	LastLoginAt  time.Time `json:"last_login_at"`
 }
 
-const (
-	DroneStatusOffline = 0
-	DroneStatusOnline  = 1
-)
-
 func (d *Drone) StatusText() string {
-	var statusMap = map[int]string{
-		DroneStatusOffline: "离线",
-		DroneStatusOnline:  "在线",
+	var statusMap = map[bool]string{
+		false: "离线",
+		true:  "在线",
 	}
-	if _, ok := statusMap[d.Status]; !ok {
+	if _, ok := statusMap[d.OnlineStatus]; !ok {
 		return "未知"
 	}
-	return statusMap[d.Status]
+	return statusMap[d.OnlineStatus]
 }
 
 // ProductIdentifier 产品标识符

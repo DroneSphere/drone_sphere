@@ -15,6 +15,7 @@ func (ORMDrone) TableName() string {
 }
 
 type RTDrone struct {
-	SN   string `json:"sn" redis:"sn"`
-	RCSN string `json:"rcsn" redis:"rcsn"`
+	SN           string `json:"sn" redis:"sn"`
+	OnlineStatus bool   `json:"online_status" redis:"online_status"`
+	RCSN         string `json:"rcsn" redis:"rcsn"`
 }

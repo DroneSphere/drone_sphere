@@ -96,8 +96,10 @@ func (s *DroneImpl) ListAll(ctx context.Context) ([]api.DroneItemResult, error) 
 	return res, nil
 }
 
+// UpdateOnline 更新在线状态
 func (s *DroneImpl) UpdateOnline(ctx context.Context, sn string) error {
 	rt, err := s.r.FetchRealtimeDrone(ctx, sn)
+	rt.OnlineStatus = true
 	s.l.Info("UpdateOnline", slog.Any("sn", sn), slog.Any("rt", rt))
 	if err != nil {
 		s.l.Error("Drone not in realtime", slog.Any("sn", sn))
@@ -111,6 +113,7 @@ func (s *DroneImpl) UpdateOnline(ctx context.Context, sn string) error {
 	rc = po.RTRC{
 		SN: rt.RCSN,
 	}
+	rc.OnlineStatus = true
 	if err := s.r.SaveRealtimeRC(ctx, rc); err != nil {
 		s.l.Error("Save realtime rc failed", slog.Any("err", err))
 		return err
@@ -124,5 +127,27 @@ func (s *DroneImpl) UpdateOffline(ctx context.Context, sn string) error {
 }
 
 func (s *DroneImpl) FetchDeviceTopo(ctx context.Context, workspace string) ([]entity.Drone, []entity.RC, error) {
-	return s.r.FetchDeviceTopoByWorkspace(ctx, workspace)
+	var ds []entity.Drone
+	var rcs []entity.RC
+	dds, rccs, err := s.r.FetchDeviceTopoByWorkspace(ctx, workspace)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, d := range dds {
+		var e entity.Drone
+		if err := copier.Copy(&e, &d); err != nil {
+			s.l.Error("ListAll copier failed", slog.Any("err", err))
+			return nil, nil, err
+		}
+		ds = append(ds, e)
+	}
+	for _, rc := range rccs {
+		var e entity.RC
+		if err := copier.Copy(&e, &rc); err != nil {
+			s.l.Error("ListAll copier failed", slog.Any("err", err))
+			return nil, nil, err
+		}
+		rcs = append(rcs, e)
+	}
+	return ds, rcs, nil
 }
