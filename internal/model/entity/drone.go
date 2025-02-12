@@ -2,17 +2,16 @@ package entity
 
 import (
 	"fmt"
-	"time"
+	"github.com/dronesphere/internal/model/po"
 )
 
 type Drone struct {
-	ID           uint      `json:"id" gorm:"primary_key"`
-	SN           string    `json:"sn"`
-	Domain       string    `json:"domain"`
-	Type         int       `json:"type"`
-	SubType      int       `json:"sub_type"`
-	OnlineStatus bool      `json:"status" gorm:"-"`
-	LastLoginAt  time.Time `json:"last_login_at"`
+	ID      uint   `json:"id"`
+	SN      string `json:"sn"`
+	Domain  string `json:"domain"`
+	Type    int    `json:"type"`
+	SubType int    `json:"sub_type"`
+	po.RTDrone
 }
 
 func (d *Drone) StatusText() string {

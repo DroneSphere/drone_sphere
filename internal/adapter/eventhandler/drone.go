@@ -7,8 +7,10 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/event"
 	"github.com/dronesphere/internal/model/dto"
+	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/jinzhu/copier"
 	"log/slog"
 )
 
@@ -109,6 +111,30 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 	return nil
 }
 
+type HeartbeatPayload struct {
+	dto.MessageCommon
+	Data dto.DroneHeartBeat `json:"data"`
+}
+
+func (d *DroneEventHandler) parseHeartBeat(m mqtt.Message) (po.RTDrone, bool) {
+	var p HeartbeatPayload
+	res := po.RTDrone{}
+	if err := sonic.Unmarshal(m.Payload(), &p); err != nil {
+		d.l.Error("Unmarshal message failed", slog.Any("err", err))
+		return res, false
+	}
+	if err := copier.Copy(&res, &p.Data); err != nil {
+		d.l.Error("Copy message failed", slog.Any("err", err))
+		return res, false
+	}
+	//if res.Battery != interface{}(nil) {
+	//	res.OnlineStatus = true
+	//} else {
+	//	res.OnlineStatus = false
+	//}
+	return res, true
+}
+
 func (d *DroneEventHandler) HandleDroneOSD(ctx context.Context) error {
 	droneSN := ctx.Value(event.DroneEventSNKey).(string)
 	d.l.Info("Handle drone OSD event", slog.Any("droneSN", droneSN))
@@ -117,19 +143,14 @@ func (d *DroneEventHandler) HandleDroneOSD(ctx context.Context) error {
 	d.l.Info("Subscribe drone OSD topic", slog.Any("topic", topic))
 
 	token := d.mqtt.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
-		var p struct {
-			dto.MessageCommon
-			Data dto.DroneHeartBeatPayload `json:"data"`
-		}
-		if err := sonic.Unmarshal(m.Payload(), &p); err != nil {
-			d.l.Error("Unmarshal message failed", slog.Any("err", err))
-			panic(err)
+		p, ok := d.parseHeartBeat(m)
+		if !ok {
+			d.l.Error("Parse heartbeat failed")
 			return
 		}
 		d.l.Info("Product OSD received message", slog.Any("topic", topic), slog.Any("payload", p))
 
-		err := d.svc.UpdateOnline(ctx, droneSN)
-		if err != nil {
+		if err := d.svc.UpdateStateBySN(ctx, droneSN, p); err != nil {
 			d.l.Error("Update drone online failed", slog.Any("err", err))
 			return
 		}
@@ -152,11 +173,18 @@ func (d *DroneEventHandler) HandleDroneState(ctx context.Context) error {
 
 	token := d.mqtt.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
 		d.l.Info("Received message", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
-		err := d.svc.UpdateOnline(ctx, droneSN)
-		if err != nil {
+		// 解析消息
+		p, ok := d.parseHeartBeat(m)
+		if !ok {
+			d.l.Error("Parse heartbeat failed")
+			return
+		}
+
+		if err := d.svc.UpdateStateBySN(ctx, droneSN, p); err != nil {
 			d.l.Error("Update drone online failed", slog.Any("err", err))
 			return
 		}
+
 		d.l.Info("Update drone online success", slog.Any("droneSN", droneSN))
 	})
 	if token.Wait() && token.Error() != nil {

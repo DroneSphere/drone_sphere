@@ -3,8 +3,10 @@ package v1
 import (
 	"context"
 	"github.com/asaskevich/EventBus"
+	api "github.com/dronesphere/api/http/v1"
 	"github.com/dronesphere/internal/service"
 	"github.com/gofiber/fiber/v2"
+	"github.com/jinzhu/copier"
 	"log/slog"
 )
 
@@ -42,6 +44,15 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 		r.l.Warn("ListError", slog.Any("err", err))
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
+	var res []api.DroneItemResult
+	for _, d := range drones {
+		var e api.DroneItemResult
+		if err := copier.Copy(&e, &d); err != nil {
+			r.l.Warn("CopyError", slog.Any("err", err))
+			return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
+		}
+		res = append(res, e)
+	}
 
-	return c.JSON(Success(drones))
+	return c.JSON(Success(res))
 }
