@@ -22,7 +22,7 @@ import (
 //	@license.name	Apache 2.0
 //	@host			lqhirwdzgkvv.sealoshzh.site
 //	@BasePath		/api/v1
-func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.UserSvc, drone service.DroneSvc) {
+func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.UserSvc, drone service.DroneSvc, sa service.SearchAreaSvc) {
 	sfCfg := slogfiber.Config{
 		WithTraceID: true,
 	}
@@ -53,5 +53,6 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 	{
 		newUserRouter(api, user, eb, l)
 		newDroneRouter(api, drone, eb, l)
+		newSearchAreaRouter(api, sa, eb, l)
 	}
 }

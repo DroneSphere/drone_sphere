@@ -1,5 +1,55 @@
 basePath: /api/v1
 definitions:
+  v1.AreaListResult:
+    properties:
+      center_lat:
+        type: number
+      center_lng:
+        type: number
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  v1.AreaResult:
+    properties:
+      center_lat:
+        type: number
+      center_lng:
+        type: number
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      points:
+        items:
+          $ref: '#/definitions/v1.PointResult'
+        type: array
+    type: object
+  v1.CreateAreaRequest:
+    properties:
+      description:
+        example: Request for test.
+        type: string
+      name:
+        example: test
+        type: string
+      points:
+        items:
+          properties:
+            index:
+              type: integer
+            lat:
+              type: number
+            lng:
+              type: number
+          type: object
+        type: array
+    type: object
   v1.DroneItemResult:
     properties:
       domain:
@@ -74,6 +124,15 @@ definitions:
       workspace:
         type: string
     type: object
+  v1.PointResult:
+    properties:
+      index:
+        type: integer
+      lat:
+        type: number
+      lng:
+        type: number
+    type: object
   v1.Response:
     properties:
       code:
@@ -100,6 +159,84 @@ info:
   title: DroneSphere API
   version: "1.0"
 paths:
+  /areas:
+    get:
+      consumes:
+      - application/json
+      description: 获取搜索区域的详细信息，包括区域的点列表
+      parameters:
+      - description: 区域ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      - description: 区域名称
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.AreaResult'
+              type: object
+      summary: 获取搜索区域的详细信息
+      tags:
+      - area
+    post:
+      consumes:
+      - application/json
+      description: 创建搜索区域
+      parameters:
+      - description: 请求体
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/v1.CreateAreaRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.AreaResult'
+              type: object
+      summary: 创建搜索区域
+      tags:
+      - area
+  /areas/list:
+    get:
+      consumes:
+      - application/json
+      description: 列出所有搜索区域，不返回每个区域的点列表，仅返回中心点位置
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/v1.AreaListResult'
+                  type: array
+              type: object
+      summary: 列出所有搜索区域
+      tags:
+      - area
   /drone/list:
     get:
       consumes:

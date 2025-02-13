@@ -88,17 +88,19 @@ func Run(cfg *configs.Config) {
 	// Repos
 	userRepo := repo.NewUserGormRepo(db, logger)
 	droneRepo := repo.NewDroneGormRepo(db, rds, logger)
+	saRepo := repo.NewSearchAreaGormRepo(db, rds, logger)
 
 	// Services
 	userSvc := service.NewUserSvc(userRepo, logger)
 	droneSvc := service.NewDroneImpl(droneRepo, logger, client)
+	saSvc := service.NewSearchAreaImpl(saRepo, logger, client)
 
 	// Event Handlers
 	eventhandler.NewHandler(eb, logger, client, droneSvc)
 
 	// Servers
 	httpV1 := fiber.New()
-	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc)
+	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc)
 	httpDJI := fiber.New()
 	dji.NewRouter(httpDJI, eb, logger, droneSvc)
 	wss := fiber.New()
