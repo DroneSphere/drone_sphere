@@ -50,6 +50,45 @@ definitions:
           type: object
         type: array
     type: object
+  v1.CreateDetectAlgoRequest:
+    properties:
+      algo_path:
+        type: string
+      algo_version:
+        type: string
+      classes:
+        items:
+          $ref: '#/definitions/v1.DetectClassResult'
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  v1.DetectAlgoResult:
+    properties:
+      algo_path:
+        type: string
+      algo_version:
+        type: string
+      classes:
+        items:
+          $ref: '#/definitions/v1.DetectClassResult'
+        type: array
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  v1.DetectClassResult:
+    properties:
+      key:
+        type: string
+      name:
+        type: string
+    type: object
   v1.DroneItemResult:
     properties:
       domain:
@@ -159,6 +198,134 @@ info:
   title: DroneSphere API
   version: "1.0"
 paths:
+  /algo:
+    get:
+      consumes:
+      - application/json
+      description: 列出所有检测算法
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/v1.DetectAlgoResult'
+                  type: array
+              type: object
+      summary: 列出所有检测算法
+      tags:
+      - algo
+    post:
+      consumes:
+      - application/json
+      description: 创建检测算法
+      parameters:
+      - description: 请求体
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/v1.CreateDetectAlgoRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.DetectAlgoResult'
+              type: object
+      summary: 创建检测算法
+      tags:
+      - algo
+  /algo/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除检测算法
+      parameters:
+      - description: 算法ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            $ref: '#/definitions/v1.Response'
+      summary: 删除检测算法
+      tags:
+      - algo
+    get:
+      consumes:
+      - application/json
+      description: 获取检测算法
+      parameters:
+      - description: 算法ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.DetectAlgoResult'
+              type: object
+      summary: 获取检测算法
+      tags:
+      - algo
+  /algo/{id}/classes:
+    put:
+      consumes:
+      - application/json
+      description: 更新检测算法类别
+      parameters:
+      - description: 算法ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 请求体
+        in: body
+        name: req
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/v1.DetectClassResult'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.DetectAlgoResult'
+              type: object
+      summary: 更新检测算法类别
+      tags:
+      - algo
   /areas:
     get:
       consumes:
