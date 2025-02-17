@@ -51,19 +51,6 @@ definitions:
         type: array
     type: object
   v1.CreateDetectAlgoRequest:
-    properties:
-      algo_path:
-        type: string
-      algo_version:
-        type: string
-      classes:
-        items:
-          $ref: '#/definitions/v1.DetectClassResult'
-        type: array
-      description:
-        type: string
-      name:
-        type: string
     type: object
   v1.DetectAlgoResult:
     properties:
@@ -117,6 +104,25 @@ definitions:
         type: integer
       type:
         type: integer
+    type: object
+  v1.JobItemResult:
+    properties:
+      area_name:
+        type: string
+      description:
+        type: string
+      drones:
+        items:
+          type: string
+        type: array
+      id:
+        type: integer
+      name:
+        type: string
+      target_classes:
+        items:
+          type: string
+        type: array
     type: object
   v1.LoginRequest:
     properties:
@@ -426,6 +432,28 @@ paths:
       summary: 列出所有无人机
       tags:
       - drone
+  /job:
+    get:
+      consumes:
+      - application/json
+      description: 获取所有任务
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/v1.JobItemResult'
+                  type: array
+              type: object
+      summary: 获取所有任务
+      tags:
+      - job
   /user/login:
     post:
       consumes:

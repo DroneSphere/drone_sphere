@@ -55,5 +55,6 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 		newDroneRouter(api, drone, eb, l)
 		newSearchAreaRouter(api, sa, eb, l)
 		newDetectAlgoRouter(api, algo, l)
+		newJobRouter(api, l)
 	}
 }

@@ -400,6 +400,44 @@ const docTemplate = `{
                 }
             }
         },
+        "/job": {
+            "get": {
+                "description": "获取所有任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "job"
+                ],
+                "summary": "获取所有任务",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/v1.JobItemResult"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/user/login": {
             "post": {
                 "description": "Web/Pilot端统一用户登录，根据是否携带 SN 切换登录方式",
@@ -525,27 +563,7 @@ const docTemplate = `{
             }
         },
         "v1.CreateDetectAlgoRequest": {
-            "type": "object",
-            "properties": {
-                "algo_path": {
-                    "type": "string"
-                },
-                "algo_version": {
-                    "type": "string"
-                },
-                "classes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1.DetectClassResult"
-                    }
-                },
-                "description": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
+            "type": "object"
         },
         "v1.DetectAlgoResult": {
             "type": "object",
@@ -622,6 +640,35 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                }
+            }
+        },
+        "v1.JobItemResult": {
+            "type": "object",
+            "properties": {
+                "area_name": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "drones": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "target_classes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
