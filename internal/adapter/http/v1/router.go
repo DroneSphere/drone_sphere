@@ -1,16 +1,18 @@
 package v1
 
 import (
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"log/slog"
-
+	"bufio"
+	"fmt"
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/asaskevich/EventBus"
 	"github.com/dronesphere/internal/service"
 	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	slogfiber "github.com/samber/slog-fiber"
+	"log/slog"
+	"time"
 )
 
 // NewRouter -.
@@ -25,6 +27,10 @@ import (
 func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.UserSvc, drone service.DroneSvc, sa service.SearchAreaSvc, algo service.DetectAlgoSvc) {
 	sfCfg := slogfiber.Config{
 		WithTraceID: true,
+		WithSpanID:  true,
+		Filters: []slogfiber.Filter{
+			slogfiber.IgnorePath("/api/v1/sse"),
+		},
 	}
 	app.Use(slogfiber.NewWithConfig(l, sfCfg))
 	app.Use(recover.New())
@@ -56,5 +62,45 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 		newSearchAreaRouter(api, sa, eb, l)
 		newDetectAlgoRouter(api, algo, l)
 		newJobRouter(api, l)
+		api.Get("/sse", handleSSE(l))
+	}
+}
+
+func handleSSE(l *slog.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// 设置SSE必需的响应头
+		c.Set("Content-Type", "text/event-stream")
+		c.Set("Cache-Control", "no-cache")
+		c.Set("Connection", "keep-alive")
+		c.Set("Transfer-Encoding", "chunked")
+
+		// 使用流式响应
+		c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+			l.Info("SSE connection established")
+			ticker := time.NewTicker(1 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case t := <-ticker.C:
+					// 构造消息并尝试写入
+					msg := fmt.Sprintf("data: %s\n\n", t.Format("2006-01-02 15:04:05"))
+					l.Info("Sending message", "msg", msg)
+
+					// 写入消息并立即刷新
+					if _, err := w.WriteString(msg); err != nil {
+						l.Error("SSE write error", "error", err)
+						return
+					}
+					if err := w.Flush(); err != nil {
+						l.Error("SSE flush error", "error", err)
+						return
+					}
+					l.Info("Message sent and flushed")
+				}
+			}
+		})
+
+		return nil
 	}
 }
