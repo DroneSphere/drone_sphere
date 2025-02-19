@@ -30,6 +30,7 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 		WithSpanID:  true,
 		Filters: []slogfiber.Filter{
 			slogfiber.IgnorePath("/api/v1/sse"),
+			slogfiber.IgnorePath("/api/v1/drone/state/sse"),
 		},
 	}
 	app.Use(slogfiber.NewWithConfig(l, sfCfg))

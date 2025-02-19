@@ -105,6 +105,31 @@ definitions:
       type:
         type: integer
     type: object
+  v1.JobAreaResult:
+    properties:
+      name:
+        type: string
+      points:
+        items:
+          properties:
+            lat:
+              type: number
+            lng:
+              type: number
+            marker:
+              type: string
+          type: object
+        type: array
+    type: object
+  v1.JobDrone:
+    properties:
+      model:
+        type: string
+      name:
+        type: string
+      sn:
+        type: string
+    type: object
   v1.JobItemResult:
     properties:
       area_name:
@@ -185,6 +210,15 @@ definitions:
       data: {}
       msg:
         type: string
+    type: object
+  v1.SubJobResult:
+    properties:
+      area:
+        $ref: '#/definitions/v1.JobAreaResult'
+      drones:
+        $ref: '#/definitions/v1.JobDrone'
+      index:
+        type: integer
     type: object
   v1.UserResult:
     properties:
@@ -452,6 +486,28 @@ paths:
                   type: array
               type: object
       summary: 获取所有任务
+      tags:
+      - job
+  /job/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 获取任务详细信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/v1.SubJobResult'
+                  type: array
+              type: object
+      summary: 获取任务详细信息
       tags:
       - job
   /user/login:

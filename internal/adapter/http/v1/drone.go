@@ -1,13 +1,17 @@
 package v1
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"github.com/asaskevich/EventBus"
+	"github.com/bytedance/sonic"
 	api "github.com/dronesphere/api/http/v1"
 	"github.com/dronesphere/internal/service"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
 	"log/slog"
+	"time"
 )
 
 type DroneRouter struct {
@@ -25,6 +29,7 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 	h := handler.Group("/drone")
 	{
 		h.Get("/list", r.list)
+		h.Get("/state/sse", r.pushState)
 	}
 }
 
@@ -55,4 +60,60 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(Success(res))
+}
+
+func (r *DroneRouter) pushState(c *fiber.Ctx) error {
+	// 设置SSE必需的响应头
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("Transfer-Encoding", "chunked")
+
+	// 使用流式响应
+	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+		r.l.Info("SSE connection established")
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				// 构造消息并尝试写入
+				drone, err := r.svc.FetchState(context.Background(), "1581F5FHC246H00DRM66")
+				if err != nil {
+					r.l.Error("Fetch drone state failed", "error", err)
+					return
+				}
+				res := api.DroneState{
+					SN:      drone.SN,
+					Lat:     drone.Latitude,
+					Lng:     drone.Longitude,
+					Height:  drone.Height,
+					Heading: drone.GetHeading(),
+					Speed:   drone.HorizontalSpeed,
+					Battery: drone.Battery.CapacityPercent,
+				}
+				json, err := sonic.Marshal(res)
+				if err != nil {
+					r.l.Error("SSE marshal error", "error", err)
+					return
+				}
+				msg := fmt.Sprintf("data: %s\n\n", json)
+				r.l.Info("Sending message", "msg", msg)
+
+				// 写入消息并立即刷新
+				if _, err := w.WriteString(msg); err != nil {
+					r.l.Error("SSE write error", "error", err)
+					return
+				}
+				if err := w.Flush(); err != nil {
+					r.l.Error("SSE flush error", "error", err)
+					return
+				}
+				r.l.Info("Message sent and flushed")
+			}
+		}
+	})
+
+	return nil
 }

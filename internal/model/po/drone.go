@@ -74,6 +74,11 @@ func (t RTDrone) UnmarshalBinary(data []byte) error {
 	return sonic.Unmarshal(data, t)
 }
 
+// GetHeading 获取无人机的航向角
+func (t RTDrone) GetHeading() float64 {
+	return t.AttitudeHead
+}
+
 type CameraInfo struct {
 	RemainPhotoNum                  int             `json:"remain_photo_num" redis:"remain_photo_num"`
 	RemainRecordDuration            int             `json:"remain_record_duration" redis:"remain_record_duration"`

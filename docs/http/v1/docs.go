@@ -438,6 +438,44 @@ const docTemplate = `{
                 }
             }
         },
+        "/job/{id}": {
+            "get": {
+                "description": "获取任务详细信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "job"
+                ],
+                "summary": "获取任务详细信息",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/v1.SubJobResult"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/user/login": {
             "post": {
                 "description": "Web/Pilot端统一用户登录，根据是否携带 SN 切换登录方式",
@@ -643,6 +681,45 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.JobAreaResult": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "points": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "lat": {
+                                "type": "number"
+                            },
+                            "lng": {
+                                "type": "number"
+                            },
+                            "marker": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "v1.JobDrone": {
+            "type": "object",
+            "properties": {
+                "model": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sn": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.JobItemResult": {
             "type": "object",
             "properties": {
@@ -762,6 +839,20 @@ const docTemplate = `{
                 "data": {},
                 "msg": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.SubJobResult": {
+            "type": "object",
+            "properties": {
+                "area": {
+                    "$ref": "#/definitions/v1.JobAreaResult"
+                },
+                "drones": {
+                    "$ref": "#/definitions/v1.JobDrone"
+                },
+                "index": {
+                    "type": "integer"
                 }
             }
         },

@@ -116,7 +116,7 @@ func (r *DetectAlgoRouter) create(c *fiber.Ctx) error {
 //	@Param			id	path	int	true	"算法ID"
 //	@Accept			json
 //	@Produce		json
-//	@Param			req	body		[]v1.DetectClassResult						true	"请求体"
+//	@Param			req	body		[]v1.DetectClassResult					true	"请求体"
 //	@Success		200	{object}	v1.Response{data=v1.DetectAlgoResult}	"成功"
 func (r *DetectAlgoRouter) updateClasses(c *fiber.Ctx) error {
 	idStr := c.Params("id")
