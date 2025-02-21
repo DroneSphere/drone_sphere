@@ -46,22 +46,19 @@ func Run(cfg *configs.Config) {
 		slogGorm.WithTraceAll(),                                       // trace all messages
 		slogGorm.SetLogLevel(slogGorm.DefaultLogType, slog.Level(32)), // Define the default logging level
 	)
-	dsn := "host=47.245.40.222 user=admin password=thF@AHgy3SUR dbname=drone_sphere port=5432 sslmode=disable TimeZone=Asia/Shanghai"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	db, err := gorm.Open(postgres.Open(cfg.GetDBStr()), &gorm.Config{
 		Logger: gormLogger,
 	})
 	if err != nil {
-		panic("failed to connect database")
+		panic(err)
 	}
 
 	// MQTT
-	var broker = "47.245.40.222"
-	var port = 1883
 	opts := mqtt.NewClientOptions()
-	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", broker, port))
-	opts.SetClientID("go_mqtt_client")
-	opts.SetUsername("server")
-	opts.SetPassword("server")
+	opts.AddBroker(cfg.MQTT.Broker)
+	opts.SetClientID(cfg.MQTT.ClientID)
+	opts.SetUsername(cfg.MQTT.Username)
+	opts.SetPassword(cfg.MQTT.Password)
 	opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
 		logger.Info("Received message", slog.Any("topic", msg.Topic()), slog.Any("message", string(msg.Payload())))
 	})
@@ -77,9 +74,8 @@ func Run(cfg *configs.Config) {
 	}
 
 	// Redis
-	opt, err := redis.ParseURL("redis://:thF@AHgy3SUR@47.245.40.222:6379")
+	opt, err := redis.ParseURL(cfg.GetRedisStr())
 	if err != nil {
-		logger.Error(err.Error())
 		panic(err)
 	}
 	rds := redis.NewClient(opt)
@@ -111,7 +107,7 @@ func Run(cfg *configs.Config) {
 	var wg sync.WaitGroup
 
 	// 启动所有服务器
-	bootServers(&wg, logger, httpV1, httpDJI, wss)
+	bootServers(cfg, &wg, logger, httpV1, httpDJI, wss)
 	logger.Info("Servers all started")
 
 	// 监听系统信号
@@ -132,8 +128,8 @@ func Run(cfg *configs.Config) {
 	logger.Info("All servers have been shut down. Exiting...")
 }
 
-func bootServers(wg *sync.WaitGroup, l *slog.Logger, apps ...*fiber.App) {
-	port := 10086
+func bootServers(cfg *configs.Config, wg *sync.WaitGroup, l *slog.Logger, apps ...*fiber.App) {
+	port := cfg.Server.Port
 	for _, app := range apps {
 		wg.Add(1)
 		go func(p int, a *fiber.App) {

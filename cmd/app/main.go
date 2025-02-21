@@ -6,9 +6,11 @@ import (
 )
 
 func main() {
-	// TODO: Load configuration
-	cfg := configs.Config{}
+	cfg, err := configs.LoadConfig()
+	if err != nil {
+		panic(err)
+	}
 
 	// Run
-	app.Run(&cfg)
+	app.Run(cfg)
 }

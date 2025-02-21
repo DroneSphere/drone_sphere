@@ -14,7 +14,7 @@
 
 # 忽略环境变量文件
 .env
-.env.local
+.env
 
 # 忽略日志文件
 *.log
