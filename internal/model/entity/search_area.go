@@ -1,20 +1,15 @@
 package entity
 
+import "github.com/dronesphere/internal/model/vo"
+
 // SearchArea 搜索区域
 type SearchArea struct {
-	ID          uint        `json:"id"`
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	CenterLat   float64     `json:"center_lat"`
-	CenterLng   float64     `json:"center_lng"`
-	Points      []AreaPoint `json:"points"`
-}
-
-// AreaPoint 搜索区域点
-type AreaPoint struct {
-	Index int     `json:"index"`
-	Lat   float64 `json:"lat"`
-	Lng   float64 `json:"lng"`
+	ID          uint          `json:"id"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	CenterLat   float64       `json:"center_lat"`
+	CenterLng   float64       `json:"center_lng"`
+	Points      []vo.GeoPoint `json:"points"`
 }
 
 func (a *SearchArea) CalcCenter() {

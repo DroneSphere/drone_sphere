@@ -2,6 +2,7 @@ package v1
 
 import (
 	"github.com/dronesphere/internal/model/entity"
+	"github.com/dronesphere/internal/model/vo"
 	"github.com/jinzhu/copier"
 )
 
@@ -20,9 +21,9 @@ func (r *CreateAreaRequest) ToEntity() *entity.SearchArea {
 	if err := copier.Copy(&e, r); err != nil {
 		return nil
 	}
-	var points []entity.AreaPoint
+	var points []vo.GeoPoint
 	for _, p := range r.Points {
-		points = append(points, entity.AreaPoint{
+		points = append(points, vo.GeoPoint{
 			Index: p.Index,
 			Lat:   p.Lat,
 			Lng:   p.Lng,

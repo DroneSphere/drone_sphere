@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
+	"github.com/dronesphere/internal/model/vo"
 	"github.com/jinzhu/copier"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -31,9 +32,9 @@ func NewSearchAreaGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *Sear
 }
 
 func (r *SearchAreaGormRepo) toEntity(p *po.ORMSearchArea) *entity.SearchArea {
-	var points []entity.AreaPoint
+	var points []vo.GeoPoint
 	for _, point := range p.Points {
-		var p entity.AreaPoint
+		var p vo.GeoPoint
 		if err := copier.Copy(&p, point); err != nil {
 			r.l.Error("Copy Error: ", slog.Any("error", err))
 			return nil
@@ -55,9 +56,9 @@ func (r *SearchAreaGormRepo) toPO(area *entity.SearchArea) *po.ORMSearchArea {
 		r.l.Error("Copy Error: ", slog.Any("error", err))
 		return nil
 	}
-	var points []po.ORMAreaPoint
+	var points []vo.GeoPoint
 	for _, point := range area.Points {
-		var p po.ORMAreaPoint
+		var p vo.GeoPoint
 		if err := copier.Copy(&p, point); err != nil {
 			r.l.Error("Copy Error: ", slog.Any("error", err))
 			return nil
