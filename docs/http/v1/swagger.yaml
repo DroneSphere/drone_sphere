@@ -52,6 +52,20 @@ definitions:
     type: object
   v1.CreateDetectAlgoRequest:
     type: object
+  v1.CreateWaylineRequest:
+    properties:
+      drone_sn:
+        type: string
+      height:
+        type: number
+      points:
+        items:
+          $ref: '#/definitions/v1.PointRequest'
+        type: array
+    required:
+    - drone_sn
+    - points
+    type: object
   v1.DetectAlgoResult:
     properties:
       algo_path:
@@ -194,6 +208,15 @@ definitions:
       workspace:
         type: string
     type: object
+  v1.PointRequest:
+    properties:
+      index:
+        type: integer
+      lat:
+        type: number
+      lng:
+        type: number
+    type: object
   v1.PointResult:
     properties:
       index:
@@ -215,7 +238,7 @@ definitions:
     properties:
       area:
         $ref: '#/definitions/v1.JobAreaResult'
-      drones:
+      drone:
         $ref: '#/definitions/v1.JobDrone'
       index:
         type: integer
@@ -227,6 +250,21 @@ definitions:
       role:
         type: string
       username:
+        type: string
+    type: object
+  v1.WaylineItemResult:
+    properties:
+      created_at:
+        type: string
+      drone_model:
+        type: string
+      drone_sn:
+        type: string
+      id:
+        type: integer
+      s3_key:
+        type: string
+      upload_user:
         type: string
     type: object
 host: lqhirwdzgkvv.sealoshzh.site
@@ -537,4 +575,72 @@ paths:
       summary: Web/Pilot端统一用户登录
       tags:
       - user
+  /wayline:
+    get:
+      consumes:
+      - application/json
+      description: 列出所有航线
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/v1.WaylineItemResult'
+                  type: array
+              type: object
+      summary: 列出所有航线
+      tags:
+      - wayline
+    post:
+      consumes:
+      - application/json
+      description: 根据给出的点序列和无人机SN、高度生成航线
+      parameters:
+      - description: 请求体
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/v1.CreateWaylineRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: 创建航线
+      tags:
+      - wayline
+  /wayline/download:
+    get:
+      consumes:
+      - application/json
+      description: 根据给出的key下载航线文件
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: 下载航线文件
+      tags:
+      - wayline
 swagger: "2.0"

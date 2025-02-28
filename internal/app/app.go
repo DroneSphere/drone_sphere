@@ -11,6 +11,8 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gofiber/fiber/v2"
 	"github.com/lmittmann/tint"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"gorm.io/driver/postgres"
 	"log/slog"
 	"os"
@@ -81,24 +83,40 @@ func Run(cfg *configs.Config) {
 	rds := redis.NewClient(opt)
 	logger.Info("Redis connected")
 
+	// S3 Storage
+	endpoint := "47.245.40.222:9000"
+	accessKeyID := "LxsGNjx6YKIolXHMS8EA"
+	secretAccessKey := "AGmpoYvM4dZM2lRS9M3EKOsH5XQJG3dWutk3xWqV"
+	// Initialize minio client object.
+	s3Client, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
+		Secure: false,
+	})
+	if err != nil {
+		logger.Error("S3 client error", slog.Any("err", err))
+	}
+	logger.Info("S3 client connected")
+
 	// Repos
 	userRepo := repo.NewUserGormRepo(db, logger)
 	droneRepo := repo.NewDroneGormRepo(db, rds, logger)
 	saRepo := repo.NewSearchAreaGormRepo(db, rds, logger)
 	algoRepo := repo.NewDetectAlgoGormRepo(db, logger)
+	wlRepo := repo.NewWaylineGormRepo(db, s3Client, logger)
 
 	// Services
 	userSvc := service.NewUserSvc(userRepo, logger)
 	droneSvc := service.NewDroneImpl(droneRepo, logger, client)
 	saSvc := service.NewSearchAreaImpl(saRepo, logger, client)
 	algoSvc := service.NewDetectAlgoImpl(algoRepo, logger)
+	wlSvc := service.NewWaylineImpl(wlRepo, droneRepo, logger)
 
 	// Event Handlers
 	eventhandler.NewHandler(eb, logger, client, droneSvc)
 
 	// Servers
 	httpV1 := fiber.New()
-	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, algoSvc)
+	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, algoSvc, wlSvc)
 	httpDJI := fiber.New()
 	dji.NewRouter(httpDJI, eb, logger, droneSvc)
 	wss := fiber.New()

@@ -521,6 +521,123 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/wayline": {
+            "get": {
+                "description": "列出所有航线",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "wayline"
+                ],
+                "summary": "列出所有航线",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/v1.WaylineItemResult"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "根据给出的点序列和无人机SN、高度生成航线",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "wayline"
+                ],
+                "summary": "创建航线",
+                "parameters": [
+                    {
+                        "description": "请求体",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.CreateWaylineRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/wayline/download": {
+            "get": {
+                "description": "根据给出的key下载航线文件",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "wayline"
+                ],
+                "summary": "下载航线文件",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -602,6 +719,27 @@ const docTemplate = `{
         },
         "v1.CreateDetectAlgoRequest": {
             "type": "object"
+        },
+        "v1.CreateWaylineRequest": {
+            "type": "object",
+            "required": [
+                "drone_sn",
+                "points"
+            ],
+            "properties": {
+                "drone_sn": {
+                    "type": "string"
+                },
+                "height": {
+                    "type": "number"
+                },
+                "points": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.PointRequest"
+                    }
+                }
+            }
         },
         "v1.DetectAlgoResult": {
             "type": "object",
@@ -816,6 +954,20 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.PointRequest": {
+            "type": "object",
+            "properties": {
+                "index": {
+                    "type": "integer"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                }
+            }
+        },
         "v1.PointResult": {
             "type": "object",
             "properties": {
@@ -848,7 +1000,7 @@ const docTemplate = `{
                 "area": {
                     "$ref": "#/definitions/v1.JobAreaResult"
                 },
-                "drones": {
+                "drone": {
                     "$ref": "#/definitions/v1.JobDrone"
                 },
                 "index": {
@@ -866,6 +1018,29 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.WaylineItemResult": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "drone_model": {
+                    "type": "string"
+                },
+                "drone_sn": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "s3_key": {
+                    "type": "string"
+                },
+                "upload_user": {
                     "type": "string"
                 }
             }
