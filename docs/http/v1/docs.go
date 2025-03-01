@@ -781,10 +781,15 @@ const docTemplate = `{
         "v1.DroneItemResult": {
             "type": "object",
             "properties": {
+                "callsign": {
+                    "description": "呼号",
+                    "type": "string"
+                },
                 "domain": {
                     "type": "string"
                 },
                 "id": {
+                    "description": "ID",
                     "type": "integer"
                 },
                 "is_rtk_available": {

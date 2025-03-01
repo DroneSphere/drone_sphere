@@ -56,6 +56,8 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 			r.l.Warn("CopyError", slog.Any("err", err))
 			return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 		}
+		// 检查是否在线
+		e.Status = d.StatusText()
 		res = append(res, e)
 	}
 

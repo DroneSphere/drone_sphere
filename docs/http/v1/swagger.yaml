@@ -92,9 +92,13 @@ definitions:
     type: object
   v1.DroneItemResult:
     properties:
+      callsign:
+        description: 呼号
+        type: string
       domain:
         type: string
       id:
+        description: ID
         type: integer
       is_rtk_available:
         description: IsRTKAvailable 是否支持RTK

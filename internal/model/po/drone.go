@@ -7,10 +7,11 @@ import (
 
 type ORMDrone struct {
 	gorm.Model
-	SN      string `json:"sn"`
-	Domain  string `json:"domain"`
-	Type    int    `json:"type"`
-	SubType int    `json:"sub_type"`
+	SN       string `json:"sn"`
+	Callsign string `json:"callsign"`
+	Domain   string `json:"domain"`
+	Type     int    `json:"type"`
+	SubType  int    `json:"sub_type"`
 }
 
 func (ORMDrone) TableName() string {

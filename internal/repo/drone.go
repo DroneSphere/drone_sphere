@@ -57,8 +57,7 @@ func (r *DroneGormRepo) ListAll(ctx context.Context) ([]entity.Drone, error) {
 		var rt po.RTDrone
 		rt, err := r.FetchRealtimeDrone(ctx, p.SN)
 		if err != nil {
-			r.l.Error("ListAll failed", slog.Any("err", err))
-			continue
+			r.l.Error("实时数据获取失败", slog.Any("SN", p.SN), slog.Any("err", err))
 		}
 		r.l.Info("实时状态获取成功", slog.Any("SN", p.SN), slog.Any("rt", rt))
 		// 拷贝静态数据和实时数据

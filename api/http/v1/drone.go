@@ -1,7 +1,8 @@
 package v1
 
 type DroneItemResult struct {
-	ID uint `json:"id"`
+	ID       uint   `json:"id"`       // ID
+	Callsign string `json:"callsign"` // 呼号
 	// 以下字段来自实体信息
 	SN      string `json:"sn"`
 	Domain  string `json:"domain"`
