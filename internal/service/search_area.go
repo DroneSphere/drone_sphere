@@ -3,11 +3,12 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
+
 	api "github.com/dronesphere/api/http/v1"
 	"github.com/dronesphere/internal/model/entity"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/hashicorp/go-multierror"
-	"log/slog"
 )
 
 type (
@@ -15,12 +16,14 @@ type (
 		SaveArea(ctx context.Context, area *entity.SearchArea) (*entity.SearchArea, error)
 		FetchArea(ctx context.Context, params *api.AreaFetchParams) (*entity.SearchArea, error)
 		FetchList(ctx context.Context) ([]*entity.SearchArea, error)
+		DeleteByID(ctx context.Context, id uint) error
 	}
 	SearchAreaRepo interface {
 		Save(ctx context.Context, area *entity.SearchArea) (*entity.SearchArea, error)
 		FetchByID(ctx context.Context, id uint) (*entity.SearchArea, error)
 		FetchByName(ctx context.Context, name string) (*entity.SearchArea, error)
 		FetchAll(ctx context.Context) ([]*entity.SearchArea, error)
+		DeleteByID(ctx context.Context, id uint) error
 	}
 )
 
@@ -81,4 +84,13 @@ func (s *SearchAreaImpl) FetchList(ctx context.Context) ([]*entity.SearchArea, e
 		return nil, err
 	}
 	return areas, nil
+}
+
+func (s *SearchAreaImpl) DeleteByID(ctx context.Context, id uint) error {
+	err := s.r.DeleteByID(ctx, id)
+	if err != nil {
+		s.l.Error("DeleteByID Error: ", slog.Any("error", err))
+		return err
+	}
+	return nil
 }

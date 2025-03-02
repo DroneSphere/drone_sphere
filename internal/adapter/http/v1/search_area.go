@@ -2,13 +2,14 @@ package v1
 
 import (
 	"context"
+	"log/slog"
+
 	"github.com/asaskevich/EventBus"
 	api "github.com/dronesphere/api/http/v1"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/service"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
-	"log/slog"
 )
 
 type SearchAreaRouter struct {
@@ -28,6 +29,7 @@ func newSearchAreaRouter(handler fiber.Router, svc service.SearchAreaSvc, eb Eve
 		h.Get("/list", r.getAllAreas)
 		h.Get("/", r.getArea)
 		h.Post("/", r.createArea)
+		h.Delete("/:id", r.deleteArea)
 	}
 }
 
@@ -102,6 +104,8 @@ func (r *SearchAreaRouter) getArea(c *fiber.Ctx) error {
 	return c.JSON(Success(r.toItemResult(area)))
 }
 
+var duplicateAreaFailed = ErrorBody{Code: 40000, Msg: "已存在同名区域"}
+
 // createArea 创建搜索区域
 //
 //	@Router			/areas	[post]
@@ -112,6 +116,7 @@ func (r *SearchAreaRouter) getArea(c *fiber.Ctx) error {
 //	@Produce		json
 //	@Param			req	body		v1.CreateAreaRequest			true	"请求体"
 //	@Success		200	{object}	v1.Response{data=v1.AreaResult}	"成功"
+//	@Failure		400	{object}	v1.ErrorBody					"参数错误"
 func (r *SearchAreaRouter) createArea(c *fiber.Ctx) error {
 	ctx := context.Background()
 	req := new(api.CreateAreaRequest)
@@ -120,7 +125,28 @@ func (r *SearchAreaRouter) createArea(c *fiber.Ctx) error {
 	}
 	area, err := r.svc.SaveArea(ctx, req.ToEntity())
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Fail(InternalError))
+		return c.Status(fiber.StatusBadRequest).JSON(Fail(duplicateAreaFailed))
 	}
 	return c.JSON(Success(area))
+}
+
+// deleteArea 删除搜索区域
+//
+//	@Router			/areas/:id	[delete]
+//	@Summary		删除搜索区域
+//	@Description	删除搜索区域
+//	@Tags			area
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int		true	"区域ID"
+//	@Success		200	{object}	v1.Response	"成功"
+func (r *SearchAreaRouter) deleteArea(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(Fail(InvalidParams))
+	}
+	if err := r.svc.DeleteByID(context.Background(), uint(id)); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Fail(InternalError))
+	}
+	return c.JSON(Success(nil))
 }

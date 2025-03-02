@@ -2,13 +2,14 @@ package repo
 
 import (
 	"context"
+	"log/slog"
+
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/model/vo"
 	"github.com/jinzhu/copier"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-	"log/slog"
 )
 
 type SearchAreaGormRepo struct {
@@ -111,4 +112,12 @@ func (r *SearchAreaGormRepo) FetchAll(ctx context.Context) ([]*entity.SearchArea
 		areas = append(areas, area)
 	}
 	return areas, nil
+}
+
+func (r *SearchAreaGormRepo) DeleteByID(ctx context.Context, id uint) error {
+	if err := r.tx.Unscoped().Delete(&po.ORMSearchArea{}, id).Error; err != nil {
+		r.l.Error("Delete Error: ", slog.Any("error", err))
+		return err
+	}
+	return nil
 }
