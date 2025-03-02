@@ -47,13 +47,22 @@ func (r *SearchAreaRouter) toItemResult(area *entity.SearchArea) *api.AreaResult
 	}
 }
 
-func (r *SearchAreaRouter) toListResult(area []*entity.SearchArea) []api.AreaListResult {
-	var items []api.AreaListResult
+func (r *SearchAreaRouter) toListResult(area []*entity.SearchArea) []api.AreaItemResult {
+	var items []api.AreaItemResult
 	for _, a := range area {
-		var e api.AreaListResult
+		var e api.AreaItemResult
 		if err := copier.Copy(&e, a); err != nil {
 			r.l.Error("Copy Error: ", slog.Any("error", err))
 			continue
+		}
+		// 复制点列表
+		var points []api.PointResult
+		for _, p := range a.Points {
+			points = append(points, api.PointResult{
+				Index: p.Index,
+				Lat:   p.Lat,
+				Lng:   p.Lng,
+			})
 		}
 		items = append(items, e)
 	}
@@ -68,7 +77,7 @@ func (r *SearchAreaRouter) toListResult(area []*entity.SearchArea) []api.AreaLis
 //	@Tags			area
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	v1.Response{data=[]v1.AreaListResult}	"成功"
+//	@Success		200	{object}	v1.Response{data=[]v1.AreaItemResult}	"成功"
 func (r *SearchAreaRouter) getAllAreas(c *fiber.Ctx) error {
 	ctx := context.Background()
 	areas, err := r.svc.FetchList(ctx)

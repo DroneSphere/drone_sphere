@@ -1,6 +1,6 @@
 basePath: /api/v1
 definitions:
-  v1.AreaListResult:
+  v1.AreaItemResult:
     properties:
       center_lat:
         type: number
@@ -12,6 +12,10 @@ definitions:
         type: integer
       name:
         type: string
+      points:
+        items:
+          $ref: '#/definitions/v1.PointResult'
+        type: array
     type: object
   v1.AreaResult:
     properties:
@@ -480,7 +484,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/v1.AreaListResult'
+                    $ref: '#/definitions/v1.AreaItemResult'
                   type: array
               type: object
       summary: 列出所有搜索区域

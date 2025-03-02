@@ -38,12 +38,13 @@ type AreaFetchParams struct {
 	Name string `json:"name"`
 }
 
-type AreaListResult struct {
-	ID          uint    `json:"id"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	CenterLat   float64 `json:"center_lat"`
-	CenterLng   float64 `json:"center_lng"`
+type AreaItemResult struct {
+	ID          uint          `json:"id"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	CenterLat   float64       `json:"center_lat"`
+	CenterLng   float64       `json:"center_lng"`
+	Points      []PointResult `json:"points"`
 }
 
 type AreaResult struct {

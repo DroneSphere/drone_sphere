@@ -351,7 +351,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/v1.AreaListResult"
+                                                "$ref": "#/definitions/v1.AreaItemResult"
                                             }
                                         }
                                     }
@@ -641,7 +641,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "v1.AreaListResult": {
+        "v1.AreaItemResult": {
             "type": "object",
             "properties": {
                 "center_lat": {
@@ -658,6 +658,12 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "points": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.PointResult"
+                    }
                 }
             }
         },
