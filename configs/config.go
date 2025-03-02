@@ -2,6 +2,8 @@ package configs
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
@@ -62,10 +64,16 @@ type RedisConfig struct {
 }
 
 func LoadConfig() (*Config, error) {
-	// 加载.env文件
-	err := godotenv.Load(".env")
-	if err != nil {
-		return nil, fmt.Errorf("failed to load .env file: %w", err)
+	// Development 环境下加载.env文件，默认为development
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "development"
+	}
+	if os.Getenv("APP_ENV") == "development" {
+		err := godotenv.Load(".env")
+		if err != nil {
+			return nil, fmt.Errorf("failed to load .env file: %w", err)
+		}
 	}
 
 	// 设置环境变量
