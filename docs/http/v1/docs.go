@@ -320,6 +320,44 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/areas/:id": {
+            "delete": {
+                "description": "删除搜索区域",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "area"
+                ],
+                "summary": "删除搜索区域",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "区域ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "$ref": "#/definitions/v1.Response"
+                        }
                     }
                 }
             }
@@ -827,6 +865,17 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                }
+            }
+        },
+        "v1.ErrorBody": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "msg": {
+                    "type": "string"
                 }
             }
         },

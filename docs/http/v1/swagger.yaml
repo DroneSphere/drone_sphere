@@ -127,6 +127,13 @@ definitions:
       type:
         type: integer
     type: object
+  v1.ErrorBody:
+    properties:
+      code:
+        type: integer
+      msg:
+        type: string
+    type: object
   v1.JobAreaResult:
     properties:
       name:
@@ -465,7 +472,32 @@ paths:
                 data:
                   $ref: '#/definitions/v1.AreaResult'
               type: object
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/v1.ErrorBody'
       summary: 创建搜索区域
+      tags:
+      - area
+  /areas/:id:
+    delete:
+      consumes:
+      - application/json
+      description: 删除搜索区域
+      parameters:
+      - description: 区域ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            $ref: '#/definitions/v1.Response'
+      summary: 删除搜索区域
       tags:
       - area
   /areas/list:
