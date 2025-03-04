@@ -39,7 +39,7 @@ func newWaylineRouter(handler fiber.Router, svc service.WaylineSvc, l *slog.Logg
 //	@Tags			wayline
 //	@Accept			json
 //	@Produce		json
-//	@Param			req	body		v1.CreateWaylineRequest				true	"请求体"
+//	@Param			req	body		v1.CreateWaylineRequest	true	"请求体"
 //	@Success		200	{object}	v1.Response{data=nil}	"成功"
 func (r *WaylineRouter) Create(c *fiber.Ctx) error {
 	var req api.CreateWaylineRequest

@@ -214,3 +214,21 @@ func (r *DroneGormRepo) FetchDeviceTopoByWorkspace(ctx context.Context, workspac
 
 	return ds, rs, nil
 }
+
+func (t *DroneGormRepo) SelectAllByID(ctx context.Context, ids []uint) ([]entity.Drone, error) {
+	var drones []entity.Drone
+	for _, id := range ids {
+		var p po.ORMDrone
+		if err := t.tx.Where("id = ?", id).First(&p).Error; err != nil {
+			t.l.Error("Failed to fetch drone by id", slog.Any("err", err))
+			continue
+		}
+		var d entity.Drone
+		if err := copier.Copy(&d, &p); err != nil {
+			t.l.Error("ListAll copier failed", slog.Any("err", err))
+			continue
+		}
+		drones = append(drones, d)
+	}
+	return drones, nil
+}

@@ -474,6 +474,164 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "put": {
+                "description": "更新任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "job"
+                ],
+                "summary": "更新任务",
+                "parameters": [
+                    {
+                        "description": "更新任务请求",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.JobEditionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.JobDetailResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "创建任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "job"
+                ],
+                "summary": "创建任务",
+                "parameters": [
+                    {
+                        "description": "创建任务请求",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.JobCreationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.JobCreationResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/job/creation/options": {
+            "get": {
+                "description": "创建任务时依赖的选项数据，包括可选的搜索区域列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "job"
+                ],
+                "summary": "创建任务时依赖的选项数据",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.JobCreationOptionsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/job/edition/options": {
+            "get": {
+                "description": "编辑任务时依赖的选项数据，包括可选的无人机列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "job"
+                ],
+                "summary": "编辑任务时依赖的选项数据",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.JobEditionOptionsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
             }
         },
         "/job/{id}": {
@@ -501,10 +659,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/v1.SubJobResult"
-                                            }
+                                            "$ref": "#/definitions/v1.JobDetailResult"
                                         }
                                     }
                                 }
@@ -904,16 +1059,192 @@ const docTemplate = `{
                 }
             }
         },
-        "v1.JobDrone": {
+        "v1.JobCreationOptionsResult": {
             "type": "object",
             "properties": {
-                "model": {
+                "areas": {
+                    "description": "Area 可选的区域列表",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "v1.JobCreationRequest": {
+            "type": "object",
+            "properties": {
+                "area_id": {
+                    "type": "integer"
+                },
+                "description": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.JobCreationResult": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "v1.JobDetailResult": {
+            "type": "object",
+            "properties": {
+                "area": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "points": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "lat": {
+                                        "type": "number"
+                                    },
+                                    "lng": {
+                                        "type": "number"
+                                    }
+                                }
+                            }
+                        }
+                    }
                 },
-                "sn": {
+                "description": {
+                    "type": "string"
+                },
+                "drones": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "callsign": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "model": {
+                                "type": "string"
+                            },
+                            "sn": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.JobEditionOptionsResult": {
+            "type": "object",
+            "properties": {
+                "area": {
+                    "description": "区域信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.JobAreaResult"
+                        }
+                    ]
+                },
+                "description": {
+                    "type": "string"
+                },
+                "drones": {
+                    "description": "Drones 可用的无人机列表",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "callsign": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "model": {
+                                "description": "无人机型号",
+                                "type": "string"
+                            },
+                            "rtk_available": {
+                                "type": "boolean"
+                            },
+                            "sn": {
+                                "description": "无人机序列号",
+                                "type": "string"
+                            },
+                            "thermal_available": {
+                                "description": "是否支持热成像",
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                },
+                "id": {
+                    "description": "任务ID",
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.JobEditionRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "description": "任务描述",
+                    "type": "string"
+                },
+                "drone_ids": {
+                    "description": "无人机ID列表",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "id": {
+                    "description": "任务ID",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "任务名称",
                     "type": "string"
                 }
             }
@@ -1051,20 +1382,6 @@ const docTemplate = `{
                 "data": {},
                 "msg": {
                     "type": "string"
-                }
-            }
-        },
-        "v1.SubJobResult": {
-            "type": "object",
-            "properties": {
-                "area": {
-                    "$ref": "#/definitions/v1.JobAreaResult"
-                },
-                "drone": {
-                    "$ref": "#/definitions/v1.JobDrone"
-                },
-                "index": {
-                    "type": "integer"
                 }
             }
         },

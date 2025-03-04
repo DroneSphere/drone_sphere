@@ -31,6 +31,7 @@ type (
 		SaveRealtimeDrone(ctx context.Context, data po.RTDrone) error
 		SaveRealtimeRC(ctx context.Context, data po.RTRC) error
 		FetchDeviceTopoByWorkspace(ctx context.Context, workspace string) ([]entity.Drone, []entity.RC, error)
+		SelectAllByID(ctx context.Context, ids []uint) ([]entity.Drone, error)
 	}
 )
 

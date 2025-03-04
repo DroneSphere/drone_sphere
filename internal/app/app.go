@@ -103,6 +103,7 @@ func Run(cfg *configs.Config) {
 	saRepo := repo.NewSearchAreaGormRepo(db, rds, logger)
 	algoRepo := repo.NewDetectAlgoGormRepo(db, logger)
 	wlRepo := repo.NewWaylineGormRepo(db, s3Client, logger)
+	jobRepo := repo.NewJobDefaultRepo(db, rds, logger)
 
 	// Services
 	userSvc := service.NewUserSvc(userRepo, logger)
@@ -110,13 +111,14 @@ func Run(cfg *configs.Config) {
 	saSvc := service.NewSearchAreaImpl(saRepo, logger, client)
 	algoSvc := service.NewDetectAlgoImpl(algoRepo, logger)
 	wlSvc := service.NewWaylineImpl(wlRepo, droneRepo, logger)
+	jobSvc := service.NewJobImpl(jobRepo, saRepo, droneRepo, logger)
 
 	// Event Handlers
 	eventhandler.NewHandler(eb, logger, client, droneSvc)
 
 	// Servers
 	httpV1 := fiber.New()
-	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, algoSvc, wlSvc)
+	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, algoSvc, wlSvc, jobSvc)
 	httpDJI := fiber.New()
 	dji.NewRouter(httpDJI, eb, logger, droneSvc)
 	wss := fiber.New()

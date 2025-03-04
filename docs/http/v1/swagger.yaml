@@ -150,13 +150,129 @@ definitions:
           type: object
         type: array
     type: object
-  v1.JobDrone:
+  v1.JobCreationOptionsResult:
     properties:
-      model:
+      areas:
+        description: Area 可选的区域列表
+        items:
+          properties:
+            description:
+              type: string
+            id:
+              type: integer
+            name:
+              type: string
+          type: object
+        type: array
+    type: object
+  v1.JobCreationRequest:
+    properties:
+      area_id:
+        type: integer
+      description:
         type: string
       name:
         type: string
-      sn:
+    type: object
+  v1.JobCreationResult:
+    properties:
+      id:
+        type: integer
+    type: object
+  v1.JobDetailResult:
+    properties:
+      area:
+        properties:
+          description:
+            type: string
+          id:
+            type: integer
+          name:
+            type: string
+          points:
+            items:
+              properties:
+                lat:
+                  type: number
+                lng:
+                  type: number
+              type: object
+            type: array
+        type: object
+      description:
+        type: string
+      drones:
+        items:
+          properties:
+            callsign:
+              type: string
+            description:
+              type: string
+            id:
+              type: integer
+            model:
+              type: string
+            sn:
+              type: string
+          type: object
+        type: array
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  v1.JobEditionOptionsResult:
+    properties:
+      area:
+        allOf:
+        - $ref: '#/definitions/v1.JobAreaResult'
+        description: 区域信息
+      description:
+        type: string
+      drones:
+        description: Drones 可用的无人机列表
+        items:
+          properties:
+            callsign:
+              type: string
+            description:
+              type: string
+            id:
+              type: integer
+            model:
+              description: 无人机型号
+              type: string
+            rtk_available:
+              type: boolean
+            sn:
+              description: 无人机序列号
+              type: string
+            thermal_available:
+              description: 是否支持热成像
+              type: boolean
+          type: object
+        type: array
+      id:
+        description: 任务ID
+        type: integer
+      name:
+        type: string
+    type: object
+  v1.JobEditionRequest:
+    properties:
+      description:
+        description: 任务描述
+        type: string
+      drone_ids:
+        description: 无人机ID列表
+        items:
+          type: integer
+        type: array
+      id:
+        description: 任务ID
+        type: integer
+      name:
+        description: 任务名称
         type: string
     type: object
   v1.JobItemResult:
@@ -248,15 +364,6 @@ definitions:
       data: {}
       msg:
         type: string
-    type: object
-  v1.SubJobResult:
-    properties:
-      area:
-        $ref: '#/definitions/v1.JobAreaResult'
-      drone:
-        $ref: '#/definitions/v1.JobDrone'
-      index:
-        type: integer
     type: object
   v1.UserResult:
     properties:
@@ -566,6 +673,58 @@ paths:
       summary: 获取所有任务
       tags:
       - job
+    post:
+      consumes:
+      - application/json
+      description: 创建任务
+      parameters:
+      - description: 创建任务请求
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/v1.JobCreationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.JobCreationResult'
+              type: object
+      summary: 创建任务
+      tags:
+      - job
+    put:
+      consumes:
+      - application/json
+      description: 更新任务
+      parameters:
+      - description: 更新任务请求
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/v1.JobEditionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.JobDetailResult'
+              type: object
+      summary: 更新任务
+      tags:
+      - job
   /job/{id}:
     get:
       consumes:
@@ -581,11 +740,49 @@ paths:
             - $ref: '#/definitions/v1.Response'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/v1.SubJobResult'
-                  type: array
+                  $ref: '#/definitions/v1.JobDetailResult'
               type: object
       summary: 获取任务详细信息
+      tags:
+      - job
+  /job/creation/options:
+    get:
+      consumes:
+      - application/json
+      description: 创建任务时依赖的选项数据，包括可选的搜索区域列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.JobCreationOptionsResult'
+              type: object
+      summary: 创建任务时依赖的选项数据
+      tags:
+      - job
+  /job/edition/options:
+    get:
+      consumes:
+      - application/json
+      description: 编辑任务时依赖的选项数据，包括可选的无人机列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.JobEditionOptionsResult'
+              type: object
+      summary: 编辑任务时依赖的选项数据
       tags:
       - job
   /user/login:
