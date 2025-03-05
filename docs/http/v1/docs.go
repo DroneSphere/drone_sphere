@@ -599,7 +599,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/job/edition/options": {
+        "/job/edition/{id}/options": {
             "get": {
                 "description": "编辑任务时依赖的选项数据，包括可选的无人机列表",
                 "consumes": [
@@ -612,6 +612,15 @@ const docTemplate = `{
                     "job"
                 ],
                 "summary": "编辑任务时依赖的选项数据",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "成功",
@@ -1269,12 +1278,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                },
-                "target_classes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },

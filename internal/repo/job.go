@@ -52,3 +52,18 @@ func (j *JobDefaultRepo) FetchByID(ctx context.Context, id uint) (*entity.Job, e
 
 	return entity.NewJob(job), nil
 }
+
+func (j *JobDefaultRepo) SelectAll(ctx context.Context) ([]*entity.Job, error) {
+	var jobs []*po.Job
+	if err := j.tx.Find(&jobs).Error; err != nil {
+		j.l.Error("Failed to fetch all jobs", slog.Any("err", err))
+		return nil, err
+	}
+
+	var res []*entity.Job
+	for _, job := range jobs {
+		res = append(res, entity.NewJob(job))
+	}
+
+	return res, nil
+}

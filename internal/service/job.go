@@ -14,12 +14,14 @@ type (
 		FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error)
 		CreateJob(ctx context.Context, name, description string, areaID uint) (uint, error)
 		ModifyJob(ctx context.Context, id uint, name, description string, droneIDs []uint) (*entity.Job, error)
+		FetchAll(ctx context.Context) ([]*entity.Job, error)
 	}
 
 	JobRepo interface {
 		Save(ctx context.Context, job *po.Job) error
 		FetchPOByID(ctx context.Context, id uint) (*po.Job, error)
 		FetchByID(ctx context.Context, id uint) (*entity.Job, error)
+		SelectAll(ctx context.Context) ([]*entity.Job, error)
 	}
 )
 
@@ -98,11 +100,40 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 	if err != nil {
 		return nil, err
 	}
-	p.Name = name
-	p.Description = description
+	if name != "" {
+		p.Name = name
+	}
+	if description != "" {
+		p.Description = description
+	}
 	p.DroneIDs = droneIDs
 	if err := j.jobRepo.Save(ctx, p); err != nil {
 		return nil, err
 	}
 	return j.FetchByID(ctx, id)
+}
+
+func (j *JobImpl) FetchAll(ctx context.Context) ([]*entity.Job, error) {
+	job, err := j.jobRepo.SelectAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range job {
+		area, err := j.areaRepo.FetchByID(ctx, e.Area.ID)
+		if err != nil {
+			return nil, err
+		}
+		e.Area = *area
+
+		var ids []uint
+		for _, d := range e.Drones {
+			ids = append(ids, d.ID)
+		}
+		drones, err := j.droneRepo.SelectAllByID(ctx, ids)
+		if err != nil {
+			return nil, err
+		}
+		e.Drones = drones
+	}
+	return job, nil
 }

@@ -289,10 +289,6 @@ definitions:
         type: integer
       name:
         type: string
-      target_classes:
-        items:
-          type: string
-        type: array
     type: object
   v1.LoginRequest:
     properties:
@@ -765,11 +761,17 @@ paths:
       summary: 创建任务时依赖的选项数据
       tags:
       - job
-  /job/edition/options:
+  /job/edition/{id}/options:
     get:
       consumes:
       - application/json
       description: 编辑任务时依赖的选项数据，包括可选的无人机列表
+      parameters:
+      - description: 任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
       produces:
       - application/json
       responses:

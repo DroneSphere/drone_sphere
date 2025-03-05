@@ -3,24 +3,22 @@ package v1
 import "github.com/dronesphere/internal/model/entity"
 
 type JobItemResult struct {
-	ID            uint     `json:"id"`
-	Name          string   `json:"name"`
-	Description   string   `json:"description"`
-	AreaName      string   `json:"area_name"`
-	Drones        []string `json:"drones"`
-	TargetClasses []string `json:"target_classes"`
+	ID          uint     `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	AreaName    string   `json:"area_name"`
+	Drones      []string `json:"drones"`
 }
 
-type JobResult struct {
-	ID          uint   `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-type SubJobResult struct {
-	Index int           `json:"index"`
-	Area  JobAreaResult `json:"area"`
-	Drone JobDrone      `json:"drone"`
+func (r *JobItemResult) FromJobEntity(j *entity.Job) error {
+	r.ID = j.ID
+	r.Name = j.Name
+	r.Description = j.Description
+	r.AreaName = j.Area.Name
+	for _, d := range j.Drones {
+		r.Drones = append(r.Drones, d.Callsign)
+	}
+	return nil
 }
 
 type JobAreaResult struct {
@@ -30,12 +28,6 @@ type JobAreaResult struct {
 		Lng    float64 `json:"lng"`
 		Marker string  `json:"marker"`
 	} `json:"points"`
-}
-
-type JobDrone struct {
-	SN    string `json:"sn"`
-	Name  string `json:"name"`
-	Model string `json:"model"`
 }
 
 type DroneState struct {
@@ -55,7 +47,7 @@ type JobCreationOptionsResult struct {
 		ID          uint   `json:"id"`
 		Name        string `json:"name"`
 		Description string `json:"description"`
-	}
+	} `json:"areas"`
 }
 
 // JobCreationRequest 创建任务请求
@@ -85,7 +77,7 @@ type JobEditionOptionsResult struct {
 		Model            string `json:"model"` // 无人机型号
 		RTKAvailable     bool   `json:"rtk_available"`
 		ThermalAvailable bool   `json:"thermal_available"` // 是否支持热成像
-	}
+	} `json:"drones"`
 }
 
 // JobEditionRequest 编辑任务请求
@@ -108,7 +100,7 @@ type JobDetailResult struct {
 		Points      []struct {
 			Lat float64 `json:"lat"`
 			Lng float64 `json:"lng"`
-		}
+		} `json:"points"`
 	} `json:"area"`
 	Drones []struct {
 		ID          uint   `json:"id"`
@@ -123,7 +115,7 @@ func (r *JobDetailResult) FromJobEntity(j *entity.Job) error {
 	points := make([]struct {
 		Lat float64 `json:"lat"`
 		Lng float64 `json:"lng"`
-	}, len(j.Area.Points))
+	}, 0)
 	for _, p := range j.Area.Points {
 		points = append(points, struct {
 			Lat float64 `json:"lat"`

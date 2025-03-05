@@ -8,7 +8,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"log/slog"
 	"strconv"
-	"sync"
 )
 
 type JobRouter struct {
@@ -26,7 +25,7 @@ func newJobRouter(handler fiber.Router, svc service.JobSvc, l *slog.Logger) {
 		h.Get("/", r.getJobs)
 		h.Get("/:id", r.getJob)
 		h.Get("/creation/options", r.getCreationOptions)
-		h.Get("/edition/options", r.getEditionOptions)
+		h.Get("/edition/:id/options", r.getEditionOptions)
 		h.Post("/", r.create)
 		h.Put("/", r.update)
 	}
@@ -42,24 +41,20 @@ func newJobRouter(handler fiber.Router, svc service.JobSvc, l *slog.Logger) {
 //	@Produce		json
 //	@Success		200	{object}	v1.Response{data=[]v1.JobItemResult}	"成功"
 func (r *JobRouter) getJobs(c *fiber.Ctx) error {
-	var jobs []api.JobItemResult
-	jobs = append(jobs, api.JobItemResult{
-		ID:            1,
-		Name:          "任务1",
-		Description:   "任务1描述",
-		AreaName:      "区域1",
-		Drones:        []string{"无人机1", "无人机2"},
-		TargetClasses: []string{"目标1", "目标2"},
-	})
-	jobs = append(jobs, api.JobItemResult{
-		ID:            2,
-		Name:          "任务2",
-		Description:   "任务2描述",
-		AreaName:      "区域2",
-		Drones:        []string{"无人机3"},
-		TargetClasses: []string{"目标3"},
-	})
-	return c.JSON(Success(jobs))
+	ctx := context.Background()
+	jobs, err := r.svc.FetchAll(ctx)
+	if err != nil {
+		return c.JSON(Fail(InternalError))
+	}
+	var result []api.JobItemResult
+	for _, job := range jobs {
+		var item api.JobItemResult
+		if err := item.FromJobEntity(job); err != nil {
+			return c.JSON(Fail(InternalError))
+		}
+		result = append(result, item)
+	}
+	return c.JSON(Success(result))
 }
 
 // getJob  获取任务详细信息
@@ -119,36 +114,30 @@ func (r *JobRouter) getCreationOptions(c *fiber.Ctx) error {
 
 // getEditionOptions  编辑任务时依赖的选项数据
 //
-//	@Router			/job/edition/options		[get]
+//	@Router			/job/edition/{id}/options		[get]
 //	@Summary		编辑任务时依赖的选项数据
 //	@Description	编辑任务时依赖的选项数据，包括可选的无人机列表
 //	@Tags			job
 //	@Accept			json
 //	@Produce		json
+//	@Param			id	path		int												true	"任务ID"
 //	@Success		200	{object}	v1.Response{data=v1.JobEditionOptionsResult}	"成功"
 func (r *JobRouter) getEditionOptions(c *fiber.Ctx) error {
 	// 解析Path 中的 ID
 	id, err := strconv.Atoi(c.Params("id"))
 	ctx := context.Background()
-	wg := sync.WaitGroup{}
-	wg.Add(2)
 	var drones []entity.Drone
 	var j *entity.Job
-	go func() {
-		drones, err = r.svc.FetchAvailableDrones(ctx)
-		if err != nil {
-			return
-		}
-		wg.Done()
-	}()
-	go func() {
-		j, err = r.svc.FetchByID(ctx, uint(id))
-		if err != nil {
-			return
-		}
-		wg.Done()
-	}()
-	wg.Wait()
+	drones, err = r.svc.FetchAvailableDrones(ctx)
+	if err != nil {
+		return c.JSON(Fail(InternalError))
+	}
+
+	j, err = r.svc.FetchByID(ctx, uint(id))
+	if err != nil {
+		return c.JSON(Fail(InternalError))
+	}
+
 	var result api.JobEditionOptionsResult
 	for _, drone := range drones {
 		result.Drones = append(result.Drones, struct {
@@ -176,7 +165,7 @@ func (r *JobRouter) getEditionOptions(c *fiber.Ctx) error {
 		Lat    float64 `json:"lat"`
 		Lng    float64 `json:"lng"`
 		Marker string  `json:"marker"`
-	}, len(j.Area.Points))
+	}, 0)
 	for _, p := range j.Area.Points {
 		points = append(points, struct {
 			Lat    float64 `json:"lat"`

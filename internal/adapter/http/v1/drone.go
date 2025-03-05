@@ -11,6 +11,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
 	"log/slog"
+	rand2 "math/rand"
 	"time"
 )
 
@@ -71,6 +72,10 @@ func (r *DroneRouter) pushState(c *fiber.Ctx) error {
 	c.Set("Connection", "keep-alive")
 	c.Set("Transfer-Encoding", "chunked")
 
+	// 获取无人机序列号
+	sn := c.Query("sn")
+	r.l.Info("SSE sn", "sn", sn)
+
 	// 使用流式响应
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
 		r.l.Info("SSE connection established")
@@ -81,19 +86,23 @@ func (r *DroneRouter) pushState(c *fiber.Ctx) error {
 			select {
 			case <-ticker.C:
 				// 构造消息并尝试写入
-				drone, err := r.svc.FetchState(context.Background(), "1581F5FHC246H00DRM66")
+				_, err := r.svc.FetchState(context.Background(), sn)
 				if err != nil {
 					r.l.Error("Fetch drone state failed", "error", err)
-					return
+					//return
 				}
+				// 生成一个随机数加到经纬度上，有正有负
+				rand := rand2.Int()%100 - 50
+
+				r.l.Info("rand", "rand", rand)
 				res := api.DroneState{
-					SN:      drone.SN,
-					Lat:     drone.Latitude,
-					Lng:     drone.Longitude,
-					Height:  drone.Height,
-					Heading: drone.GetHeading(),
-					Speed:   drone.HorizontalSpeed,
-					Battery: drone.Battery.CapacityPercent,
+					SN:  sn,
+					Lat: 35.41416 + float64(rand)/100000,
+					Lng: 116.58761 + float64(rand)/100000,
+					//Height:  drone.Height,
+					//Heading: drone.GetHeading(),
+					//Speed:   drone.HorizontalSpeed,
+					//Battery: drone.Battery.CapacityPercent,
 				}
 				json, err := sonic.Marshal(res)
 				if err != nil {

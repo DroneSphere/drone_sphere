@@ -58,20 +58,27 @@ func (r *DroneGormRepo) ListAll(ctx context.Context) ([]entity.Drone, error) {
 		rt, err := r.FetchRealtimeDrone(ctx, p.SN)
 		if err != nil {
 			r.l.Error("实时数据获取失败", slog.Any("SN", p.SN), slog.Any("err", err))
+		} else {
+			r.l.Info("实时状态获取成功", slog.Any("SN", p.SN), slog.Any("rt", rt))
 		}
-		r.l.Info("实时状态获取成功", slog.Any("SN", p.SN), slog.Any("rt", rt))
 		// 拷贝静态数据和实时数据
 		var e entity.Drone
 		if err := copier.Copy(&e, &p); err != nil {
 			r.l.Error("数据拷贝失败", slog.Any("SN", p.SN), slog.Any("err", err))
 			continue
 		}
-		if err := copier.Copy(&e.RTDrone, &rt); err != nil {
-			r.l.Error("数据拷贝失败", slog.Any("SN", p.SN), slog.Any("err", err))
-			continue
+		r.l.Debug("拷贝静态数据成功", slog.Any("SN", p.SN), slog.Any("e", e))
+		if rt.SN != "" {
+			if err := copier.Copy(&e.RTDrone, &rt); err != nil {
+				r.l.Error("数据拷贝失败", slog.Any("SN", p.SN), slog.Any("err", err))
+				continue
+			}
+			r.l.Debug("拷贝实时数据成功", slog.Any("SN", p.SN), slog.Any("e", e))
 		}
+		r.l.Debug("包装结构体成功", slog.Any("SN", p.SN), slog.Any("e", e))
 		ds = append(ds, e)
 	}
+	r.l.Info("Drone ListAll", slog.Any("drones", ds))
 	return ds, nil
 }
 
