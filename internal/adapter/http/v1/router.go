@@ -58,6 +58,7 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 	// Routers
 	api := app.Group("/api/v1")
 	{
+		newPlatformRouter(api, l)
 		newUserRouter(api, user, eb, l)
 		newDroneRouter(api, drone, eb, l)
 		newSearchAreaRouter(api, sa, eb, l)

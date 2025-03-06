@@ -678,6 +678,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/platform": {
+            "get": {
+                "description": "获取平台信息，包含平台名称，工作空间，描述等",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "平台"
+                ],
+                "summary": "获取平台信息",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.PlatformResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/platform/params": {
+            "get": {
+                "description": "获取连接参数，包含设备上云模块连接参数，API 模块连接参数，WebSocket 模块连接参数等",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "平台"
+                ],
+                "summary": "获取连接参数",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.ConnectionParamsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/user/login": {
             "post": {
                 "description": "Web/Pilot端统一用户登录，根据是否携带 SN 切换登录方式",
@@ -843,6 +913,18 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "v1.APIParamResult": {
+            "type": "object",
+            "properties": {
+                "host": {
+                    "description": "HTTP 服务器地址, 格式为 http://host:port",
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.AreaItemResult": {
             "type": "object",
             "properties": {
@@ -892,6 +974,20 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/v1.PointResult"
                     }
+                }
+            }
+        },
+        "v1.ConnectionParamsResult": {
+            "type": "object",
+            "properties": {
+                "api": {
+                    "$ref": "#/definitions/v1.APIParamResult"
+                },
+                "thing": {
+                    "$ref": "#/definitions/v1.ThingParamResult"
+                },
+                "ws": {
+                    "$ref": "#/definitions/v1.WSParamResult"
                 }
             }
         },
@@ -1345,6 +1441,9 @@ const docTemplate = `{
                 },
                 "workspace": {
                     "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
                 }
             }
         },
@@ -1388,6 +1487,21 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.ThingParamResult": {
+            "type": "object",
+            "properties": {
+                "host": {
+                    "description": "MQTT 服务器地址, 格式为 tcp://host:port",
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.UserResult": {
             "type": "object",
             "properties": {
@@ -1398,6 +1512,18 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.WSParamResult": {
+            "type": "object",
+            "properties": {
+                "host": {
+                    "description": "WebSocket 服务器地址, 格式为 ws://host:port",
+                    "type": "string"
+                },
+                "token": {
                     "type": "string"
                 }
             }

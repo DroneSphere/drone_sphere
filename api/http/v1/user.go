@@ -20,12 +20,6 @@ type UserResult struct {
 	Role     string `json:"role"`
 }
 
-type PlatformResult struct {
-	Platform  string `json:"platform"`
-	Workspace string `json:"workspace"`
-	Desc      string `json:"desc"`
-}
-
 type ParamsResult struct {
 	MQTTHost     string `json:"mqtt_host"`
 	MQTTUsername string `json:"mqtt_username"`

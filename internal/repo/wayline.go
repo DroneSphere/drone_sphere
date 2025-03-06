@@ -19,10 +19,10 @@ type WaylineGormRepo struct {
 }
 
 func NewWaylineGormRepo(db *gorm.DB, s3 *minio.Client, l *slog.Logger) *WaylineGormRepo {
-	if err := db.AutoMigrate(&po.Wayline{}); err != nil {
-		l.Error("Auto Migration Error: ", slog.Any("error", err))
-		panic(err)
-	}
+	//if err := db.AutoMigrate(&po.Wayline{}); err != nil {
+	//	l.Error("Auto Migration Error: ", slog.Any("error", err))
+	//	panic(err)
+	//}
 	return &WaylineGormRepo{
 		tx:     db,
 		s3:     s3,

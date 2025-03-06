@@ -1,5 +1,13 @@
 basePath: /api/v1
 definitions:
+  v1.APIParamResult:
+    properties:
+      host:
+        description: HTTP 服务器地址, 格式为 http://host:port
+        type: string
+      token:
+        type: string
+    type: object
   v1.AreaItemResult:
     properties:
       center_lat:
@@ -33,6 +41,15 @@ definitions:
         items:
           $ref: '#/definitions/v1.PointResult'
         type: array
+    type: object
+  v1.ConnectionParamsResult:
+    properties:
+      api:
+        $ref: '#/definitions/v1.APIParamResult'
+      thing:
+        $ref: '#/definitions/v1.ThingParamResult'
+      ws:
+        $ref: '#/definitions/v1.WSParamResult'
     type: object
   v1.CreateAreaRequest:
     properties:
@@ -334,6 +351,8 @@ definitions:
         type: string
       workspace:
         type: string
+      workspace_id:
+        type: string
     type: object
   v1.PointRequest:
     properties:
@@ -361,6 +380,16 @@ definitions:
       msg:
         type: string
     type: object
+  v1.ThingParamResult:
+    properties:
+      host:
+        description: MQTT 服务器地址, 格式为 tcp://host:port
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
   v1.UserResult:
     properties:
       id:
@@ -368,6 +397,14 @@ definitions:
       role:
         type: string
       username:
+        type: string
+    type: object
+  v1.WSParamResult:
+    properties:
+      host:
+        description: WebSocket 服务器地址, 格式为 ws://host:port
+        type: string
+      token:
         type: string
     type: object
   v1.WaylineItemResult:
@@ -787,6 +824,46 @@ paths:
       summary: 编辑任务时依赖的选项数据
       tags:
       - job
+  /platform:
+    get:
+      consumes:
+      - application/json
+      description: 获取平台信息，包含平台名称，工作空间，描述等
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.PlatformResult'
+              type: object
+      summary: 获取平台信息
+      tags:
+      - 平台
+  /platform/params:
+    get:
+      consumes:
+      - application/json
+      description: 获取连接参数，包含设备上云模块连接参数，API 模块连接参数，WebSocket 模块连接参数等
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.ConnectionParamsResult'
+              type: object
+      summary: 获取连接参数
+      tags:
+      - 平台
   /user/login:
     post:
       consumes:

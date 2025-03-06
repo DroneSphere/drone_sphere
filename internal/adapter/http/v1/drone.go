@@ -11,7 +11,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
 	"log/slog"
-	rand2 "math/rand"
 	"time"
 )
 
@@ -86,23 +85,19 @@ func (r *DroneRouter) pushState(c *fiber.Ctx) error {
 			select {
 			case <-ticker.C:
 				// 构造消息并尝试写入
-				_, err := r.svc.FetchState(context.Background(), sn)
+				drone, err := r.svc.FetchState(context.Background(), sn)
 				if err != nil {
 					r.l.Error("Fetch drone state failed", "error", err)
 					//return
 				}
-				// 生成一个随机数加到经纬度上，有正有负
-				rand := rand2.Int()%100 - 50
-
-				r.l.Info("rand", "rand", rand)
 				res := api.DroneState{
-					SN:  sn,
-					Lat: 35.41416 + float64(rand)/100000,
-					Lng: 116.58761 + float64(rand)/100000,
-					//Height:  drone.Height,
-					//Heading: drone.GetHeading(),
-					//Speed:   drone.HorizontalSpeed,
-					//Battery: drone.Battery.CapacityPercent,
+					SN:      sn,
+					Lat:     drone.Latitude,
+					Lng:     drone.Longitude,
+					Height:  drone.Height,
+					Heading: drone.GetHeading(),
+					Speed:   drone.HorizontalSpeed,
+					Battery: drone.Battery.CapacityPercent,
 				}
 				json, err := sonic.Marshal(res)
 				if err != nil {
