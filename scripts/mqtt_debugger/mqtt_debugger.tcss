@@ -1,0 +1,14 @@
+#topic_tree {
+    width: 30%;
+    border: heavy $primary;
+}
+
+#message_content {
+    border: heavy $primary;
+    height: 60%;
+}
+
+#message_input {
+    border: heavy $primary;
+    height: 12
+}

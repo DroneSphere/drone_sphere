@@ -89,7 +89,7 @@ func TestUserRouter_login_WithSN(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	_ = eb.Subscribe(event.UserLoginSuccessEvent, func(ctx context.Context) {
+	_ = eb.Subscribe(event.RemoteControllerLoggedIn, func(ctx context.Context) {
 		sn := ctx.Value("sn")
 		assert.Equal(t, testSN, sn)
 	})

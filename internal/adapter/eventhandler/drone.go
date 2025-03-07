@@ -29,9 +29,9 @@ func registerDroneHandlers(eb EventBus.Bus, l *slog.Logger, mqtt mqtt.Client, dr
 		mqtt: mqtt,
 	}
 	var err error
-	err = eb.Subscribe(event.UserLoginSuccessEvent, handler.HandleTopoUpdate)
+	err = eb.Subscribe(event.RemoteControllerLoggedIn, handler.HandleTopoUpdate)
 	if err != nil {
-		l.Error(fmt.Sprintf("subscribe event %s failed: %v", event.UserLoginSuccessEvent, err))
+		l.Error(fmt.Sprintf("subscribe event %s failed: %v", event.RemoteControllerLoggedIn, err))
 	}
 	err = eb.Subscribe(event.DroneOnlineEvent, handler.HandleDroneOSD)
 	if err != nil {
@@ -45,69 +45,51 @@ func registerDroneHandlers(eb EventBus.Bus, l *slog.Logger, mqtt mqtt.Client, dr
 	}
 }
 
+// HandleTopoUpdate 处理拓扑更新事件
+//
+// 监听 sys/product/{sn}/status 主题，处理无人机拓扑更新事件
 func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
-	sn := ctx.Value("sn").(string)
-	d.l.Info("OnTopoUpdate", slog.Any("sn", sn))
-
+	gatewaySN := ctx.Value(event.RemoteControllerLoginSNKey).(string)
 	template := "sys/product/%s/status"
-	topic := fmt.Sprintf(template, sn)
-	d.l.Info("Will subscribe topic", slog.Any("topic", topic))
+	subscribeTopic := fmt.Sprintf(template, gatewaySN)
+	d.l.Info("识别网关设备上线", slog.Any("topic", subscribeTopic), slog.Any("desc", "设备上下线、更新拓扑"), slog.Any("gatewaySN", gatewaySN))
 
-	token := d.mqtt.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
-		d.l.Info("Received message", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
-		// 解析消息
+	token := d.mqtt.Subscribe(subscribeTopic, 1, func(c mqtt.Client, m mqtt.Message) {
 		var p struct {
 			dto.MessageCommon
 			Data dto.UpdateTopoPayload `json:"data"`
 		}
-		if err := sonic.Unmarshal(m.Payload(), &p); err != nil {
-			d.l.Error("Unmarshal message failed", slog.Any("err", err))
-			return
-		}
-		d.l.Info("Unmarshal message", slog.Any("updatePayload", p))
+		_ = sonic.Unmarshal(m.Payload(), &p)
+		d.l.Info("接收网关设备上下线消息", slog.Any("topic", m.Topic()), slog.Any("payload", p))
 
 		// 处理网络拓扑
-		if err := d.svc.SaveDroneTopo(ctx, p.Data); err != nil {
-			d.l.Error("SaveDroneTopo failed", slog.Any("err", err))
-			return
-		}
+		//if err := d.svc.SaveDroneTopo(ctx, p.Data); err != nil {
+		//	d.l.Error("SaveDroneTopo failed", slog.Any("err", err))
+		//	return
+		//}
 
-		// 当有子设备时，发布设备上线事件
+		// SubDevices 够长说明为无人机上线事件，否则为下线事件
 		if len(p.Data.SubDevices) > 0 {
 			droneSN := p.Data.SubDevices[0].SN
-			d.l.Info("Publish drone online event", slog.Any("droneSN", droneSN))
+			d.l.Info("识别无人机上线", slog.Any("droneSN", droneSN))
 			ctx := context.WithValue(context.Background(), event.DroneEventSNKey, droneSN)
 			d.eb.Publish(event.DroneOnlineEvent, ctx)
+		} else {
+			d.l.Info("识别无人机下线", slog.Any("gatewaySN", gatewaySN))
 		}
 
 		// 发布成功消息响应
-		res := struct {
-			dto.MessageCommon
-			Data struct {
-				Result int `json:"result"`
-			} `json:"data"`
-		}{
-			MessageCommon: p.MessageCommon,
-			Data: struct {
-				Result int `json:"result"`
-			}{
-				Result: 0,
-			},
-		}
-		r, err := sonic.Marshal(res)
-		if err != nil {
-			d.l.Error("Marshal message failed", slog.Any("err", err))
-			return
-		}
-		topic := fmt.Sprintf("sys/product/%s/status_reply", sn)
-		d.mqtt.Publish(topic, 1, false, []byte(r))
+		r, _ := sonic.Marshal(dto.NewMessageResult(0))
+		publishTopic := fmt.Sprintf("sys/product/%s/status_reply", gatewaySN)
+		d.mqtt.Publish(publishTopic, 1, false, []byte(r))
 	})
 	if token.Wait() && token.Error() != nil {
-		d.l.Error("Subscribe topic failed", slog.Any("err", token.Error()))
+		d.l.Error("设备上下线订阅失败", slog.Any("topic", subscribeTopic), slog.Any("err", token.Error()))
 		return token.Error()
+	} else {
+		d.l.Info("设备上下线订阅成功", slog.Any("topic", subscribeTopic))
 	}
 
-	d.l.Info("Subscribe topic success", slog.Any("topic", topic))
 	return nil
 }
 

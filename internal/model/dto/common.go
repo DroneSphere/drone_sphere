@@ -7,6 +7,23 @@ type MessageCommon struct {
 	Timestamp int64  `json:"timestamp"`
 }
 
+type MessageResultCommon struct {
+	MessageCommon
+	Data MessageResultData `json:"data"`
+}
+
+type MessageResultData struct {
+	Result int `json:"result"`
+}
+
+func NewMessageResult(res int) MessageResultCommon {
+	return MessageResultCommon{
+		Data: MessageResultData{
+			Result: res,
+		},
+	}
+}
+
 type WSCommon struct {
 	BizCode   string `json:"biz_code"`  // 消息业务码，见BizCode常量定义
 	Version   string `json:"version"`   // 消息版本号

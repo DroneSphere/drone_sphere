@@ -42,22 +42,22 @@ func newUserRouter(handler fiber.Router, svc service.UserSvc, eb EventBus.Bus, l
 func (r *UserRouter) login(c *fiber.Ctx) error {
 	req := new(api.LoginRequest)
 	if err := c.BodyParser(req); err != nil {
-		r.l.Info("InvalidParams", slog.Any("err", err))
-		c.Status(fiber.StatusBadRequest)
-		return c.JSON(Fail(InvalidParams))
+		return c.Status(fiber.StatusBadRequest).JSON(Fail(ErrorBody{Code: 400, Msg: err.Error()}))
 	}
-	r.l.Info("Login", slog.Any("req", req))
+	r.l.Info("用户登录", slog.Any("req", req))
 
+	// 执行登录操作
 	token, err := r.svc.Login(req.Username, req.Password)
 	if err != nil {
-		r.l.Warn("LoginError", slog.Any("err", err))
-		c.Status(fiber.StatusInternalServerError)
+		r.l.Warn("登录失败", slog.Any("req", req), slog.Any("err", err))
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
 
+	// 根据是否携带 SN 发送登录成功事件
+	// 携带 SN 说明是 Pilot 端登录，需要发送登录成功事件
 	if req.SN != "" {
-		ctx := context.WithValue(context.Background(), "sn", req.SN)
-		r.eb.Publish(event.UserLoginSuccessEvent, ctx)
+		ctx := context.WithValue(context.Background(), event.RemoteControllerLoginSNKey, req.SN)
+		r.eb.Publish(event.RemoteControllerLoggedIn, ctx)
 	}
 
 	res := api.LoginResult{

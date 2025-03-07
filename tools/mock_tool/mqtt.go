@@ -109,7 +109,7 @@ func (m *MQTTClient) Unsubscribe(topics ...string) mqtt.Token {
 }
 
 func (m *MQTTClient) AddRoute(topic string, callback mqtt.MessageHandler) {
-	// No-op for mock
+	// No-op for mqtt_debugger
 }
 
 func (m *MQTTClient) OptionsReader() mqtt.ClientOptionsReader {

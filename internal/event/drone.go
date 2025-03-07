@@ -1,9 +1,10 @@
 package event
 
 const (
-	DroneOnlineEvent = "drone.online"
+	DroneEventSNKey = "sn"
 )
 
 const (
-	DroneEventSNKey = "sn"
+	DroneConnected   = "drone.connected"
+	DroneOnlineEvent = "drone.online"
 )
