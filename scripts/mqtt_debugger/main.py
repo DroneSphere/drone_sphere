@@ -109,8 +109,8 @@ class MQTTDebuggerApp(App):
                 "bid": str(uuid.uuid4()),
                 "timestamp": int(time.time() * 1000),
                 "data": {
-                    "job_number": random.randint(0, 1000),
-                    "acc_time": random.randint(0, 1000000),
+                    "job_number": 492,
+                    "acc_time": 1859010,
                     "activation_time": 0,
                     "maintain_status": {
                         "maintain_status_array": [
@@ -122,12 +122,12 @@ class MQTTDebuggerApp(App):
                             }
                         ]
                     },
-                    "electric_supply_voltage": random.randint(200, 250),
-                    "working_voltage": random.randint(20000, 26000),
-                    "working_current": random.randint(1000, 1200),
+                    "electric_supply_voltage": 231,
+                    "working_voltage": 25440,
+                    "working_current": 1120,
                     "backup_battery": {
-                        "voltage": random.randint(26000, 27000),
-                        "temperature": round(random.uniform(20, 30), 1),
+                        "voltage": 26631,
+                        "temperature": 27.9,
                         "switch": 1
                     },
                     "drone_battery_maintenance_info": {
@@ -135,8 +135,8 @@ class MQTTDebuggerApp(App):
                         "maintenance_time_left": 0
                     }
                 },
-                "gateway": "dock_sn"
-            }
+                "gateway": "SN123"
+            } 
         elif "state" in self.selected_topic:
             payload = {
                 "tid": str(uuid.uuid4()),
@@ -222,7 +222,7 @@ class MQTTDebuggerApp(App):
                     "version": 1,
                     "sub_devices": [
                         {
-                            "sn": "drone001",
+                            "sn": "SN456",
                             "type": 99,
                             "sub_type": 0,
                             "index": "A",
@@ -231,16 +231,6 @@ class MQTTDebuggerApp(App):
                             "version": 1
                         }
                     ]
-                }
-            }
-        elif "status_reply" in self.selected_topic:
-            payload = {
-                "tid": str(uuid.uuid4()),
-                "bid": str(uuid.uuid4()),
-                "timestamp": int(time.time() * 1000),
-                "method": "update_topo",
-                "data": {
-                    "result": 0
                 }
             }
         elif "property/set" in self.selected_topic:

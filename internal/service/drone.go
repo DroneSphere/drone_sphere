@@ -144,15 +144,12 @@ func (s *DroneImpl) UpdateState(ctx context.Context, drone po.RTDrone) error {
 	return nil
 }
 
+// UpdateStateBySN 更新无人机实时数据状态
 func (s *DroneImpl) UpdateStateBySN(ctx context.Context, sn string, payload po.RTDrone) error {
-	rt, err := s.r.FetchRealtimeDrone(ctx, sn)
-	if err != nil {
-		s.l.Error("Drone not in realtime", slog.Any("sn", sn))
-		return errors.New("drone not in realtime")
-	}
 	payload.SN = sn
-	payload.RCSN = rt.RCSN
-	s.l.Info("UpdateStateBySN", slog.Any("sn", sn), slog.Any("payload", payload))
+	//payload.RCSN = ctx.Value(event.RemoteControllerLoginSNKey).(string)
+
+	s.l.Info("更新无人机实时数据状态", slog.Any("sn", sn), slog.Any("payload", payload))
 	if err := s.r.SaveRealtimeDrone(ctx, payload); err != nil {
 		s.l.Error("Save realtime drone failed", slog.Any("err", err))
 		return err

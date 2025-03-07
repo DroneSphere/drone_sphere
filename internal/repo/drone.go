@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
@@ -124,19 +125,22 @@ func (r *DroneGormRepo) Save(ctx context.Context, d *entity.Drone, rcsn string) 
 	return nil
 }
 
+const ErrNoRTData = "no realtime data"
+
 // FetchRealtimeDrone 获取无人机实时状态
 func (r *DroneGormRepo) FetchRealtimeDrone(ctx context.Context, sn string) (po.RTDrone, error) {
 	var dr po.RTDrone
 	t, err := r.rds.JSONGet(ctx, r.buildDroneKeyPrefix()+sn, ".").Result()
 	if err != nil {
-		r.l.Error("获取 Redis 数据失败", slog.Any("SN", sn), slog.Any("err", err))
-	}
-	r.l.Debug("实时状态获取成功", slog.Any("SN", sn), slog.Any("t", t))
-	if err := sonic.UnmarshalString(t, &dr); err != nil {
-		r.l.Error("反序列化失败", slog.Any("SN", sn), slog.Any("err", err))
+		r.l.Error("无人机实时状态获取失败", slog.Any("sn", sn), slog.Any("err", err), slog.Any("t", t))
 		return dr, err
 	}
-	r.l.Debug("反序列化成功", slog.Any("SN", sn), slog.Any("dr", dr))
+	if t == "" {
+		r.l.Error("无人机实时状态为空", slog.Any("sn", sn), slog.Any("t", t))
+		return dr, errors.New(ErrNoRTData)
+	}
+	_ = sonic.UnmarshalString(t, &dr)
+	r.l.Debug("无人机实时状态获取成功", slog.Any("sn", sn), slog.Any("dr", dr))
 
 	return dr, nil
 }
@@ -144,9 +148,9 @@ func (r *DroneGormRepo) FetchRealtimeDrone(ctx context.Context, sn string) (po.R
 // SaveRealtimeDrone 保存无人机实时状态
 func (r *DroneGormRepo) SaveRealtimeDrone(ctx context.Context, data po.RTDrone) error {
 	droneKey := r.buildDroneKeyPrefix() + data.SN
-	r.l.Debug("SaveRealtimeDrone", slog.Any("data", data), slog.Any("droneKey", droneKey))
+	r.l.Debug("保存无人机实时状态", slog.Any("droneKey", droneKey), slog.Any("data", data))
 	if err := r.rds.JSONSet(ctx, droneKey, ".", data).Err(); err != nil {
-		r.l.Error("Save drone status to redis failed", slog.Any("err", err))
+		r.l.Error("无人机实时状态保存失败", slog.Any("err", err))
 		return err
 	}
 
