@@ -7,6 +7,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/event"
 	"github.com/dronesphere/internal/model/dto"
+	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log/slog"
@@ -31,6 +32,7 @@ func registerDroneHandlers(eb EventBus.Bus, l *slog.Logger, mqtt mqtt.Client, dr
 	if err != nil {
 		panic(err)
 	}
+	_ = eb.Subscribe(event.DroneConnected, handler.HandleDroneConnected)
 	err = eb.Subscribe(event.DroneConnected, handler.HandleDroneOSD)
 	if err != nil {
 		panic(err)
@@ -58,17 +60,12 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 		_ = sonic.Unmarshal(m.Payload(), &p)
 		d.l.Info("接收网关设备上下线消息", slog.Any("topic", m.Topic()), slog.Any("payload", p))
 
-		// 处理网络拓扑
-		//if err := d.svc.SaveDroneTopo(ctx, p.Data); err != nil {
-		//	d.l.Error("SaveDroneTopo failed", slog.Any("err", err))
-		//	return
-		//}
-
 		// SubDevices 够长说明为无人机上线事件，否则为下线事件
 		if len(p.Data.SubDevices) > 0 {
 			droneSN := p.Data.SubDevices[0].SN
 			d.l.Info("识别无人机上线", slog.Any("droneSN", droneSN))
 			ctx = context.WithValue(ctx, event.DroneEventSNKey, droneSN)
+			ctx = context.WithValue(ctx, event.DroneEventTopoKey, p.Data.SubDevices[0].ProductTopo)
 			d.eb.Publish(event.DroneConnected, ctx)
 		} else {
 			d.l.Info("识别无人机下线", slog.Any("gatewaySN", gatewaySN))
@@ -85,6 +82,24 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 	} else {
 		d.l.Info("设备上下线订阅成功", slog.Any("topic", subscribeTopic))
 	}
+
+	return nil
+}
+
+// HandleDroneConnected 处理无人机连接事件
+//
+// 处理无人机通过网关设备连接后，需要进行的持久化、数据更新等操作
+func (d *DroneEventHandler) HandleDroneConnected(ctx context.Context) error {
+	droneSN := ctx.Value(event.DroneEventSNKey).(string)
+	topo := ctx.Value(event.DroneEventTopoKey).(dto.ProductTopo)
+	d.l.Info("处理无人机连接事件", slog.Any("droneSN", droneSN), slog.Any("topo", topo))
+
+	e := entity.NewDroneFromMsg(droneSN, topo)
+	if err := d.svc.Repo().Save(ctx, *e); err != nil {
+		d.l.Error("保存无人机信息失败", slog.Any("err", err))
+		return err
+	}
+	d.l.Info("保存无人机信息成功", slog.Any("droneSN", droneSN))
 
 	return nil
 }

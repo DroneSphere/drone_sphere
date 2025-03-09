@@ -144,7 +144,7 @@ func (r *JobDetailResult) FromJobEntity(j *entity.Job) error {
 			Callsign:    d.Callsign,
 			Description: "",
 			SN:          d.SN,
-			Model:       d.ProductType(),
+			Model:       d.GetModel(),
 		})
 	}
 	return nil

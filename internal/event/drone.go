@@ -1,7 +1,8 @@
 package event
 
 const (
-	DroneEventSNKey = "drone.sn"
+	DroneEventSNKey   = "drone.sn"
+	DroneEventTopoKey = "drone.topo"
 )
 
 const (

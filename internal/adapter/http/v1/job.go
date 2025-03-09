@@ -153,7 +153,7 @@ func (r *JobRouter) getEditionOptions(c *fiber.Ctx) error {
 			Callsign:         drone.Callsign,
 			Description:      "",
 			SN:               drone.SN,
-			Model:            drone.ProductType(),
+			Model:            drone.GetModel(),
 			RTKAvailable:     drone.IsRTKAvailable(),
 			ThermalAvailable: drone.IsThermalAvailable(),
 		})

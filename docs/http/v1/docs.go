@@ -1109,7 +1109,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "product_type": {
-                    "description": "ProductType 无人机的型号名称",
+                    "description": "GetModel 无人机的型号名称",
                     "type": "string"
                 },
                 "sn": {

@@ -112,6 +112,8 @@ class MQTTDebuggerApp(App):
                     "job_number": 492,
                     "acc_time": 1859010,
                     "activation_time": 0,
+                    "latitude": 30.123456,
+                    "longitude": 120.123456,
                     "maintain_status": {
                         "maintain_status_array": [
                             {

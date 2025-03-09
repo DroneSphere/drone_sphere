@@ -22,6 +22,18 @@ type Drone struct {
 	dto.DroneMessageProperty
 }
 
+func NewDroneFromMsg(sn string, msg dto.ProductTopo) *Drone {
+	d := &Drone{
+		SN:      sn,
+		Domain:  msg.Domain,
+		Type:    msg.Type,
+		SubType: msg.SubType,
+	}
+	d.ProductModelKey = d.GetModelKey()
+	d.ProductModel = d.GetModel()
+	return d
+}
+
 func NewDrone(po *po.Drone, rt *ro.Drone) *Drone {
 	var d = &Drone{}
 	if err := copier.Copy(d, po); err != nil {
@@ -43,25 +55,25 @@ func (d *Drone) StatusText() string {
 	return statusMap[d.Status]
 }
 
-// ProductIdentifier 产品标识符
+// GetModelKey 产品标识符
 // 产品标识符由领域、类型、子类型组成, 例如 0-89-0
-func (d *Drone) ProductIdentifier() string {
+func (d *Drone) GetModelKey() string {
 	t := "%s-%d-%d"
 	return fmt.Sprintf(t, d.Domain, d.Type, d.SubType)
 }
 
-// ProductType 无人机的型号名称
-func (d *Drone) ProductType() string {
+// GetModel 无人机的型号名称
+func (d *Drone) GetModel() string {
 	var productMap = map[string]string{
 		"0-77-0": "Mavic 3E",
 		"0-77-1": "Mavic 3T",
 		"0-99-0": "Mavic 4E",
 		"0-99-1": "Mavic 4T",
 	}
-	if _, ok := productMap[d.ProductIdentifier()]; !ok {
+	if _, ok := productMap[d.GetModelKey()]; !ok {
 		return "未知"
 	}
-	return productMap[d.ProductIdentifier()]
+	return productMap[d.GetModelKey()]
 }
 
 // IsRTKAvailable 是否支持RTK
