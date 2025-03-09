@@ -1,14 +1,25 @@
 package service
 
-import "log/slog"
+import (
+	"errors"
+	"github.com/dronesphere/internal/model/entity"
+	"github.com/dronesphere/internal/pkg/misc"
+	"log/slog"
+)
 
 type (
 	UserSvc interface {
-		Login(username, password string) (string, error)
+		Repo() UserRepo
+		Login(username, password string) (entity.User, error)
+		Register(user entity.User) error
 	}
 
 	UserRepo interface {
 		GetByUsername(username string) (string, error)
+		SaveUser(user entity.User) error
+		SelectByID(id uint) (entity.User, error)
+		SelectByUsername(username string) (entity.User, error)
+		UpdatePasswordByUsername(username, password string) error
 	}
 )
 
@@ -24,13 +35,33 @@ func NewUserSvc(r UserRepo, l *slog.Logger) UserSvc {
 	}
 }
 
-func (s *UserImpl) Login(username, password string) (string, error) {
-	u, err := s.r.GetByUsername(username)
+func (s *UserImpl) Repo() UserRepo {
+	return s.r
+}
+
+const ErrInvalidPassword = "invalid password"
+
+func (s *UserImpl) Login(username, password string) (entity.User, error) {
+	u, err := s.r.SelectByUsername(username)
 	if err != nil {
-		return "123456", err
+		return entity.User{}, err
 	}
-	if u != password {
-		return "123456", nil
+	s.l.Info("用户登录", slog.Any("user", u))
+	if misc.ComparePassword(password, u.Password) {
+		s.l.Warn("密码错误", slog.Any("user", u), slog.Any("password", password))
+		return entity.User{}, errors.New(ErrInvalidPassword)
 	}
-	return "123456", nil
+	return entity.User{
+		ID:       u.ID,
+		Username: u.Username,
+		Email:    u.Email,
+		Avatar:   u.Avatar,
+	}, nil
+}
+
+func (s *UserImpl) Register(user entity.User) error {
+	if err := s.r.SaveUser(user); err != nil {
+		return err
+	}
+	return s.r.UpdatePasswordByUsername(user.Username, misc.EncryptWithBcrypt(user.Password))
 }

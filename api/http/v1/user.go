@@ -1,5 +1,12 @@
 package v1
 
+type RegisterRequest struct {
+	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required"`
+	Avatar   string `json:"avatar"`
+	Password string `json:"password" binding:"required"`
+}
+
 type LoginRequest struct {
 	Username string `json:"username" example:"admin" binding:"required"`
 	Password string `json:"password" example:"admin" binding:"required"`
@@ -8,20 +15,20 @@ type LoginRequest struct {
 }
 
 type LoginResult struct {
-	Token    string         `json:"token"`
-	User     UserResult     `json:"user"`
-	Platform PlatformResult `json:"platform"`
-	Params   ParamsResult   `json:"params"`
+	Token     string          `json:"token"`
+	User      UserResult      `json:"user"`
+	Workspace WorkspaceResult `json:"workspace"`
 }
 
 type UserResult struct {
-	ID       string `json:"id"`
+	ID       uint   `json:"id"`
 	Username string `json:"username"`
-	Role     string `json:"role"`
+	Email    string `json:"email"`
+	Avatar   string `json:"avatar"`
 }
 
-type ParamsResult struct {
-	MQTTHost     string `json:"mqtt_host"`
-	MQTTUsername string `json:"mqtt_username"`
-	MQTTPassword string `json:"mqtt_password"`
+type WorkspaceResult struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
 }

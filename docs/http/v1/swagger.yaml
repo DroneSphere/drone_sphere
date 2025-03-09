@@ -325,23 +325,12 @@ definitions:
     type: object
   v1.LoginResult:
     properties:
-      params:
-        $ref: '#/definitions/v1.ParamsResult'
-      platform:
-        $ref: '#/definitions/v1.PlatformResult'
       token:
         type: string
       user:
         $ref: '#/definitions/v1.UserResult'
-    type: object
-  v1.ParamsResult:
-    properties:
-      mqtt_host:
-        type: string
-      mqtt_password:
-        type: string
-      mqtt_username:
-        type: string
+      workspace:
+        $ref: '#/definitions/v1.WorkspaceResult'
     type: object
   v1.PlatformResult:
     properties:
@@ -372,6 +361,21 @@ definitions:
       lng:
         type: number
     type: object
+  v1.RegisterRequest:
+    properties:
+      avatar:
+        type: string
+      email:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
   v1.Response:
     properties:
       code:
@@ -392,10 +396,12 @@ definitions:
     type: object
   v1.UserResult:
     properties:
+      avatar:
+        type: string
+      email:
+        type: string
       id:
-        type: string
-      role:
-        type: string
+        type: integer
       username:
         type: string
     type: object
@@ -420,6 +426,15 @@ definitions:
       s3_key:
         type: string
       upload_user:
+        type: string
+    type: object
+  v1.WorkspaceResult:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      type:
         type: string
     type: object
 host: lqhirwdzgkvv.sealoshzh.site
@@ -864,6 +879,26 @@ paths:
       summary: 获取连接参数
       tags:
       - 平台
+  /user:
+    get:
+      consumes:
+      - application/json
+      description: 获取用户信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.LoginResult'
+              type: object
+      summary: 获取用户信息
+      tags:
+      - user
   /user/login:
     post:
       consumes:
@@ -889,6 +924,33 @@ paths:
                   $ref: '#/definitions/v1.LoginResult'
               type: object
       summary: Web/Pilot端统一用户登录
+      tags:
+      - user
+  /user/register:
+    post:
+      consumes:
+      - application/json
+      description: 用户注册
+      parameters:
+      - description: 注册参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.LoginResult'
+              type: object
+      summary: 用户注册
       tags:
       - user
   /wayline:

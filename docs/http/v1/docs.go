@@ -748,6 +748,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/user": {
+            "get": {
+                "description": "获取用户信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "获取用户信息",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.LoginResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/user/login": {
             "post": {
                 "description": "Web/Pilot端统一用户登录，根据是否携带 SN 切换登录方式",
@@ -769,6 +804,52 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/v1.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.LoginResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/user/register": {
+            "post": {
+                "description": "用户注册",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "用户注册",
+                "parameters": [
+                    {
+                        "description": "注册参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.RegisterRequest"
                         }
                     }
                 ],
@@ -1109,7 +1190,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "product_type": {
-                    "description": "GetModel 无人机的型号名称",
+                    "description": "ProductType 无人机的型号名称",
                     "type": "string"
                 },
                 "sn": {
@@ -1402,31 +1483,14 @@ const docTemplate = `{
         "v1.LoginResult": {
             "type": "object",
             "properties": {
-                "params": {
-                    "$ref": "#/definitions/v1.ParamsResult"
-                },
-                "platform": {
-                    "$ref": "#/definitions/v1.PlatformResult"
-                },
                 "token": {
                     "type": "string"
                 },
                 "user": {
                     "$ref": "#/definitions/v1.UserResult"
-                }
-            }
-        },
-        "v1.ParamsResult": {
-            "type": "object",
-            "properties": {
-                "mqtt_host": {
-                    "type": "string"
                 },
-                "mqtt_password": {
-                    "type": "string"
-                },
-                "mqtt_username": {
-                    "type": "string"
+                "workspace": {
+                    "$ref": "#/definitions/v1.WorkspaceResult"
                 }
             }
         },
@@ -1475,6 +1539,28 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.Response": {
             "type": "object",
             "properties": {
@@ -1505,11 +1591,14 @@ const docTemplate = `{
         "v1.UserResult": {
             "type": "object",
             "properties": {
-                "id": {
+                "avatar": {
                     "type": "string"
                 },
-                "role": {
+                "email": {
                     "type": "string"
+                },
+                "id": {
+                    "type": "integer"
                 },
                 "username": {
                     "type": "string"
@@ -1547,6 +1636,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "upload_user": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.WorkspaceResult": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }
