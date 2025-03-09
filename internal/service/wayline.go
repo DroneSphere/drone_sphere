@@ -43,7 +43,7 @@ func NewWaylineImpl(wr WaylineRepo, dr DroneRepo, l *slog.Logger) WaylineSvc {
 // Create TODO: 生成航线
 func (s *WaylineImpl) Create(ctx context.Context, points []vo.GeoPoint, droneSN string, height float64) (entity.Wayline, error) {
 	s.l.Info("Create", slog.Any("points", points), slog.Any("droneSN", droneSN), slog.Any("height", height))
-	//drone, err := s.dr.FetchRealtimeDrone(ctx, droneSN)
+	//drone, err := s.dr.FetchStateBySN(ctx, droneSN)
 	//if err != nil {
 	//	return entity.Wayline{}, err
 	//}

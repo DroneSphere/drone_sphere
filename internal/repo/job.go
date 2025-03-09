@@ -17,7 +17,7 @@ type JobDefaultRepo struct {
 
 func NewJobDefaultRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *JobDefaultRepo {
 	//if err := db.AutoMigrate(&po.Job{}); err != nil {
-	//	l.Error("Failed to auto migrate ORMDrone", slog.Any("err", err))
+	//	l.Error("Failed to auto migrate Drone", slog.Any("err", err))
 	//	panic(err)
 	//}
 	return &JobDefaultRepo{

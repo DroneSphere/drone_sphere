@@ -44,16 +44,14 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 //	@Success		200	{object}	v1.Response{data=[]v1.DroneItemResult}	"成功"
 func (r *DroneRouter) list(c *fiber.Ctx) error {
 	ctx := context.Background()
-	drones, err := r.svc.ListAll(ctx)
+	drones, err := r.svc.Repo().SelectAll(ctx)
 	if err != nil {
-		r.l.Warn("ListError", slog.Any("err", err))
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
 	var res []api.DroneItemResult
 	for _, d := range drones {
 		var e api.DroneItemResult
 		if err := copier.Copy(&e, &d); err != nil {
-			r.l.Warn("CopyError", slog.Any("err", err))
 			return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 		}
 		// 检查是否在线
@@ -75,6 +73,8 @@ func (r *DroneRouter) pushState(c *fiber.Ctx) error {
 	sn := c.Query("sn")
 	r.l.Info("SSE sn", "sn", sn)
 
+	ctx := context.Background()
+
 	// 使用流式响应
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
 		r.l.Info("SSE connection established")
@@ -85,17 +85,16 @@ func (r *DroneRouter) pushState(c *fiber.Ctx) error {
 			select {
 			case <-ticker.C:
 				// 构造消息并尝试写入
-				drone, err := r.svc.FetchState(context.Background(), sn)
+				drone, err := r.svc.Repo().FetchStateBySN(ctx, sn)
 				if err != nil {
 					r.l.Error("Fetch drone state failed", "error", err)
-					//return
+					return
 				}
 				res := api.DroneState{
 					SN:      sn,
 					Lat:     drone.Latitude,
 					Lng:     drone.Longitude,
 					Height:  drone.Height,
-					Heading: drone.GetHeading(),
 					Speed:   drone.HorizontalSpeed,
 					Battery: drone.Battery.CapacityPercent,
 				}

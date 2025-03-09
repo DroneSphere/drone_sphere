@@ -60,7 +60,7 @@ var CameraModeMap = map[int]string{
 	CameraModePanoramaPhoto:  "全景拍照",
 }
 
-type DroneHeartBeat struct {
+type DroneMessageProperty struct {
 	Country                           string                  `json:"country" redis:"country"`
 	ModeCode                          int                     `json:"mode_code" redis:"mode_code"`
 	ModeCodeReason                    int                     `json:"mode_code_reason" redis:"mode_code_reason"`

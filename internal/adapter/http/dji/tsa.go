@@ -53,8 +53,8 @@ func (r *TSARouter) getDeviceTopoByWorkspaceID(c *fiber.Ctx) error {
 	var hosts []api.TopoHostDeviceRsp
 	for _, d := range drones {
 		hosts = append(hosts, api.TopoHostDeviceRsp{
-			SN:           d.SN,
-			OnlineStatus: d.OnlineStatus,
+			SN: d.SN,
+			//OnlineStatus: d.OnlineStatus,
 		})
 	}
 	var gateways []api.TopoGatewayDeviceRsp

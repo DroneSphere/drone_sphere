@@ -51,7 +51,7 @@ func (j *JobImpl) FetchAvailableAreas(ctx context.Context) ([]*entity.SearchArea
 }
 
 func (j *JobImpl) FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error) {
-	drones, err := j.droneRepo.ListAll(ctx)
+	drones, err := j.droneRepo.SelectAll(ctx)
 	if err != nil {
 		return nil, err
 	}

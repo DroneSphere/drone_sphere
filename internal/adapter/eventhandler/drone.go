@@ -7,10 +7,8 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/event"
 	"github.com/dronesphere/internal/model/dto"
-	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/jinzhu/copier"
 	"log/slog"
 )
 
@@ -91,30 +89,14 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 	return nil
 }
 
-//type HeartbeatPayload struct {
-//	dto.MessageCommon
-//	Data dto.DroneHeartBeat `json:"data"`
-//}
-
-func (d *DroneEventHandler) parseHeartBeat(m mqtt.Message) (po.RTDrone, bool) {
+func (d *DroneEventHandler) parseHeartBeat(m mqtt.Message) (dto.DroneMessageProperty, bool) {
 	var p struct {
 		dto.MessageCommon
-		Data dto.DroneHeartBeat `json:"data"`
+		Data dto.DroneMessageProperty `json:"data"`
 	}
-	res := po.RTDrone{}
 	_ = sonic.Unmarshal(m.Payload(), &p)
-	if err := copier.Copy(&res, &p.Data); err != nil {
-		d.l.Error("无人机心跳数据解析失败", slog.Any("err", err))
-		return res, false
-	}
 
-	// 根据是否上报电池信息判断无人机是否在线
-	if len(p.Data.Battery.Batteries) > 0 {
-		res.OnlineStatus = true
-	} else {
-		res.OnlineStatus = false
-	}
-	return res, true
+	return p.Data, true
 }
 
 // HandleDroneOSD 处理无人机 OSD 事件

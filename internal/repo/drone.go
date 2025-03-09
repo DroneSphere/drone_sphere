@@ -6,25 +6,26 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
+	"github.com/dronesphere/internal/model/ro"
 	"github.com/jinzhu/copier"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"log/slog"
 )
 
-type DroneGormRepo struct {
+type DroneDefaultRepo struct {
 	tx        *gorm.DB
 	rds       *redis.Client
 	l         *slog.Logger
 	rdsPrefix string
 }
 
-func NewDroneGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *DroneGormRepo {
-	//if err := db.AutoMigrate(&po.ORMDrone{}); err != nil {
-	//	l.Error("Failed to auto migrate ORMDrone", slog.Any("err", err))
-	//	panic(err)
-	//}
-	return &DroneGormRepo{
+func NewDroneGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *DroneDefaultRepo {
+	if err := db.AutoMigrate(&po.Drone{}); err != nil {
+		l.Error("Failed to auto migrate Drone", slog.Any("err", err))
+		panic(err)
+	}
+	return &DroneDefaultRepo{
 		tx:        db,
 		rds:       rds,
 		l:         l,
@@ -32,214 +33,114 @@ func NewDroneGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *DroneGorm
 	}
 }
 
-// buildRCKeyPrefix 构建遥控器状态的redis key前缀
-func (r *DroneGormRepo) buildRCKeyPrefix() string {
-	return r.rdsPrefix + "rc:"
-}
-
-// buildDroneKeyPrefix 构建无人机状态的redis key前缀
-func (r *DroneGormRepo) buildDroneKeyPrefix() string {
-	return r.rdsPrefix + "drone:"
-}
-
-// ListAll 列出所有无人机
-func (r *DroneGormRepo) ListAll(ctx context.Context) ([]entity.Drone, error) {
+// SelectAll 列出所有无人机
+func (r *DroneDefaultRepo) SelectAll(ctx context.Context) ([]entity.Drone, error) {
 	var ds []entity.Drone
-	var ps []po.ORMDrone
+	var ps []po.Drone
 	if err := r.tx.Find(&ps).Error; err != nil {
-		r.l.Error("ListAll failed", slog.Any("err", err))
-		return nil, err
+		r.l.Error(err.Error())
+		panic(err)
 	}
-	r.l.Info("Drone ListAll", slog.Any("drones", ps))
+	r.l.Info("获取无人机持久化数据成功", slog.Any("po", ps))
 
 	for _, p := range ps {
-		r.l.Debug("包装结构体", slog.Any("SN", p.SN))
-		// 依据 p.SN 获取实时数据
-		var rt po.RTDrone
-		rt, err := r.FetchRealtimeDrone(ctx, p.SN)
+		// 获取无人机实时状态
+		var rt ro.Drone
+		rt, err := r.FetchStateBySN(ctx, p.SN)
 		if err != nil {
-			r.l.Error("实时数据获取失败", slog.Any("SN", p.SN), slog.Any("err", err))
+			r.l.Info("实时数据获取失败", slog.Any("sn", p.SN), slog.Any("err", err))
 		} else {
-			r.l.Info("实时状态获取成功", slog.Any("SN", p.SN), slog.Any("rt", rt))
+			r.l.Info("实时状态获取成功", slog.Any("sn", p.SN), slog.Any("rt", rt))
 		}
-		// 拷贝静态数据和实时数据
-		var e entity.Drone
-		if err := copier.Copy(&e, &p); err != nil {
-			r.l.Error("数据拷贝失败", slog.Any("SN", p.SN), slog.Any("err", err))
-			continue
-		}
-		r.l.Debug("拷贝静态数据成功", slog.Any("SN", p.SN), slog.Any("e", e))
-		if rt.SN != "" {
-			if err := copier.Copy(&e.RTDrone, &rt); err != nil {
-				r.l.Error("数据拷贝失败", slog.Any("SN", p.SN), slog.Any("err", err))
-				continue
-			}
-			r.l.Debug("拷贝实时数据成功", slog.Any("SN", p.SN), slog.Any("e", e))
-		}
-		r.l.Debug("包装结构体成功", slog.Any("SN", p.SN), slog.Any("e", e))
-		ds = append(ds, e)
+		// 装配无人机实体
+		e := entity.NewDrone(&p, &rt)
+		ds = append(ds, *e)
 	}
-	r.l.Info("Drone ListAll", slog.Any("drones", ds))
+	r.l.Info("获取无人机列表成功", slog.Any("entity", ds))
 	return ds, nil
 }
 
-// RemoveDroneBySN 根据遥控器SN删除无人机
-func (r *DroneGormRepo) RemoveDroneBySN(ctx context.Context, rc string) error {
-	if err := r.rds.Del(ctx, r.buildRCKeyPrefix()+rc).Err(); err != nil {
-		r.l.Error("remove drone status from redis failed", slog.Any("err", err))
-		return err
+// Save 保存无人机信息
+func (r *DroneDefaultRepo) Save(ctx context.Context, d entity.Drone) error {
+	err := r.tx.Where("sn = ?", d.SN).First(&po.Drone{}).Error
+	if err == nil {
+		slog.Info("记录已存在", slog.Any("drone", d))
+	} else {
+		var p po.Drone
+		_ = copier.Copy(&p, d)
+		if err := r.tx.Save(&p).Error; err != nil {
+			r.l.Error("记录保存失败", slog.Any("drone", d), slog.Any("err", err))
+			return err
+		}
+		slog.Info("记录保存成功", slog.Any("drone", d))
 	}
+
 	return nil
 }
 
-// Save 保存无人机信息
-func (r *DroneGormRepo) Save(ctx context.Context, d *entity.Drone, rcsn string) error {
-	if err := r.tx.Where("sn = ?", d.SN).First(&po.ORMDrone{}).Error; err == nil {
-		slog.Info("drone already exist", slog.Any("drone", d))
-	} else {
-		var p po.ORMDrone
-		if err := copier.Copy(&p, d); err != nil {
-			r.l.Error("Save copier failed", slog.Any("err", err))
-			return err
-		}
-		if err := r.tx.Save(&p).Error; err != nil {
-			return err
-		}
-		slog.Info("save drone to db success", slog.Any("drone", d))
+// SelectBySN 根据SN获取无人机实体
+func (r *DroneDefaultRepo) SelectBySN(ctx context.Context, sn string) (entity.Drone, error) {
+	var pp po.Drone
+	var rr ro.Drone
+	if err := r.tx.Where("sn = ?", sn).First(&pp).Error; err != nil {
+		r.l.Error("持久化数据获取失败", slog.Any("sn", sn), slog.Any("err", err))
+		return entity.Drone{}, err
 	}
-
-	if err := r.SaveRealtimeDrone(ctx, po.RTDrone{
-		SN:           d.SN,
-		OnlineStatus: true,
-		RCSN:         rcsn,
-	}); err != nil {
-		r.l.Error("Save realtime drone failed", slog.Any("err", err))
+	rr, err := r.FetchStateBySN(ctx, sn)
+	if err != nil {
+		r.l.Error("实时数据获取失败", slog.Any("sn", sn), slog.Any("err", err))
+		return entity.Drone{}, err
 	}
-
-	if err := r.SaveRealtimeRC(ctx, po.RTRC{
-		SN:           rcsn,
-		OnlineStatus: true,
-	}); err != nil {
-		r.l.Error("Save realtime rc failed", slog.Any("err", err))
-	}
-	return nil
+	return *entity.NewDrone(&pp, &rr), nil
 }
 
 const ErrNoRTData = "no realtime data"
 
-// FetchRealtimeDrone 获取无人机实时状态
-func (r *DroneGormRepo) FetchRealtimeDrone(ctx context.Context, sn string) (po.RTDrone, error) {
-	var dr po.RTDrone
-	t, err := r.rds.JSONGet(ctx, r.buildDroneKeyPrefix()+sn, ".").Result()
+// FetchStateBySN 根据SN获取无人机实时状态
+func (r *DroneDefaultRepo) FetchStateBySN(ctx context.Context, sn string) (ro.Drone, error) {
+	var rd ro.Drone
+	t, err := r.rds.JSONGet(ctx, r.rdsPrefix+sn, ".").Result()
 	if err != nil {
-		r.l.Error("无人机实时状态获取失败", slog.Any("sn", sn), slog.Any("err", err), slog.Any("t", t))
-		return dr, err
+		r.l.Error("实时数据获取失败", slog.Any("sn", sn), slog.Any("err", err))
+		return ro.Drone{}, err
 	}
 	if t == "" {
-		r.l.Error("无人机实时状态为空", slog.Any("sn", sn), slog.Any("t", t))
-		return dr, errors.New(ErrNoRTData)
+		r.l.Error("实时数据为空", slog.Any("sn", sn))
+		return rd, errors.New(ErrNoRTData)
 	}
-	_ = sonic.UnmarshalString(t, &dr)
-	r.l.Debug("无人机实时状态获取成功", slog.Any("sn", sn), slog.Any("dr", dr))
+	_ = sonic.UnmarshalString(t, &rd)
+	r.l.Debug("实时数据获取成功", slog.Any("sn", sn), slog.Any("rd", rd))
 
-	return dr, nil
+	return rd, nil
 }
 
-// SaveRealtimeDrone 保存无人机实时状态
-func (r *DroneGormRepo) SaveRealtimeDrone(ctx context.Context, data po.RTDrone) error {
-	droneKey := r.buildDroneKeyPrefix() + data.SN
-	r.l.Debug("保存无人机实时状态", slog.Any("droneKey", droneKey), slog.Any("data", data))
-	if err := r.rds.JSONSet(ctx, droneKey, ".", data).Err(); err != nil {
-		r.l.Error("无人机实时状态保存失败", slog.Any("err", err))
+// SaveState 保存无人机实时状态
+func (r *DroneDefaultRepo) SaveState(ctx context.Context, state ro.Drone) error {
+	droneKey := r.rdsPrefix + state.SN
+	r.l.Debug("保存实时状态", slog.Any("droneKey", droneKey), slog.Any("state", state))
+	if err := r.rds.JSONSet(ctx, droneKey, ".", state).Err(); err != nil {
+		r.l.Error("保存实时状态失败", slog.Any("err", err))
 		return err
 	}
-
 	return nil
 }
 
-// SaveRealtimeRC 保存遥控器实时状态
-func (r *DroneGormRepo) SaveRealtimeRC(ctx context.Context, data po.RTRC) error {
-	rcKey := r.buildRCKeyPrefix() + data.SN
-	if err := r.rds.HSet(ctx, rcKey, data).Err(); err != nil {
-		r.l.Error("Save rc status to redis failed", slog.Any("err", err))
-		return err
-	}
-	r.l.Info("Save rc status to redis success", slog.Any("data", data))
-	return nil
-}
-
-func (r *DroneGormRepo) FetchDeviceTopoByWorkspace(ctx context.Context, workspace string) ([]entity.Drone, []entity.RC, error) {
-	r.l.Info("FetchDeviceTopoByWorkspace", slog.Any("workspace", workspace))
-	// 获取所有无人机和遥控器的实时状态
-	allDroneKey := r.buildDroneKeyPrefix() + "*"
-	allRCKey := r.buildRCKeyPrefix() + "*"
-	var drones []po.RTDrone
-	var rcs []po.RTRC
-	keys, err := r.rds.Keys(ctx, allDroneKey).Result()
-	if err != nil {
-		r.l.Error("Failed to get drone onlineSet from redis", slog.Any("err", err))
-		return nil, nil, err
-	}
-	r.l.Info("RTDrone keys", slog.Any("keys", keys))
-	for _, k := range keys {
-		var d po.RTDrone
-		if err := r.rds.HGetAll(ctx, k).Scan(&d); err != nil {
-			r.l.Error("Get drone from redis failed", slog.Any("err", err))
-		}
-		drones = append(drones, d)
-	}
-	keys, err = r.rds.Keys(ctx, allRCKey).Result()
-	if err != nil {
-		r.l.Error("Failed to get rc onlineSet from redis", slog.Any("err", err))
-		return nil, nil, err
-
-	}
-	r.l.Info("RTRC keys", slog.Any("keys", keys))
-	for _, k := range keys {
-		var rc po.RTRC
-		if err := r.rds.HGetAll(ctx, k).Scan(&rc); err != nil {
-			r.l.Error("Get rc from redis failed", slog.Any("err", err))
-		}
-		rcs = append(rcs, rc)
-	}
-
-	// 拷贝数据
-	var ds []entity.Drone
-	for _, d := range drones {
-		var e entity.Drone
-		if err := copier.Copy(&e, &d); err != nil {
-			r.l.Error("ListAll copier failed", slog.Any("err", err))
-			return nil, nil, err
-		}
-		ds = append(ds, e)
-	}
-	var rs []entity.RC
-	for _, rc := range rcs {
-		var e entity.RC
-		if err := copier.Copy(&e, &rc); err != nil {
-			r.l.Error("ListAll copier failed", slog.Any("err", err))
-			return nil, nil, err
-		}
-		rs = append(rs, e)
-	}
-
-	return ds, rs, nil
-}
-
-func (t *DroneGormRepo) SelectAllByID(ctx context.Context, ids []uint) ([]entity.Drone, error) {
+// SelectAllByID 根据 ID 列出所有无人机
+func (r *DroneDefaultRepo) SelectAllByID(ctx context.Context, ids []uint) ([]entity.Drone, error) {
 	var drones []entity.Drone
 	for _, id := range ids {
-		var p po.ORMDrone
-		if err := t.tx.Where("id = ?", id).First(&p).Error; err != nil {
-			t.l.Error("Failed to fetch drone by id", slog.Any("err", err))
+		var pp po.Drone
+		var rr ro.Drone
+		if err := r.tx.Where("id = ?", id).First(&pp).Error; err != nil {
+			r.l.Error("获取无人机持久化数据失败", slog.Any("id", id), slog.Any("err", err))
 			continue
 		}
-		var d entity.Drone
-		if err := copier.Copy(&d, &p); err != nil {
-			t.l.Error("ListAll copier failed", slog.Any("err", err))
+		rr, err := r.FetchStateBySN(ctx, pp.SN)
+		if err != nil {
+			r.l.Error("获取无人机实时数据失败", slog.Any("id", id), slog.Any("err", err))
 			continue
 		}
-		drones = append(drones, d)
+		drones = append(drones, *entity.NewDrone(&pp, &rr))
 	}
 	return drones, nil
 }

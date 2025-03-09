@@ -2,35 +2,27 @@ package service
 
 import (
 	"context"
-	"errors"
 	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/entity"
-	"github.com/dronesphere/internal/model/po"
+	"github.com/dronesphere/internal/model/ro"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/jinzhu/copier"
 	"log/slog"
 )
 
 type (
 	DroneSvc interface {
+		Repo() DroneRepo
 		SaveDroneTopo(ctx context.Context, update dto.UpdateTopoPayload) error
-		ListAll(ctx context.Context) ([]entity.Drone, error)
-		UpdateOnline(ctx context.Context, sn string) error
-		UpdateOffline(ctx context.Context, sn string) error
 		FetchDeviceTopo(ctx context.Context, workspace string) ([]entity.Drone, []entity.RC, error)
-		UpdateState(ctx context.Context, drone po.RTDrone) error
-		UpdateStateBySN(ctx context.Context, sn string, payload po.RTDrone) error
-		FetchState(ctx context.Context, sn string) (po.RTDrone, error)
+		UpdateStateBySN(ctx context.Context, sn string, msg dto.DroneMessageProperty) error
 	}
 
 	DroneRepo interface {
-		ListAll(ctx context.Context) ([]entity.Drone, error)
-		RemoveDroneBySN(ctx context.Context, rc string) error
-		Save(ctx context.Context, d *entity.Drone, rc string) error
-		FetchRealtimeDrone(ctx context.Context, sn string) (po.RTDrone, error)
-		SaveRealtimeDrone(ctx context.Context, data po.RTDrone) error
-		SaveRealtimeRC(ctx context.Context, data po.RTRC) error
-		FetchDeviceTopoByWorkspace(ctx context.Context, workspace string) ([]entity.Drone, []entity.RC, error)
+		SelectAll(ctx context.Context) ([]entity.Drone, error)
+		Save(ctx context.Context, d entity.Drone) error
+		SelectBySN(ctx context.Context, sn string) (entity.Drone, error)
+		FetchStateBySN(ctx context.Context, sn string) (ro.Drone, error)
+		SaveState(ctx context.Context, state ro.Drone) error
 		SelectAllByID(ctx context.Context, ids []uint) ([]entity.Drone, error)
 	}
 )
@@ -47,6 +39,10 @@ func NewDroneImpl(r DroneRepo, l *slog.Logger, mqtt mqtt.Client) DroneSvc {
 		l:    l,
 		mqtt: mqtt,
 	}
+}
+
+func (s *DroneImpl) Repo() DroneRepo {
+	return s.r
 }
 
 func (s *DroneImpl) SaveDroneTopo(ctx context.Context, data dto.UpdateTopoPayload) error {
@@ -66,7 +62,7 @@ func (s *DroneImpl) SaveDroneTopo(ctx context.Context, data dto.UpdateTopoPayloa
 		SubType: subDevice.SubType,
 	}
 	s.l.Info("SaveDroneTopo", slog.Any("data", data))
-	if err := s.r.Save(ctx, &drone, rc); err != nil {
+	if err := s.r.Save(ctx, drone); err != nil {
 		s.l.Error("SaveDroneTopo failed", slog.Any("err", err))
 		return err
 	}
@@ -75,88 +71,42 @@ func (s *DroneImpl) SaveDroneTopo(ctx context.Context, data dto.UpdateTopoPayloa
 	return nil
 }
 
-func (s *DroneImpl) ListAll(ctx context.Context) ([]entity.Drone, error) {
-
-	return s.r.ListAll(ctx)
-}
-
-// UpdateOnline 更新在线状态
-func (s *DroneImpl) UpdateOnline(ctx context.Context, sn string) error {
-	rt, err := s.r.FetchRealtimeDrone(ctx, sn)
-	rt.OnlineStatus = true
-	s.l.Info("UpdateOnline", slog.Any("sn", sn), slog.Any("rt", rt))
-	if err != nil {
-		s.l.Error("Drone not in realtime", slog.Any("sn", sn))
-		return errors.New("drone not in realtime")
-	}
-	if err := s.r.SaveRealtimeDrone(ctx, rt); err != nil {
-		s.l.Error("Save realtime drone failed", slog.Any("err", err))
-		return err
-	}
-	var rc po.RTRC
-	rc = po.RTRC{
-		SN: rt.RCSN,
-	}
-	rc.OnlineStatus = true
-	if err := s.r.SaveRealtimeRC(ctx, rc); err != nil {
-		s.l.Error("Save realtime rc failed", slog.Any("err", err))
-		return err
-	}
-	return nil
-}
-
-func (s *DroneImpl) UpdateOffline(ctx context.Context, sn string) error {
-
-	return nil
-}
-
 func (s *DroneImpl) FetchDeviceTopo(ctx context.Context, workspace string) ([]entity.Drone, []entity.RC, error) {
 	var ds []entity.Drone
 	var rcs []entity.RC
-	dds, rccs, err := s.r.FetchDeviceTopoByWorkspace(ctx, workspace)
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, d := range dds {
-		var e entity.Drone
-		if err := copier.Copy(&e, &d); err != nil {
-			s.l.Error("ListAll copier failed", slog.Any("err", err))
-			return nil, nil, err
-		}
-		ds = append(ds, e)
-	}
-	for _, rc := range rccs {
-		var e entity.RC
-		if err := copier.Copy(&e, &rc); err != nil {
-			s.l.Error("ListAll copier failed", slog.Any("err", err))
-			return nil, nil, err
-		}
-		rcs = append(rcs, e)
-	}
+	//dds, rccs, err := s.r.FetchDeviceTopoByWorkspace(ctx, workspace)
+	//if err != nil {
+	//	return nil, nil, err
+	//}
+	//for _, d := range dds {
+	//	var e entity.Drone
+	//	if err := copier.Copy(&e, &d); err != nil {
+	//		s.l.Error("SelectAll copier failed", slog.Any("err", err))
+	//		return nil, nil, err
+	//	}
+	//	ds = append(ds, e)
+	//}
+	//for _, rc := range rccs {
+	//	var e entity.RC
+	//	if err := copier.Copy(&e, &rc); err != nil {
+	//		s.l.Error("SelectAll copier failed", slog.Any("err", err))
+	//		return nil, nil, err
+	//	}
+	//	rcs = append(rcs, e)
+	//}
 	return ds, rcs, nil
 }
 
-func (s *DroneImpl) UpdateState(ctx context.Context, drone po.RTDrone) error {
-	if err := s.r.SaveRealtimeDrone(ctx, drone); err != nil {
-		s.l.Error("Save realtime drone failed", slog.Any("err", err))
-		return err
-	}
-	return nil
-}
-
 // UpdateStateBySN 更新无人机实时数据状态
-func (s *DroneImpl) UpdateStateBySN(ctx context.Context, sn string, payload po.RTDrone) error {
-	payload.SN = sn
-	//payload.RCSN = ctx.Value(event.RemoteControllerLoginSNKey).(string)
-
-	s.l.Info("更新无人机实时数据状态", slog.Any("sn", sn), slog.Any("payload", payload))
-	if err := s.r.SaveRealtimeDrone(ctx, payload); err != nil {
+func (s *DroneImpl) UpdateStateBySN(ctx context.Context, sn string, msg dto.DroneMessageProperty) error {
+	var state = ro.Drone{
+		SN:                   sn,
+		Status:               ro.DroneStatusOnline,
+		DroneMessageProperty: msg,
+	}
+	if err := s.r.SaveState(ctx, state); err != nil {
 		s.l.Error("Save realtime drone failed", slog.Any("err", err))
 		return err
 	}
 	return nil
-}
-
-func (s *DroneImpl) FetchState(ctx context.Context, sn string) (po.RTDrone, error) {
-	return s.r.FetchRealtimeDrone(ctx, sn)
 }
