@@ -29,6 +29,7 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 	h := handler.Group("/drone")
 	{
 		h.Get("/list", r.list)
+		h.Get("/sn/:sn", r.getBySN)
 		h.Get("/state/sse", r.pushState)
 	}
 }
@@ -59,6 +60,31 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 		res = append(res, e)
 	}
 
+	return c.JSON(Success(res))
+}
+
+// getBySN  根据序列号获取无人机信息
+//
+//	@Router			/drone/sn/:sn [get]
+//	@Summary		根据序列号获取无人机信息
+//	@Description	根据序列号获取无人机信息
+//	@Tags			drone
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	v1.Response{data=v1.DroneDetailResult}	"成功"
+func (r *DroneRouter) getBySN(c *fiber.Ctx) error {
+	sn := c.Params("sn")
+	ctx := context.Background()
+	drone, err := r.svc.Repo().SelectBySN(ctx, sn)
+	if err != nil {
+		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
+	}
+	var res api.DroneDetailResult
+	if err := copier.Copy(&res, &drone); err != nil {
+		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
+	}
+	res.IsThermalAvailable = drone.IsThermalAvailable()
+	res.IsRTKAvailable = drone.IsRTKAvailable()
 	return c.JSON(Success(res))
 }
 

@@ -7,25 +7,27 @@ import (
 	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/model/ro"
 	"github.com/jinzhu/copier"
+	"strconv"
 )
 
 type Drone struct {
 	ID              uint   `json:"id"`
 	SN              string `json:"sn"`                // 序列号
 	Callsign        string `json:"callsign"`          // 呼号
-	Domain          string `json:"domain"`            // 领域
+	Domain          int    `json:"domain"`            // 领域
 	Type            int    `json:"type"`              // 类型
 	SubType         int    `json:"sub_type"`          // 子类型
 	ProductModel    string `json:"product_model"`     // 产品型号
 	ProductModelKey string `json:"product_model_key"` // 产品型号标识符
-	Status          string `json:"online_status"`     // 在线状态
+	Status          string `json:"status"`            // 在线状态
 	dto.DroneMessageProperty
 }
 
 func NewDroneFromMsg(sn string, msg dto.ProductTopo) *Drone {
+	domain, _ := strconv.Atoi(msg.Domain)
 	d := &Drone{
 		SN:      sn,
-		Domain:  msg.Domain,
+		Domain:  domain,
 		Type:    msg.Type,
 		SubType: msg.SubType,
 	}
@@ -39,6 +41,8 @@ func NewDrone(po *po.Drone, rt *ro.Drone) *Drone {
 	if err := copier.Copy(d, po); err != nil {
 		panic(err)
 	}
+	d.ProductModelKey = d.GetModelKey()
+	d.ProductModel = d.GetModel()
 	if rt != nil {
 		d.Status = rt.Status
 		d.DroneMessageProperty = rt.DroneMessageProperty
@@ -58,7 +62,7 @@ func (d *Drone) StatusText() string {
 // GetModelKey 产品标识符
 // 产品标识符由领域、类型、子类型组成, 例如 0-89-0
 func (d *Drone) GetModelKey() string {
-	t := "%s-%d-%d"
+	t := "%d-%d-%d"
 	return fmt.Sprintf(t, d.Domain, d.Type, d.SubType)
 }
 

@@ -111,6 +111,48 @@ definitions:
       name:
         type: string
     type: object
+  v1.DroneDetailResult:
+    properties:
+      callsign:
+        description: 呼号
+        type: string
+      domain:
+        description: 领域
+        type: integer
+      id:
+        type: integer
+      is_rtk_available:
+        description: 是否支持RTK◊
+        type: boolean
+      is_thermal_available:
+        description: 是否支持热成像
+        type: boolean
+      product_model:
+        description: 产品型号
+        type: string
+      product_model_key:
+        description: 产品型号标识符
+        type: string
+      sn:
+        description: 序列号
+        type: string
+      status:
+        description: 在线状态
+        type: string
+      sub_type:
+        description: 子类型
+        type: integer
+      type:
+        description: 类型
+        type: integer
+    required:
+    - domain
+    - product_model
+    - product_model_key
+    - sn
+    - sub_type
+    - type
+    type: object
   v1.DroneItemResult:
     properties:
       callsign:
@@ -696,6 +738,26 @@ paths:
                   type: array
               type: object
       summary: 列出所有无人机
+      tags:
+      - drone
+  /drone/sn/:sn:
+    get:
+      consumes:
+      - application/json
+      description: 根据序列号获取无人机信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.DroneDetailResult'
+              type: object
+      summary: 根据序列号获取无人机信息
       tags:
       - drone
   /job:

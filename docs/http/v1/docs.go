@@ -438,6 +438,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/drone/sn/:sn": {
+            "get": {
+                "description": "根据序列号获取无人机信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drone"
+                ],
+                "summary": "根据序列号获取无人机信息",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.DroneDetailResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/job": {
             "get": {
                 "description": "获取所有任务",
@@ -1160,6 +1195,62 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.DroneDetailResult": {
+            "type": "object",
+            "required": [
+                "domain",
+                "product_model",
+                "product_model_key",
+                "sn",
+                "sub_type",
+                "type"
+            ],
+            "properties": {
+                "callsign": {
+                    "description": "呼号",
+                    "type": "string"
+                },
+                "domain": {
+                    "description": "领域",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_rtk_available": {
+                    "description": "是否支持RTK◊",
+                    "type": "boolean"
+                },
+                "is_thermal_available": {
+                    "description": "是否支持热成像",
+                    "type": "boolean"
+                },
+                "product_model": {
+                    "description": "产品型号",
+                    "type": "string"
+                },
+                "product_model_key": {
+                    "description": "产品型号标识符",
+                    "type": "string"
+                },
+                "sn": {
+                    "description": "序列号",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "在线状态",
+                    "type": "string"
+                },
+                "sub_type": {
+                    "description": "子类型",
+                    "type": "integer"
+                },
+                "type": {
+                    "description": "类型",
+                    "type": "integer"
                 }
             }
         },
