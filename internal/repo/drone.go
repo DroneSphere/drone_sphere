@@ -89,9 +89,8 @@ func (r *DroneDefaultRepo) SelectBySN(ctx context.Context, sn string) (entity.Dr
 	rr, err := r.FetchStateBySN(ctx, sn)
 	if err != nil {
 		r.l.Error("实时数据获取失败", slog.Any("sn", sn), slog.Any("err", err))
-		return entity.Drone{}, err
 	}
-	return *entity.NewDrone(&pp, &rr), nil
+	return *entity.NewDrone(&pp, &rr), err
 }
 
 const ErrNoRTData = "no realtime data"

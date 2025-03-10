@@ -7,6 +7,7 @@ import (
 	"github.com/asaskevich/EventBus"
 	"github.com/bytedance/sonic"
 	api "github.com/dronesphere/api/http/v1"
+	"github.com/dronesphere/internal/repo"
 	"github.com/dronesphere/internal/service"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
@@ -76,7 +77,7 @@ func (r *DroneRouter) getBySN(c *fiber.Ctx) error {
 	sn := c.Params("sn")
 	ctx := context.Background()
 	drone, err := r.svc.Repo().SelectBySN(ctx, sn)
-	if err != nil {
+	if err != nil && err.Error() != repo.ErrNoRTData {
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
 	var res api.DroneDetailResult
