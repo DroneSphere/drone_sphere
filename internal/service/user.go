@@ -10,7 +10,7 @@ import (
 type (
 	UserSvc interface {
 		Repo() UserRepo
-		Login(username, password string) (entity.User, error)
+		Login(email, password string) (entity.User, error)
 		Register(user entity.User) error
 	}
 
@@ -19,6 +19,7 @@ type (
 		SaveUser(user entity.User) error
 		SelectByID(id uint) (entity.User, error)
 		SelectByUsername(username string) (entity.User, error)
+		SelectByEmail(email string) (entity.User, error)
 		UpdatePasswordByUsername(username, password string) error
 	}
 )
@@ -41,8 +42,8 @@ func (s *UserImpl) Repo() UserRepo {
 
 const ErrInvalidPassword = "invalid password"
 
-func (s *UserImpl) Login(username, password string) (entity.User, error) {
-	u, err := s.r.SelectByUsername(username)
+func (s *UserImpl) Login(email, password string) (entity.User, error) {
+	u, err := s.r.SelectByEmail(email)
 	if err != nil {
 		return entity.User{}, err
 	}

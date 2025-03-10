@@ -1461,10 +1461,13 @@ const docTemplate = `{
         "v1.LoginRequest": {
             "type": "object",
             "required": [
-                "password",
-                "username"
+                "email",
+                "password"
             ],
             "properties": {
+                "email": {
+                    "type": "string"
+                },
                 "password": {
                     "type": "string",
                     "example": "admin"
@@ -1473,10 +1476,6 @@ const docTemplate = `{
                     "description": "SN 遥控器 SN，仅 Pilot 端登录时需要提供",
                     "type": "string",
                     "example": "123456"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "admin"
                 }
             }
         },

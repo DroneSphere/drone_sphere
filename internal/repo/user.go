@@ -60,6 +60,14 @@ func (r *UserGormRepo) SelectByUsername(username string) (entity.User, error) {
 	return r.toEntity(u), nil
 }
 
+func (r *UserGormRepo) SelectByEmail(email string) (entity.User, error) {
+	var u po.User
+	if err := r.tx.Where("email = ?", email).First(&u).Error; err != nil {
+		return entity.User{}, err
+	}
+	return r.toEntity(u), nil
+}
+
 func (r *UserGormRepo) UpdatePasswordByUsername(username, password string) error {
 	return r.tx.Model(&po.User{}).Where("username = ?", username).Update("password", password).Error
 }

@@ -108,7 +108,7 @@ func (r *UserRouter) login(c *fiber.Ctx) error {
 	r.l.Info("用户登录", slog.Any("req", req))
 
 	// 执行登录操作
-	u, err := r.svc.Login(req.Username, req.Password)
+	u, err := r.svc.Login(req.Email, req.Password)
 	if err != nil {
 		r.l.Warn("登录失败", slog.Any("req", req), slog.Any("err", err))
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))

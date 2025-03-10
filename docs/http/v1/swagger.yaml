@@ -309,6 +309,8 @@ definitions:
     type: object
   v1.LoginRequest:
     properties:
+      email:
+        type: string
       password:
         example: admin
         type: string
@@ -316,12 +318,9 @@ definitions:
         description: SN 遥控器 SN，仅 Pilot 端登录时需要提供
         example: "123456"
         type: string
-      username:
-        example: admin
-        type: string
     required:
+    - email
     - password
-    - username
     type: object
   v1.LoginResult:
     properties:
