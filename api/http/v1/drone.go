@@ -1,15 +1,19 @@
 package v1
 
+type DroneUpdateRequest struct {
+	Callsign string `json:"callsign" binding:"required"` // 呼号
+}
+
 type DroneItemResult struct {
-	ID           uint   `json:"id"`       // ID
-	Callsign     string `json:"callsign"` // 呼号
-	SN           string `json:"sn"`
-	Status       string `json:"status"`
-	ProductModel string `json:"product_model"` // 产品型号
-	// IsRTKAvailable 是否支持RTK
-	IsRTKAvailable bool `json:"is_rtk_available"`
-	// IsThermalAvailable 是否支持热成像
-	IsThermalAvailable bool `json:"is_thermal_available"`
+	ID                 uint   `json:"id"`       // ID
+	Callsign           string `json:"callsign"` // 呼号
+	SN                 string `json:"sn"`
+	Status             string `json:"status"`
+	ProductModel       string `json:"product_model"` // 产品型号
+	IsRTKAvailable     bool   `json:"is_rtk_available"`
+	IsThermalAvailable bool   `json:"is_thermal_available"`
+	CreatedAt          string `json:"created_at"`     // 创建时间
+	LastOnlineAt       string `json:"last_online_at"` // 最后在线时间
 }
 
 type DroneDetailResult struct {

@@ -158,8 +158,6 @@ definitions:
       callsign:
         description: 呼号
         type: string
-      domain:
-        type: string
       id:
         description: ID
         type: integer
@@ -169,22 +167,21 @@ definitions:
       is_thermal_available:
         description: IsThermalAvailable 是否支持热成像
         type: boolean
-      last_login_at:
-        description: LastLoginAt 最后登录时间
-        type: string
-      product_type:
-        description: ProductType 无人机的型号名称
+      product_model:
+        description: 产品型号
         type: string
       sn:
-        description: 以下字段来自实体信息
         type: string
       status:
-        description: 以上字段来自实体信息
         type: string
-      sub_type:
-        type: integer
-      type:
-        type: integer
+    type: object
+  v1.DroneUpdateRequest:
+    properties:
+      callsign:
+        description: 呼号
+        type: string
+    required:
+    - callsign
     type: object
   v1.ErrorBody:
     properties:
@@ -718,6 +715,38 @@ paths:
       summary: 列出所有搜索区域
       tags:
       - area
+  /drone/:id:
+    put:
+      consumes:
+      - application/json
+      description: 更新无人机信息
+      parameters:
+      - description: 无人机ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 无人机信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.DroneUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/v1.Response'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: 更新无人机信息
+      tags:
+      - drone
   /drone/list:
     get:
       consumes:

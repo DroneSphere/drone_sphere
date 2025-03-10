@@ -164,11 +164,11 @@ func (d *DroneEventHandler) HandleDroneState(ctx context.Context) error {
 		}
 
 		if err := d.svc.UpdateStateBySN(ctx, droneSN, p); err != nil {
-			d.l.Error("Update drone online failed", slog.Any("err", err))
+			d.l.Error("UpdateCallsign drone online failed", slog.Any("err", err))
 			return
 		}
 
-		d.l.Info("Update drone online success", slog.Any("droneSN", droneSN))
+		d.l.Info("UpdateCallsign drone online success", slog.Any("droneSN", droneSN))
 	})
 	if token.Wait() && token.Error() != nil {
 		d.l.Error("Subscribe topic failed", slog.Any("err", token.Error()))

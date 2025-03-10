@@ -8,6 +8,7 @@ import (
 	"github.com/dronesphere/internal/model/ro"
 	"github.com/jinzhu/copier"
 	"strconv"
+	"time"
 )
 
 type Drone struct {
@@ -20,6 +21,8 @@ type Drone struct {
 	ProductModel    string `json:"product_model"`     // 产品型号
 	ProductModelKey string `json:"product_model_key"` // 产品型号标识符
 	Status          string `json:"status"`            // 在线状态
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	dto.DroneMessageProperty
 }
 

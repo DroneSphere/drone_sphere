@@ -21,10 +21,10 @@ type DroneDefaultRepo struct {
 }
 
 func NewDroneGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *DroneDefaultRepo {
-	if err := db.AutoMigrate(&po.Drone{}); err != nil {
-		l.Error("Failed to auto migrate Drone", slog.Any("err", err))
-		panic(err)
-	}
+	//if err := db.AutoMigrate(&po.Drone{}); err != nil {
+	//	l.Error("Failed to auto migrate Drone", slog.Any("err", err))
+	//	panic(err)
+	//}
 	return &DroneDefaultRepo{
 		tx:        db,
 		rds:       rds,
@@ -142,4 +142,13 @@ func (r *DroneDefaultRepo) SelectAllByID(ctx context.Context, ids []uint) ([]ent
 		drones = append(drones, *entity.NewDrone(&pp, &rr))
 	}
 	return drones, nil
+}
+
+// UpdateCallsign 根据 ID 更新无人机信息
+func (r *DroneDefaultRepo) UpdateCallsign(ctx context.Context, sn, callsign string) error {
+	if err := r.tx.Model(&po.Drone{}).Where("sn = ?", sn).Update("callsign", callsign).Error; err != nil {
+		r.l.Error("更新无人机呼号失败", slog.Any("sn", sn), slog.Any("callsign", callsign), slog.Any("err", err))
+		return err
+	}
+	return nil
 }

@@ -400,6 +400,59 @@ const docTemplate = `{
                 }
             }
         },
+        "/drone/:id": {
+            "put": {
+                "description": "更新无人机信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drone"
+                ],
+                "summary": "更新无人机信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "无人机ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "无人机信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.DroneUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/v1.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/drone/list": {
             "get": {
                 "description": "列出所有绑定的无人机，包含不在线的无人机",
@@ -1261,9 +1314,6 @@ const docTemplate = `{
                     "description": "呼号",
                     "type": "string"
                 },
-                "domain": {
-                    "type": "string"
-                },
                 "id": {
                     "description": "ID",
                     "type": "integer"
@@ -1276,27 +1326,27 @@ const docTemplate = `{
                     "description": "IsThermalAvailable 是否支持热成像",
                     "type": "boolean"
                 },
-                "last_login_at": {
-                    "description": "LastLoginAt 最后登录时间",
-                    "type": "string"
-                },
-                "product_type": {
-                    "description": "ProductType 无人机的型号名称",
+                "product_model": {
+                    "description": "产品型号",
                     "type": "string"
                 },
                 "sn": {
-                    "description": "以下字段来自实体信息",
                     "type": "string"
                 },
                 "status": {
-                    "description": "以上字段来自实体信息",
                     "type": "string"
-                },
-                "sub_type": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "integer"
+                }
+            }
+        },
+        "v1.DroneUpdateRequest": {
+            "type": "object",
+            "required": [
+                "callsign"
+            ],
+            "properties": {
+                "callsign": {
+                    "description": "呼号",
+                    "type": "string"
                 }
             }
         },

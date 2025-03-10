@@ -30,6 +30,7 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 	h := handler.Group("/drone")
 	{
 		h.Get("/list", r.list)
+		h.Put("/:sn", r.update)
 		h.Get("/sn/:sn", r.getBySN)
 		h.Get("/state/sse", r.pushState)
 	}
@@ -58,6 +59,8 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 		}
 		// 检查是否在线
 		e.Status = d.StatusText()
+		e.CreatedAt = d.CreatedAt.Format("2006年01月02日 15:04:05")
+		e.LastOnlineAt = d.UpdatedAt.Format("2006年01月02日 15:04:05")
 		res = append(res, e)
 	}
 
@@ -87,6 +90,30 @@ func (r *DroneRouter) getBySN(c *fiber.Ctx) error {
 	res.IsThermalAvailable = drone.IsThermalAvailable()
 	res.IsRTKAvailable = drone.IsRTKAvailable()
 	return c.JSON(Success(res))
+}
+
+// update 更新无人机信息
+//
+//	@Router			/drone/:sn [put]
+//	@Summary		更新无人机信息
+//	@Description	更新无人机信息
+//	@Tags			drone
+//	@Accept			json
+//	@Produce		json
+//	@Param			sn		path		string					true	"无人机SN"
+//	@Param			request	body		v1.DroneUpdateRequest	true	"无人机信息"
+//	@Success		200		{object}	v1.Response{data=nil}	"成功"
+func (r *DroneRouter) update(c *fiber.Ctx) error {
+	sn := c.Params("sn")
+	req := new(api.DroneUpdateRequest)
+	if err := c.BodyParser(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(Fail(ErrorBody{Code: 400, Msg: err.Error()}))
+	}
+	ctx := context.Background()
+	if err := r.svc.Repo().UpdateCallsign(ctx, sn, req.Callsign); err != nil {
+		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
+	}
+	return c.JSON(Success(nil))
 }
 
 func (r *DroneRouter) pushState(c *fiber.Ctx) error {
