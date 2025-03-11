@@ -1,6 +1,10 @@
 package entity
 
-import "github.com/dronesphere/internal/model/vo"
+import (
+	"time"
+
+	"github.com/dronesphere/internal/model/vo"
+)
 
 // SearchArea 搜索区域
 type SearchArea struct {
@@ -10,6 +14,8 @@ type SearchArea struct {
 	CenterLat   float64       `json:"center_lat"`
 	CenterLng   float64       `json:"center_lng"`
 	Points      []vo.GeoPoint `json:"points"`
+	CreatedAt   time.Time     `json:"created_at"`
+	UpdatedAt   time.Time     `json:"updated_at"`
 }
 
 func (a *SearchArea) CalcCenter() {

@@ -42,11 +42,12 @@ func (r *SearchAreaRouter) toItemResult(area *entity.SearchArea) *api.AreaResult
 			Lng:   point.Lng,
 		})
 	}
-	return &api.AreaResult{
-		ID:     area.ID,
-		Name:   area.Name,
-		Points: points,
-	}
+	var e api.AreaResult
+	_ = copier.Copy(&e, area)
+	e.Points = points
+	e.CreatedAt = area.CreatedAt.Format("2006年01月02日 15:04:05")
+	e.UpdatedAt = area.UpdatedAt.Format("2006年01月02日 15:04:05")
+	return &e
 }
 
 func (r *SearchAreaRouter) toListResult(area []*entity.SearchArea) []api.AreaItemResult {
@@ -66,6 +67,9 @@ func (r *SearchAreaRouter) toListResult(area []*entity.SearchArea) []api.AreaIte
 				Lng:   p.Lng,
 			})
 		}
+		e.Points = points
+		e.CreatedAt = a.CreatedAt.Format("2006年01月02日 15:04:05")
+		e.UpdatedAt = a.UpdatedAt.Format("2006年01月02日 15:04:05")
 		items = append(items, e)
 	}
 	return items

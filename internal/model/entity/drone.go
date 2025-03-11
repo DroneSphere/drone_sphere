@@ -2,19 +2,21 @@ package entity
 
 import (
 	"fmt"
+	"strconv"
+	"time"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/model/ro"
 	"github.com/jinzhu/copier"
-	"strconv"
-	"time"
 )
 
 type Drone struct {
 	ID              uint   `json:"id"`
 	SN              string `json:"sn"`                // 序列号
 	Callsign        string `json:"callsign"`          // 呼号
+	Description     string `json:"description"`       // 描述
 	Domain          int    `json:"domain"`            // 领域
 	Type            int    `json:"type"`              // 类型
 	SubType         int    `json:"sub_type"`          // 子类型

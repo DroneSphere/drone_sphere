@@ -45,6 +45,8 @@ type AreaItemResult struct {
 	CenterLat   float64       `json:"center_lat"`
 	CenterLng   float64       `json:"center_lng"`
 	Points      []PointResult `json:"points"`
+	CreatedAt   string        `json:"created_at"`
+	UpdatedAt   string        `json:"updated_at"`
 }
 
 type AreaResult struct {
@@ -54,6 +56,8 @@ type AreaResult struct {
 	CenterLat   float64       `json:"center_lat"`
 	CenterLng   float64       `json:"center_lng"`
 	Points      []PointResult `json:"points"`
+	CreatedAt   string        `json:"created_at"`
+	UpdatedAt   string        `json:"updated_at"`
 }
 
 type PointResult struct {

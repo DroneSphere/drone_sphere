@@ -3,6 +3,8 @@ package repo
 import (
 	"context"
 	"errors"
+	"log/slog"
+
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
@@ -10,7 +12,6 @@ import (
 	"github.com/jinzhu/copier"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-	"log/slog"
 )
 
 type DroneDefaultRepo struct {
@@ -21,10 +22,10 @@ type DroneDefaultRepo struct {
 }
 
 func NewDroneGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *DroneDefaultRepo {
-	//if err := db.AutoMigrate(&po.Drone{}); err != nil {
-	//	l.Error("Failed to auto migrate Drone", slog.Any("err", err))
-	//	panic(err)
-	//}
+	// if err := db.AutoMigrate(&po.Drone{}); err != nil {
+	// 	l.Error("Failed to auto migrate Drone", slog.Any("err", err))
+	// 	panic(err)
+	// }
 	return &DroneDefaultRepo{
 		tx:        db,
 		rds:       rds,
