@@ -3,16 +3,16 @@ package v1
 import (
 	"bufio"
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/asaskevich/EventBus"
 	"github.com/dronesphere/internal/service"
-	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	slogfiber "github.com/samber/slog-fiber"
-	"log/slog"
-	"time"
 )
 
 // NewRouter -.
@@ -38,12 +38,12 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 	app.Use(cors.New())
 
 	// Swagger
-	app.Use(swagger.New(swagger.Config{
-		BasePath: "/",
-		FilePath: "./docs/http/v1/swagger.json",
-		Path:     "swagger",
-		Title:    "Server Swagger API Docs",
-	}))
+	// app.Use(swagger.New(swagger.Config{
+	// 	BasePath: "/",
+	// 	FilePath: "./docs/http/v1/swagger.json",
+	// 	Path:     "swagger",
+	// 	Title:    "Server Swagger API Docs",
+	// }))
 
 	// Prometheus metrics
 	prometheus := fiberprometheus.New("dronesphere")

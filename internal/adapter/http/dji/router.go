@@ -1,9 +1,9 @@
 package dji
 
 import (
-	"github.com/gofiber/contrib/swagger"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"log/slog"
+
+	"github.com/gofiber/fiber/v2/middleware/cors"
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/asaskevich/EventBus"
@@ -31,12 +31,12 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, drone service.Dr
 	app.Use(cors.New())
 
 	// Swagger
-	app.Use(swagger.New(swagger.Config{
-		BasePath: "/",
-		FilePath: "./docs/http/dji/swagger.json",
-		Path:     "swagger",
-		Title:    "DJI Swagger API Docs",
-	}))
+	// app.Use(swagger.New(swagger.Config{
+	// 	BasePath: "/",
+	// 	FilePath: "./docs/http/dji/swagger.json",
+	// 	Path:     "swagger",
+	// 	Title:    "DJI Swagger API Docs",
+	// }))
 
 	// Prometheus metrics
 	prometheus := fiberprometheus.New("dronesphere")
