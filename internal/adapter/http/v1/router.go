@@ -65,6 +65,8 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 		newDetectAlgoRouter(api, algo, l)
 		newJobRouter(api, job, l)
 		newWaylineRouter(api, wl, l)
+		NewGatewayRouter(api, eb, l)
+		NewModelsRouter(api, eb, l)
 		api.Get("/sse", handleSSE(l))
 	}
 }
