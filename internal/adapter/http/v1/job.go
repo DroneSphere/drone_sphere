@@ -2,23 +2,29 @@ package v1
 
 import (
 	"context"
-	api "github.com/dronesphere/api/http/v1"
-	"github.com/dronesphere/internal/model/entity"
-	"github.com/dronesphere/internal/service"
-	"github.com/gofiber/fiber/v2"
 	"log/slog"
 	"strconv"
+
+	api "github.com/dronesphere/api/http/v1"
+	"github.com/dronesphere/internal/model/entity"
+	"github.com/dronesphere/internal/model/po"
+	"github.com/dronesphere/internal/service"
+	"github.com/gofiber/fiber/v2"
 )
 
 type JobRouter struct {
-	svc service.JobSvc
-	l   *slog.Logger
+	svc      service.JobSvc
+	areaSvc  service.SearchAreaSvc
+	modelSvc service.ModelSvc
+	l        *slog.Logger
 }
 
-func newJobRouter(handler fiber.Router, svc service.JobSvc, l *slog.Logger) {
+func newJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.SearchAreaSvc, modelSvc service.ModelSvc, l *slog.Logger) {
 	r := &JobRouter{
-		svc: svc,
-		l:   l,
+		svc:      svc,
+		areaSvc:  areaSvc,
+		modelSvc: modelSvc,
+		l:        l,
 	}
 	h := handler.Group("/job")
 	{
@@ -82,32 +88,95 @@ func (r *JobRouter) getJob(c *fiber.Ctx) error {
 	return c.JSON(Success(result))
 }
 
-// getCreationOptions  创建任务时依赖的选项数据
-//
-//	@Router			/job/creation/options		[get]
-//	@Summary		创建任务时依赖的选项数据
-//	@Description	创建任务时依赖的选项数据，包括可选的搜索区域列表
-//	@Tags			job
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	v1.Response{data=v1.JobCreationOptionsResult}	"成功"
+type JobCreationArea struct {
+	ID     uint               `json:"id"`
+	Name   string             `json:"name"`
+	Points []JobCreationPoint `json:"points"`
+}
+
+type JobCreationPoint struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
+}
+
+type JobCreationOptionDrone struct {
+	ID          uint         `json:"id"`
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Model       string       `json:"model"`
+	Variantions []Variantion `json:"variantions"`
+}
+
+// JobCreationDroneVariationResult
+type Variantion struct {
+	Gimbal           *po.GimbalModel  `json:"gimbal,omitempty"`
+	Index            int              `json:"index"`
+	Name             string           `json:"name"`
+	Payload          *po.PayloadModel `json:"payload,omitempty"`
+	RtkAvailable     bool             `json:"rtk_available"`
+	ThermalAvailable bool             `json:"thermal_available"`
+}
+
 func (r *JobRouter) getCreationOptions(c *fiber.Ctx) error {
 	ctx := context.Background()
-	areas, err := r.svc.FetchAvailableAreas(ctx)
+	areas, err := r.areaSvc.FetchList(ctx)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
-	var result api.JobCreationOptionsResult
+	droneModels, err := r.modelSvc.Repo().SelectAllDroneModel(ctx)
+	if err != nil {
+		return c.JSON(Fail(InternalError))
+	}
+	type Result struct {
+		Areas  []JobCreationArea        `json:"areas"`
+		Drones []JobCreationOptionDrone `json:"drones"`
+	}
+	var as []JobCreationArea
 	for _, area := range areas {
-		result.Areas = append(result.Areas, struct {
-			ID          uint   `json:"id"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-		}{
-			ID:          area.ID,
-			Name:        area.Name,
-			Description: area.Description,
-		})
+		var a JobCreationArea
+		a.ID = area.ID
+		a.Name = area.Name
+		var points []JobCreationPoint
+		for _, p := range area.Points {
+			points = append(points, JobCreationPoint{
+				Lat: p.Lat,
+				Lng: p.Lng,
+			})
+		}
+		a.Points = points
+		as = append(as, a)
+	}
+	var ds []JobCreationOptionDrone
+	for _, drone := range droneModels {
+		var d JobCreationOptionDrone
+		d.Name = drone.Name
+		d.Description = drone.Description
+		d.ID = drone.ID
+		d.Model = drone.Name
+		d.Variantions = make([]Variantion, 0)
+		for _, g := range drone.Gimbals {
+			var v Variantion
+			v.Gimbal = &g
+			v.Index = g.Gimbalindex
+			v.Name = g.Name
+			// v.RtkAvailable = drone.is()
+			// v.ThermalAvailable = drone.IsThermalAvailable()
+			d.Variantions = append(d.Variantions, v)
+		}
+		// 如果无人机没有云台，则添加一个默认的云台
+		if len(drone.Gimbals) == 0 {
+			var v Variantion
+			v.Gimbal = nil
+			v.Index = 0
+			v.Name = "默认云台"
+			d.Variantions = append(d.Variantions, v)
+		}
+		ds = append(ds, d)
+	}
+	// Mock data for creation options
+	result := Result{
+		Areas:  as,
+		Drones: ds,
 	}
 	return c.JSON(Success(result))
 }

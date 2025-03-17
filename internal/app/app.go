@@ -3,6 +3,13 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
+
 	"github.com/dronesphere/internal/adapter/eventhandler"
 	"github.com/dronesphere/internal/adapter/http/dji"
 	v1 "github.com/dronesphere/internal/adapter/http/v1"
@@ -14,12 +21,6 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"gorm.io/driver/postgres"
-	"log/slog"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
-	"time"
 
 	"github.com/asaskevich/EventBus"
 	"github.com/dronesphere/configs"
@@ -104,6 +105,7 @@ func Run(cfg *configs.Config) {
 	algoRepo := repo.NewDetectAlgoGormRepo(db, logger)
 	wlRepo := repo.NewWaylineGormRepo(db, s3Client, logger)
 	jobRepo := repo.NewJobDefaultRepo(db, rds, logger)
+	modelRepo := repo.NewModelDefaultRepo(db, logger)
 
 	// Services
 	userSvc := service.NewUserSvc(userRepo, logger)
@@ -112,13 +114,14 @@ func Run(cfg *configs.Config) {
 	algoSvc := service.NewDetectAlgoImpl(algoRepo, logger)
 	wlSvc := service.NewWaylineImpl(wlRepo, droneRepo, logger)
 	jobSvc := service.NewJobImpl(jobRepo, saRepo, droneRepo, logger)
+	modelSvc := service.NewModelImpl(modelRepo, logger)
 
 	// Event Handlers
 	eventhandler.NewHandler(eb, logger, client, droneSvc)
 
 	// Servers
 	httpV1 := fiber.New()
-	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, algoSvc, wlSvc, jobSvc)
+	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, algoSvc, wlSvc, jobSvc, modelSvc)
 	httpDJI := fiber.New()
 	dji.NewRouter(httpDJI, eb, logger, droneSvc)
 	wss := fiber.New()

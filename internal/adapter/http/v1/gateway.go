@@ -4,6 +4,8 @@ import (
 	"log/slog"
 
 	"github.com/asaskevich/EventBus"
+	"github.com/dronesphere/internal/model/po"
+	"github.com/dronesphere/internal/pkg/misc"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -32,7 +34,7 @@ func (r *GatewayRouter) getAll(c *fiber.Ctx) error {
 		// 描述
 		Description string `json:"description,omitempty"`
 		// 型号信息
-		Model GatewayModelItemResult `json:"model"`
+		Model po.GatewayModel `json:"model"`
 		// 序列号，设备唯一序列号
 		SN string `json:"sn"`
 		// 状态，-1 为未知，0 为离线，1 为在线
@@ -43,8 +45,10 @@ func (r *GatewayRouter) getAll(c *fiber.Ctx) error {
 		Username string `json:"username"`
 	}
 
-	model := GatewayModelItemResult{
-		ID:          1,
+	model := po.GatewayModel{
+		BaseModel: misc.BaseModel{
+			ID: 1,
+		},
 		Name:        "DJI RC Pro 行业版",
 		Description: "",
 		Domain:      2,
