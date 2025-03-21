@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"log/slog"
+
+	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
-	"log/slog"
 )
 
 type (
@@ -12,7 +14,7 @@ type (
 		FetchByID(ctx context.Context, id uint) (*entity.Job, error)
 		FetchAvailableAreas(ctx context.Context) ([]*entity.SearchArea, error)
 		FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error)
-		CreateJob(ctx context.Context, name, description string, areaID uint) (uint, error)
+		CreateJob(ctx context.Context, name, description string, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (uint, error)
 		ModifyJob(ctx context.Context, id uint, name, description string, droneIDs []uint) (*entity.Job, error)
 		FetchAll(ctx context.Context) ([]*entity.Job, error)
 	}
@@ -83,11 +85,14 @@ func (j *JobImpl) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
 	return job, nil
 }
 
-func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaID uint) (uint, error) {
+func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (uint, error) {
 	job := &po.Job{
 		Name:        name,
 		Description: description,
 		AreaID:      areaID,
+		Drones:      drones,
+		Waylines:    waylines,
+		Mappings:    mappings,
 	}
 	if err := j.jobRepo.Save(ctx, job); err != nil {
 		return 0, err

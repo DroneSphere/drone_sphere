@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	api "github.com/dronesphere/api/http/v1"
+	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/service"
@@ -253,29 +254,27 @@ func (r *JobRouter) getEditionOptions(c *fiber.Ctx) error {
 	return c.JSON(Success(result))
 }
 
-// create 创建任务
-//
-//	@Router			/job		[post]
-//	@Summary		创建任务
-//	@Description	创建任务
-//	@Tags			job
-//	@Accept			json
-//	@Produce		json
-//
-//	@Param			req	body		v1.JobCreationRequest					true	"创建任务请求"
-//
-//	@Success		200	{object}	v1.Response{data=v1.JobCreationResult}	"成功"
 func (r *JobRouter) create(c *fiber.Ctx) error {
-	var req api.JobCreationRequest
+	type Request struct {
+		Name        string                   `json:"name"`
+		Description string                   `json:"description"`
+		AreaID      int64                    `json:"area_id"`
+		Drones      []dto.JobCreationDrone   `json:"drones"`
+		Waylines    []dto.JobCreationWayline `json:"waylines"`
+		Mappings    []dto.JobCreationMapping `json:"mappings"`
+	}
+
+	var req Request
 	if err := c.BodyParser(&req); err != nil {
 		return c.JSON(Fail(InvalidParams))
 	}
+	r.l.Info("create job", "req", req)
 	ctx := context.Background()
-	id, err := r.svc.CreateJob(ctx, req.Name, req.Description, req.AreaID)
+	id, err := r.svc.CreateJob(ctx, req.Name, req.Description, uint(req.AreaID), req.Drones, req.Waylines, req.Mappings)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
-	return c.JSON(Success(api.JobCreationResult{ID: id}))
+	return c.JSON(Success(id))
 }
 
 // update 更新任务
