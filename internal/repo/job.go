@@ -8,6 +8,8 @@ import (
 	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
+	"github.com/dronesphere/pkg/coordinate"
+	"github.com/dronesphere/pkg/wpml"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -125,4 +127,49 @@ func (j *JobDefaultRepo) SelectPhysicalDrones(ctx context.Context) ([]dto.Physic
 	j.l.Info("Fetched physical drones", slog.Any("drones", drones))
 
 	return drones, nil
+}
+
+func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, drone dto.JobCreationDrone, wayline dto.JobCreationWayline) (string, error) {
+	//  查询数据库获取无人机信息
+	droneInfo := wpml.DroneInfo{
+		DroneEnumValue:    wpml.DroneM3Series,
+		DroneSubEnumValue: wpml.SubM3E,
+	}
+	payload := wpml.PayloadInfo{
+		PayloadEnumValue:     wpml.PayloadM3E,
+		PayloadSubEnumValue:  wpml.PayloadSubM3E,
+		PayloadPositionIndex: 0,
+	}
+
+	builder := wpml.NewBuilder().Init("system").SetDefaultMissionConfig(droneInfo, payload)
+	fBuilder := builder.Template.CreateFolder(wpml.TemplateTypeWaypoint, 0)
+	for _, mark := range wayline.Points {
+		fBuilder.AppendDefaultPlacemark(coordinate.GCJ02ToWGS84(mark.Lng, mark.Lat))
+	}
+
+	// 生成航线文件
+	templateXML, err := builder.Template.GenerateXML()
+	if err != nil {
+		j.l.Error("Failed to generate template XML", slog.Any("err", err))
+		return "", err
+	}
+	j.l.Info("Generated template XML", slog.Any("templateXML", templateXML))
+
+	// 生成航线文件
+	builder.GenerateWayline()
+	waylineXML, err := builder.Wayline.GenerateXML()
+	if err != nil {
+		j.l.Error("Failed to generate wayline XML", slog.Any("err", err))
+		return "", err
+	}
+	j.l.Info("Generated wayline XML", slog.Any("waylineXML", waylineXML))
+
+	// 生成KMZ文件
+	filename := wayline.DroneKey + ".kmz"
+	if err := wpml.GenerateKMZ(filename, templateXML, waylineXML); err != nil {
+		j.l.Error("Failed to generate KMZ file", slog.Any("err", err))
+		return "", err
+	}
+	j.l.Info("Generated KMZ file", slog.Any("filename", filename))
+	return "", nil
 }

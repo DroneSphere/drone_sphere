@@ -15,9 +15,14 @@ type JobCreationWayline struct {
 	DroneKey string  `json:"drone_key"`
 	Color    string  `json:"color"`
 	Height   float64 `json:"height"`
-	Points   []struct {
+	Path     []struct {
 		Lat float64 `json:"lat"`
 		Lng float64 `json:"lng"`
+	} `json:"path"`
+	Points []struct {
+		Index int     `json:"index"`
+		Lat   float64 `json:"lat"`
+		Lng   float64 `json:"lng"`
 	} `json:"points"`
 }
 

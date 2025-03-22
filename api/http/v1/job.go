@@ -120,9 +120,14 @@ type JobDetailResult struct {
 		DroneKey string  `json:"drone_key"`
 		Color    string  `json:"color"`
 		Height   float64 `json:"height"`
-		Points   []struct {
+		Path     []struct {
 			Lat float64 `json:"lat"`
 			Lng float64 `json:"lng"`
+		} `json:"path"`
+		Points []struct {
+			Index int     `json:"index"`
+			Lat   float64 `json:"lat"`
+			Lng   float64 `json:"lng"`
 		} `json:"points"`
 	} `json:"waylines"`
 	Mappings []struct {
@@ -177,19 +182,58 @@ func (r *JobDetailResult) FromJobEntity(j *entity.Job) error {
 		})
 	}
 	for _, w := range j.Waylines {
+		// Convert points to the required format
+		points := make([]struct {
+			Index int     `json:"index"`
+			Lat   float64 `json:"lat"`
+			Lng   float64 `json:"lng"`
+		}, len(w.Points))
+
+		for i, p := range w.Points {
+			points[i] = struct {
+				Index int     `json:"index"`
+				Lat   float64 `json:"lat"`
+				Lng   float64 `json:"lng"`
+			}{
+				Index: i,
+				Lat:   p.Lat,
+				Lng:   p.Lng,
+			}
+		}
+
+		path := make([]struct {
+			Lat float64 `json:"lat"`
+			Lng float64 `json:"lng"`
+		}, len(w.Path))
+		for i, p := range w.Path {
+			path[i] = struct {
+				Lat float64 `json:"lat"`
+				Lng float64 `json:"lng"`
+			}{
+				Lat: p.Lat,
+				Lng: p.Lng,
+			}
+		}
+
 		r.Waylines = append(r.Waylines, struct {
 			DroneKey string  `json:"drone_key"`
 			Color    string  `json:"color"`
 			Height   float64 `json:"height"`
-			Points   []struct {
+			Path     []struct {
 				Lat float64 `json:"lat"`
 				Lng float64 `json:"lng"`
+			} `json:"path"`
+			Points []struct {
+				Index int     `json:"index"`
+				Lat   float64 `json:"lat"`
+				Lng   float64 `json:"lng"`
 			} `json:"points"`
 		}{
 			DroneKey: w.DroneKey,
 			Color:    w.Color,
 			Height:   w.Height,
-			Points:   w.Points,
+			Path:     path,
+			Points:   points,
 		})
 	}
 	for _, m := range j.Mappings {
