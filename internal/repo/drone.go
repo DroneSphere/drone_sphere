@@ -22,10 +22,8 @@ type DroneDefaultRepo struct {
 }
 
 func NewDroneGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *DroneDefaultRepo {
-	// if err := db.AutoMigrate(&po.Drone{}); err != nil {
-	// 	l.Error("Failed to auto migrate Drone", slog.Any("err", err))
-	// 	panic(err)
-	// }
+	_ = db.AutoMigrate(&po.Drone{})
+
 	return &DroneDefaultRepo{
 		tx:        db,
 		rds:       rds,
