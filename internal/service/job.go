@@ -72,16 +72,6 @@ func (j *JobImpl) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
 	}
 	job.Area = *area
 
-	var ids []uint
-	for _, d := range job.Drones {
-		ids = append(ids, d.ID)
-	}
-	drones, err := j.droneRepo.SelectAllByID(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-	job.Drones = drones
-
 	return job, nil
 }
 
@@ -129,16 +119,6 @@ func (j *JobImpl) FetchAll(ctx context.Context) ([]*entity.Job, error) {
 			return nil, err
 		}
 		e.Area = *area
-
-		var ids []uint
-		for _, d := range e.Drones {
-			ids = append(ids, d.ID)
-		}
-		drones, err := j.droneRepo.SelectAllByID(ctx, ids)
-		if err != nil {
-			return nil, err
-		}
-		e.Drones = drones
 	}
 	return job, nil
 }

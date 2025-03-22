@@ -83,9 +83,7 @@ func (r *JobRouter) getJob(c *fiber.Ctx) error {
 		return c.JSON(Fail(InternalError))
 	}
 	var result api.JobDetailResult
-	if err := result.FromJobEntity(job); err != nil {
-		return c.JSON(Fail(InternalError))
-	}
+	_ = result.FromJobEntity(job)
 	return c.JSON(Success(result))
 }
 

@@ -1,6 +1,9 @@
 package v1
 
-import "github.com/dronesphere/internal/model/entity"
+import (
+	"github.com/dronesphere/internal/model/dto"
+	"github.com/dronesphere/internal/model/entity"
+)
 
 type JobItemResult struct {
 	ID          uint     `json:"id"`
@@ -16,7 +19,7 @@ func (r *JobItemResult) FromJobEntity(j *entity.Job) error {
 	r.Description = j.Description
 	r.AreaName = j.Area.Name
 	for _, d := range j.Drones {
-		r.Drones = append(r.Drones, d.Callsign)
+		r.Drones = append(r.Drones, d.Name)
 	}
 	return nil
 }
@@ -103,12 +106,30 @@ type JobDetailResult struct {
 		} `json:"points"`
 	} `json:"area"`
 	Drones []struct {
-		ID          uint   `json:"id"`
-		Callsign    string `json:"callsign"`
-		Description string `json:"description"`
-		SN          string `json:"sn"`
-		Model       string `json:"model"`
+		ID          uint                `json:"id"`
+		Key         string              `json:"key"`
+		Index       int                 `json:"index"`
+		Callsign    string              `json:"name"`
+		Description string              `json:"description"`
+		SN          string              `json:"sn"`
+		Model       string              `json:"model"`
+		Color       string              `json:"color"`
+		Variantion  dto.DroneVariantion `json:"variantion"`
 	} `json:"drones"`
+	Waylines []struct {
+		DroneKey string  `json:"drone_key"`
+		Color    string  `json:"color"`
+		Height   float64 `json:"height"`
+		Points   []struct {
+			Lat float64 `json:"lat"`
+			Lng float64 `json:"lng"`
+		} `json:"points"`
+	} `json:"waylines"`
+	Mappings []struct {
+		PhysicalDroneID  uint   `json:"physical_drone_id"`
+		PhysicalDroneSN  string `json:"physical_drone_sn"`
+		SelectedDroneKey string `json:"selected_drone_key"`
+	} `json:"mappings"`
 }
 
 func (r *JobDetailResult) FromJobEntity(j *entity.Job) error {
@@ -134,17 +155,52 @@ func (r *JobDetailResult) FromJobEntity(j *entity.Job) error {
 	r.Area.Points = points
 	for _, d := range j.Drones {
 		r.Drones = append(r.Drones, struct {
-			ID          uint   `json:"id"`
-			Callsign    string `json:"callsign"`
-			Description string `json:"description"`
-			SN          string `json:"sn"`
-			Model       string `json:"model"`
+			ID          uint                `json:"id"`
+			Key         string              `json:"key"`
+			Index       int                 `json:"index"`
+			Callsign    string              `json:"name"`
+			Description string              `json:"description"`
+			SN          string              `json:"sn"`
+			Model       string              `json:"model"`
+			Color       string              `json:"color"`
+			Variantion  dto.DroneVariantion `json:"variantion"`
 		}{
+
 			ID:          d.ID,
-			Callsign:    d.Callsign,
-			Description: "",
-			SN:          d.SN,
-			Model:       d.GetModel(),
+			Key:         d.Key,
+			Index:       d.Index,
+			Callsign:    d.Name,
+			Description: d.Description,
+			Model:       "",
+			Color:       d.Color,
+			Variantion:  d.Variantion,
+		})
+	}
+	for _, w := range j.Waylines {
+		r.Waylines = append(r.Waylines, struct {
+			DroneKey string  `json:"drone_key"`
+			Color    string  `json:"color"`
+			Height   float64 `json:"height"`
+			Points   []struct {
+				Lat float64 `json:"lat"`
+				Lng float64 `json:"lng"`
+			} `json:"points"`
+		}{
+			DroneKey: w.DroneKey,
+			Color:    w.Color,
+			Height:   w.Height,
+			Points:   w.Points,
+		})
+	}
+	for _, m := range j.Mappings {
+		r.Mappings = append(r.Mappings, struct {
+			PhysicalDroneID  uint   `json:"physical_drone_id"`
+			PhysicalDroneSN  string `json:"physical_drone_sn"`
+			SelectedDroneKey string `json:"selected_drone_key"`
+		}{
+			PhysicalDroneID:  m.PhysicalDroneID,
+			PhysicalDroneSN:  m.PhysicalDroneSN,
+			SelectedDroneKey: m.SelectedDroneKey,
 		})
 	}
 	return nil
