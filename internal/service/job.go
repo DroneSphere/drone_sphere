@@ -11,6 +11,7 @@ import (
 
 type (
 	JobSvc interface {
+		Repo() JobRepo
 		FetchByID(ctx context.Context, id uint) (*entity.Job, error)
 		FetchAvailableAreas(ctx context.Context) ([]*entity.SearchArea, error)
 		FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error)
@@ -24,6 +25,7 @@ type (
 		FetchPOByID(ctx context.Context, id uint) (*po.Job, error)
 		FetchByID(ctx context.Context, id uint) (*entity.Job, error)
 		SelectAll(ctx context.Context) ([]*entity.Job, error)
+		SelectPhysicalDrones(ctx context.Context) ([]dto.PhysicalDrone, error)
 	}
 )
 
@@ -41,6 +43,10 @@ func NewJobImpl(jobRepo JobRepo, areaRepo SearchAreaRepo, droneRepo DroneRepo, l
 		droneRepo: droneRepo,
 		l:         l,
 	}
+}
+
+func (j *JobImpl) Repo() JobRepo {
+	return j.jobRepo
 }
 
 func (j *JobImpl) FetchAvailableAreas(ctx context.Context) ([]*entity.SearchArea, error) {

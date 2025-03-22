@@ -32,6 +32,7 @@ func newJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.Sear
 		h.Get("/", r.getJobs)
 		h.Get("/:id", r.getJob)
 		h.Get("/creation/options", r.getCreationOptions)
+		h.Get("/creation/drones", r.getCreationDrones)
 		h.Get("/edition/:id/options", r.getEditionOptions)
 		h.Post("/", r.create)
 		h.Put("/", r.update)
@@ -178,6 +179,15 @@ func (r *JobRouter) getCreationOptions(c *fiber.Ctx) error {
 		Drones: ds,
 	}
 	return c.JSON(Success(result))
+}
+
+func (r *JobRouter) getCreationDrones(c *fiber.Ctx) error {
+	ctx := context.Background()
+	drones, err := r.svc.Repo().SelectPhysicalDrones(ctx)
+	if err != nil {
+		return c.JSON(Fail(InternalError))
+	}
+	return c.JSON(Success(drones))
 }
 
 // getEditionOptions  编辑任务时依赖的选项数据

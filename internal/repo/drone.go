@@ -22,7 +22,7 @@ type DroneDefaultRepo struct {
 }
 
 func NewDroneGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *DroneDefaultRepo {
-	_ = db.AutoMigrate(&po.Drone{})
+	// _ = db.AutoMigrate(&po.Drone{})
 
 	return &DroneDefaultRepo{
 		tx:        db,

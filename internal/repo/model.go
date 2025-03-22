@@ -15,7 +15,7 @@ type ModelDefaultRepo struct {
 }
 
 func NewModelDefaultRepo(tx *gorm.DB, l *slog.Logger) *ModelDefaultRepo {
-	_ = tx.AutoMigrate(&po.GatewayModel{}, &po.DroneModel{}, &po.GimbalModel{}, &po.PayloadModel{})
+	// _ = tx.AutoMigrate(&po.GatewayModel{}, &po.DroneModel{}, &po.GimbalModel{}, &po.PayloadModel{})
 	return &ModelDefaultRepo{
 		tx: tx,
 		l:  l,

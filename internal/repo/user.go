@@ -1,10 +1,11 @@
 package repo
 
 import (
+	"log/slog"
+
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
 	"gorm.io/gorm"
-	"log/slog"
 )
 
 type UserGormRepo struct {
@@ -13,7 +14,7 @@ type UserGormRepo struct {
 }
 
 func NewUserGormRepo(db *gorm.DB, l *slog.Logger) *UserGormRepo {
-	_ = db.AutoMigrate(&po.User{})
+	// _ = db.AutoMigrate(&po.User{})
 	return &UserGormRepo{
 		tx: db,
 		l:  l,
