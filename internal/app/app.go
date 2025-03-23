@@ -104,7 +104,7 @@ func Run(cfg *configs.Config) {
 	saRepo := repo.NewSearchAreaGormRepo(db, rds, logger)
 	algoRepo := repo.NewDetectAlgoGormRepo(db, logger)
 	wlRepo := repo.NewWaylineGormRepo(db, s3Client, logger)
-	jobRepo := repo.NewJobDefaultRepo(db, rds, logger)
+	jobRepo := repo.NewJobDefaultRepo(db, s3Client, rds, logger)
 	modelRepo := repo.NewModelDefaultRepo(db, logger)
 
 	// Services

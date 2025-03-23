@@ -27,9 +27,9 @@ type JobCreationWayline struct {
 }
 
 type JobCreationMapping struct {
-	PhysicalDroneID  uint   `json:"physicalDroneId"`
-	PhysicalDroneSN  string `json:"physicalDroneSN"`
-	SelectedDroneKey string `json:"selectedDroneKey"`
+	PhysicalDroneID  uint   `json:"physical_drone_id"`
+	PhysicalDroneSN  string `json:"physical_drone_sn"`
+	SelectedDroneKey string `json:"selected_drone_key"`
 }
 
 type DroneVariantion struct {

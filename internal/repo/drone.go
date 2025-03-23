@@ -97,6 +97,7 @@ const ErrNoRTData = "no realtime data"
 // FetchStateBySN 根据SN获取无人机实时状态
 func (r *DroneDefaultRepo) FetchStateBySN(ctx context.Context, sn string) (ro.Drone, error) {
 	var rd ro.Drone
+	r.l.Debug("获取实时数据", slog.Any("sn", sn), slog.Any("rdsPrefix", r.rdsPrefix))
 	t, err := r.rds.JSONGet(ctx, r.rdsPrefix+sn, ".").Result()
 	if err != nil {
 		r.l.Error("实时数据获取失败", slog.Any("sn", sn), slog.Any("err", err))

@@ -3,12 +3,13 @@ package repo
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
 	"github.com/jinzhu/copier"
 	"github.com/minio/minio-go/v7"
 	"gorm.io/gorm"
-	"log/slog"
 )
 
 type WaylineGormRepo struct {
@@ -42,7 +43,6 @@ func (r *WaylineGormRepo) FetchKMZByKey(ctx context.Context, key string) (string
 }
 
 func (r *WaylineGormRepo) SaveToS3(ctx context.Context, path, key string) (string, error) {
-	contentType := "application/zip"
 
 	info, err := r.s3.FPutObject(ctx, r.bucket, key, path, minio.PutObjectOptions{ContentType: contentType})
 	if err != nil {
