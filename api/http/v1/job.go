@@ -131,9 +131,10 @@ type JobDetailResult struct {
 		} `json:"points"`
 	} `json:"waylines"`
 	Mappings []struct {
-		PhysicalDroneID  uint   `json:"physical_drone_id"`
-		PhysicalDroneSN  string `json:"physical_drone_sn"`
-		SelectedDroneKey string `json:"selected_drone_key"`
+		PhysicalDroneID       uint   `json:"physical_drone_id"`
+		PhysicalDroneSN       string `json:"physical_drone_sn"`
+		SelectedDroneKey      string `json:"selected_drone_key"`
+		PhysicalDroneCallsign string `json:"physical_drone_callsign"`
 	} `json:"mappings"`
 }
 
@@ -238,13 +239,15 @@ func (r *JobDetailResult) FromJobEntity(j *entity.Job) error {
 	}
 	for _, m := range j.Mappings {
 		r.Mappings = append(r.Mappings, struct {
-			PhysicalDroneID  uint   `json:"physical_drone_id"`
-			PhysicalDroneSN  string `json:"physical_drone_sn"`
-			SelectedDroneKey string `json:"selected_drone_key"`
+			PhysicalDroneID       uint   `json:"physical_drone_id"`
+			PhysicalDroneSN       string `json:"physical_drone_sn"`
+			SelectedDroneKey      string `json:"selected_drone_key"`
+			PhysicalDroneCallsign string `json:"physical_drone_callsign"`
 		}{
-			PhysicalDroneID:  m.PhysicalDroneID,
-			PhysicalDroneSN:  m.PhysicalDroneSN,
-			SelectedDroneKey: m.SelectedDroneKey,
+			PhysicalDroneID:       m.PhysicalDroneID,
+			PhysicalDroneSN:       m.PhysicalDroneSN,
+			SelectedDroneKey:      m.SelectedDroneKey,
+			PhysicalDroneCallsign: m.PhysicalDroneCallsign,
 		})
 	}
 	return nil
