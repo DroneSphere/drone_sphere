@@ -112,7 +112,7 @@ func Run(cfg *configs.Config) {
 	droneSvc := service.NewDroneImpl(droneRepo, logger, client)
 	saSvc := service.NewSearchAreaImpl(saRepo, logger, client)
 	algoSvc := service.NewDetectAlgoImpl(algoRepo, logger)
-	wlSvc := service.NewWaylineImpl(wlRepo, droneRepo, logger)
+	wlSvc := service.NewWaylineImpl(wlRepo, logger)
 	jobSvc := service.NewJobImpl(jobRepo, saRepo, droneRepo, logger)
 	modelSvc := service.NewModelImpl(modelRepo, logger)
 
@@ -123,7 +123,7 @@ func Run(cfg *configs.Config) {
 	httpV1 := fiber.New()
 	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, algoSvc, wlSvc, jobSvc, modelSvc)
 	httpDJI := fiber.New()
-	dji.NewRouter(httpDJI, eb, logger, droneSvc)
+	dji.NewRouter(httpDJI, eb, logger, droneSvc, wlSvc)
 	wss := fiber.New()
 	ws.NewRouter(wss, eb, logger, userSvc, droneSvc)
 

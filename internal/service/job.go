@@ -26,7 +26,7 @@ type (
 		FetchByID(ctx context.Context, id uint) (*entity.Job, error)
 		SelectAll(ctx context.Context) ([]*entity.Job, error)
 		SelectPhysicalDrones(ctx context.Context) ([]dto.PhysicalDrone, error)
-		CreateWaylineFile(ctx context.Context, drone dto.JobCreationDrone, wayline dto.JobCreationWayline) (string, error)
+		CreateWaylineFile(ctx context.Context, name string, drone dto.JobCreationDrone, wayline dto.JobCreationWayline) (string, error)
 	}
 )
 
@@ -104,7 +104,7 @@ func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaI
 				break
 			}
 		}
-		waylineKey, err := j.jobRepo.CreateWaylineFile(ctx, dr, w)
+		waylineKey, err := j.jobRepo.CreateWaylineFile(ctx, job.Name, dr, w)
 		if err != nil {
 			j.l.Error("CreateWaylineFile Error: ", slog.Any("error", err))
 			return 0, err

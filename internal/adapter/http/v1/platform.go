@@ -1,9 +1,10 @@
 package v1
 
 import (
+	"log/slog"
+
 	api "github.com/dronesphere/api/http/v1"
 	"github.com/gofiber/fiber/v2"
-	"log/slog"
 )
 
 type PlatformRouter struct {
@@ -57,7 +58,7 @@ func (r *PlatformRouter) getConnectionParams(c *fiber.Ctx) error {
 			Password: "drone",
 		},
 		API: api.APIParamResult{
-			Host:  "https://192.168.1.112:10087",
+			Host:  "http://192.168.1.112:10087",
 			Token: "123456",
 		},
 		WS: api.WSParamResult{

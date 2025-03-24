@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"log/slog"
+	"strconv"
 
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/model/dto"
@@ -14,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -136,7 +138,7 @@ func (j *JobDefaultRepo) SelectPhysicalDrones(ctx context.Context) ([]dto.Physic
 
 const contentType = "application/zip"
 
-func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, drone dto.JobCreationDrone, wayline dto.JobCreationWayline) (string, error) {
+func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, name string, drone dto.JobCreationDrone, wayline dto.JobCreationWayline) (string, error) {
 	//  查询数据库获取无人机信息
 	droneInfo := wpml.DroneInfo{
 		DroneEnumValue:    wpml.DroneM3Series,
@@ -199,6 +201,27 @@ func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, drone dto.JobCre
 		return "", err
 	}
 	j.l.Info("Saved KMZ file to S3", slog.Any("info", info))
+
+	po := &po.Wayline{
+		Name:             name,
+		Username:         "admin",
+		DroneModelKey:    "0-" + strconv.Itoa(int(droneInfo.DroneEnumValue)) + "-" + strconv.Itoa(int(droneInfo.DroneSubEnumValue)),
+		PayloadModelKeys: []string{"0-" + strconv.Itoa(int(payload.PayloadEnumValue)) + "-" + strconv.Itoa(int(payload.PayloadSubEnumValue))},
+		Favorited:        false,
+		TemplateTypes:    []int{0},
+		ActionType:       0,
+		S3Key:            filename,
+		StartWaylinePoint: datatypes.NewJSONType(po.StartWaylinePoint{
+			StartLatitude:  wayline.Points[0].Lat,
+			StartLontitude: wayline.Points[0].Lng,
+		}),
+	}
+	j.l.Info("Creating wayline PO", slog.Any("waylinePO", po))
+	if err := j.tx.Create(po).Error; err != nil {
+		j.l.Error("Failed to save wayline to database", slog.Any("err", err))
+		return "", err
+	}
+	j.l.Info("Saved wayline to database", slog.Any("wayline", po))
 
 	return filename, nil
 }
