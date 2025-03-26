@@ -101,7 +101,7 @@ func Run(cfg *configs.Config) {
 	// Repos
 	userRepo := repo.NewUserGormRepo(db, logger)
 	droneRepo := repo.NewDroneGormRepo(db, rds, logger)
-	saRepo := repo.NewSearchAreaGormRepo(db, rds, logger)
+	saRepo := repo.NewAreaDefaultRepo(db, rds, logger)
 	algoRepo := repo.NewDetectAlgoGormRepo(db, logger)
 	wlRepo := repo.NewWaylineGormRepo(db, s3Client, logger)
 	jobRepo := repo.NewJobDefaultRepo(db, s3Client, rds, logger)
@@ -110,7 +110,7 @@ func Run(cfg *configs.Config) {
 	// Services
 	userSvc := service.NewUserSvc(userRepo, logger)
 	droneSvc := service.NewDroneImpl(droneRepo, logger, client)
-	saSvc := service.NewSearchAreaImpl(saRepo, logger, client)
+	saSvc := service.NewAreaImpl(saRepo, logger, client)
 	algoSvc := service.NewDetectAlgoImpl(algoRepo, logger)
 	wlSvc := service.NewWaylineImpl(wlRepo, logger)
 	jobSvc := service.NewJobImpl(jobRepo, saRepo, droneRepo, logger)

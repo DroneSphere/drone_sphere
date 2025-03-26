@@ -6,8 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// ORMSearchArea 搜索区域
-type ORMSearchArea struct {
+// Area 搜索区域
+type Area struct {
 	gorm.Model
 	Name        string                           `json:"name" gorm:"unique"`
 	Description string                           `json:"description"`
@@ -16,6 +16,6 @@ type ORMSearchArea struct {
 	Points      datatypes.JSONSlice[vo.GeoPoint] `json:"points"`
 }
 
-func (ORMSearchArea) TableName() string {
+func (Area) TableName() string {
 	return "search_areas"
 }

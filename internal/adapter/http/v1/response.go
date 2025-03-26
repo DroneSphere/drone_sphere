@@ -33,3 +33,7 @@ func Success(data interface{}) *Response {
 func Fail(e ErrorBody) *Response {
 	return NewResponse(e.Code, e.Msg, nil)
 }
+
+func FailWithMsg(msg string) *Response {
+	return NewResponse(500, msg, nil)
+}

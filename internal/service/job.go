@@ -13,7 +13,7 @@ type (
 	JobSvc interface {
 		Repo() JobRepo
 		FetchByID(ctx context.Context, id uint) (*entity.Job, error)
-		FetchAvailableAreas(ctx context.Context) ([]*entity.SearchArea, error)
+		FetchAvailableAreas(ctx context.Context) ([]*entity.Area, error)
 		FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error)
 		CreateJob(ctx context.Context, name, description string, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (uint, error)
 		ModifyJob(ctx context.Context, id uint, name, description string, droneIDs []uint) (*entity.Job, error)
@@ -32,12 +32,12 @@ type (
 
 type JobImpl struct {
 	jobRepo   JobRepo
-	areaRepo  SearchAreaRepo
+	areaRepo  AreaRepo
 	droneRepo DroneRepo
 	l         *slog.Logger
 }
 
-func NewJobImpl(jobRepo JobRepo, areaRepo SearchAreaRepo, droneRepo DroneRepo, l *slog.Logger) *JobImpl {
+func NewJobImpl(jobRepo JobRepo, areaRepo AreaRepo, droneRepo DroneRepo, l *slog.Logger) *JobImpl {
 	return &JobImpl{
 		jobRepo:   jobRepo,
 		areaRepo:  areaRepo,
@@ -50,8 +50,8 @@ func (j *JobImpl) Repo() JobRepo {
 	return j.jobRepo
 }
 
-func (j *JobImpl) FetchAvailableAreas(ctx context.Context) ([]*entity.SearchArea, error) {
-	areas, err := j.areaRepo.FetchAll(ctx)
+func (j *JobImpl) FetchAvailableAreas(ctx context.Context) ([]*entity.Area, error) {
+	areas, err := j.areaRepo.FetchAll(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (j *JobImpl) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
 		return nil, err
 	}
 
-	area, err := j.areaRepo.FetchByID(ctx, job.Area.ID)
+	area, err := j.areaRepo.SelectByID(ctx, job.Area.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (j *JobImpl) FetchAll(ctx context.Context) ([]*entity.Job, error) {
 		return nil, err
 	}
 	for _, e := range job {
-		area, err := j.areaRepo.FetchByID(ctx, e.Area.ID)
+		area, err := j.areaRepo.SelectByID(ctx, e.Area.ID)
 		if err != nil {
 			return nil, err
 		}

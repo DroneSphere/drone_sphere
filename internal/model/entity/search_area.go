@@ -6,8 +6,8 @@ import (
 	"github.com/dronesphere/internal/model/vo"
 )
 
-// SearchArea 搜索区域
-type SearchArea struct {
+// Area 搜索区域
+type Area struct {
 	ID          uint          `json:"id"`
 	Name        string        `json:"name"`
 	Description string        `json:"description"`
@@ -18,7 +18,7 @@ type SearchArea struct {
 	UpdatedAt   time.Time     `json:"updated_at"`
 }
 
-func (a *SearchArea) CalcCenter() {
+func (a *Area) CalcCenter() error {
 	var lat, lng float64
 	for _, p := range a.Points {
 		lat += p.Lat
@@ -26,4 +26,5 @@ func (a *SearchArea) CalcCenter() {
 	}
 	a.CenterLat = lat / float64(len(a.Points))
 	a.CenterLng = lng / float64(len(a.Points))
+	return nil
 }

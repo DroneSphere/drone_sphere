@@ -15,12 +15,12 @@ import (
 
 type JobRouter struct {
 	svc      service.JobSvc
-	areaSvc  service.SearchAreaSvc
+	areaSvc  service.AreaSvc
 	modelSvc service.ModelSvc
 	l        *slog.Logger
 }
 
-func newJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.SearchAreaSvc, modelSvc service.ModelSvc, l *slog.Logger) {
+func newJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.AreaSvc, modelSvc service.ModelSvc, l *slog.Logger) {
 	r := &JobRouter{
 		svc:      svc,
 		areaSvc:  areaSvc,
@@ -119,7 +119,7 @@ type Variantion struct {
 
 func (r *JobRouter) getCreationOptions(c *fiber.Ctx) error {
 	ctx := context.Background()
-	areas, err := r.areaSvc.FetchList(ctx)
+	areas, err := r.areaSvc.FetchList(ctx, "")
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}

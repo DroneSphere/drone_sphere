@@ -4,6 +4,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/asaskevich/EventBus"
 	"github.com/bytedance/sonic"
 	api "github.com/dronesphere/api/http/v1"
@@ -11,8 +14,6 @@ import (
 	"github.com/dronesphere/internal/service"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
-	"log/slog"
-	"time"
 )
 
 type DroneRouter struct {

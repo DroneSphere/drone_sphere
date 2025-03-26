@@ -9,7 +9,7 @@ type Job struct {
 	ID          uint                     `json:"id"`
 	Name        string                   `json:"name"`
 	Description string                   `json:"description"`
-	Area        SearchArea               `json:"area"`
+	Area        Area                     `json:"area"`
 	Algo        DetectAlgo               `json:"algo"`
 	Drones      []dto.JobCreationDrone   `json:"drones"`
 	Waylines    []dto.JobCreationWayline `json:"waylines"`
@@ -21,7 +21,7 @@ func NewJob(j *po.Job) *Job {
 		ID:          j.ID,
 		Name:        j.Name,
 		Description: j.Description,
-		Area:        SearchArea{ID: j.AreaID},
+		Area:        Area{ID: j.AreaID},
 		Drones:      j.Drones,
 		Waylines:    j.Waylines,
 		Mappings:    j.Mappings,
