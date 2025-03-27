@@ -20,7 +20,7 @@ type (
 			ID   uint   `json:"id"`
 			Name string `json:"name"`
 		}) (*entity.Area, error)
-		FetchList(ctx context.Context, name string) ([]*entity.Area, error)
+		FetchAll(ctx context.Context, name string) ([]*entity.Area, error)
 	}
 	AreaRepo interface {
 		Save(ctx context.Context, area *entity.Area) error
@@ -134,7 +134,7 @@ func (s *AreaImpl) FetchArea(ctx context.Context, params struct {
 	return area, nil
 }
 
-func (s *AreaImpl) FetchList(ctx context.Context, name string) ([]*entity.Area, error) {
+func (s *AreaImpl) FetchAll(ctx context.Context, name string) ([]*entity.Area, error) {
 	areas, err := s.r.FetchAll(ctx, name)
 	if err != nil {
 		s.l.Error("FetchList Error: ", slog.Any("error", err))

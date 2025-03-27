@@ -50,7 +50,8 @@ func Run(cfg *configs.Config) {
 		slogGorm.SetLogLevel(slogGorm.DefaultLogType, slog.Level(32)), // Define the default logging level
 	)
 	db, err := gorm.Open(postgres.Open(cfg.GetDBStr()), &gorm.Config{
-		Logger: gormLogger,
+		Logger:                                   gormLogger,
+		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
 		panic(err)

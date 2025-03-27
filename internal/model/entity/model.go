@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"slices"
+
 	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/pkg/misc"
 )
@@ -14,7 +16,7 @@ type DroneModel struct {
 	Domain int `json:"domain"`
 	// 主类型
 	Type int `json:"type"`
-	// 自类型
+	// 子类型
 	SubType int `json:"sub_type"`
 	// 对应的网关描述
 	GatewayDescription string `json:"gateway_description,omitempty"`
@@ -24,6 +26,11 @@ type DroneModel struct {
 	GatewayName string `json:"gateway_name"`
 	// 可搭载云台
 	Gimbals []po.GimbalModel `json:"gimbals,omitempty" gorm:"-"`
+}
+
+func (d *DroneModel) SuppportsRTK() bool {
+	supportTs := []int{0, 99}
+	return slices.Contains(supportTs, d.Type)
 }
 
 func NewDroneModelFromPO(drone po.DroneModel, gateway po.GatewayModel) *DroneModel {

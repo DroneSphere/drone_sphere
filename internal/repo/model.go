@@ -15,11 +15,31 @@ type ModelDefaultRepo struct {
 }
 
 func NewModelDefaultRepo(tx *gorm.DB, l *slog.Logger) *ModelDefaultRepo {
-	// _ = tx.AutoMigrate(&po.GatewayModel{}, &po.DroneModel{}, &po.GimbalModel{}, &po.PayloadModel{})
+	_ = tx.AutoMigrate(&po.GatewayModel{}, &po.DroneModel{}, &po.GimbalModel{}, &po.PayloadModel{}, &po.DroneVariation{})
+	po.GenerateDroneVariations(tx, 1)
+	po.GenerateDroneVariations(tx, 3)
+	po.GenerateDroneVariations(tx, 4)
+	po.GenerateDroneVariations(tx, 5)
+
 	return &ModelDefaultRepo{
 		tx: tx,
 		l:  l,
 	}
+}
+
+func (r *ModelDefaultRepo) SelectAllDroneVariation(ctx context.Context, query map[string]string) ([]po.DroneVariation, error) {
+	var variations []po.DroneVariation
+	if err := r.tx.
+		WithContext(ctx).
+		Preload("DroneModel").
+		Preload("Gimbals").
+		Preload("Payloads").
+		Where(query).
+		Find(&variations).Error; err != nil {
+		r.l.Error("select all drone variations", "error", err)
+		return nil, err
+	}
+	return variations, nil
 }
 
 func (r *ModelDefaultRepo) SelectAllDroneModel(ctx context.Context) ([]entity.DroneModel, error) {
@@ -39,6 +59,7 @@ func (r *ModelDefaultRepo) SelectAllDroneModel(ctx context.Context) ([]entity.Dr
 	}
 	return res, nil
 }
+
 func (r *ModelDefaultRepo) SelectAllGimbals(ctx context.Context) ([]po.GimbalModel, error) {
 	var gimbals []po.GimbalModel
 	if err := r.tx.WithContext(ctx).Find(&gimbals).Error; err != nil {
@@ -47,6 +68,7 @@ func (r *ModelDefaultRepo) SelectAllGimbals(ctx context.Context) ([]po.GimbalMod
 	}
 	return gimbals, nil
 }
+
 func (r *ModelDefaultRepo) SelectGimbalsByIDs(ctx context.Context, ids []uint) ([]po.GimbalModel, error) {
 	var gimbals []po.GimbalModel
 	if err := r.tx.WithContext(ctx).Where("id IN ?", ids).Find(&gimbals).Error; err != nil {

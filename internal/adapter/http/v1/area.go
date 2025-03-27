@@ -123,7 +123,7 @@ func (r *SearchAreaRouter) getAllAreas(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(Fail(InvalidParams))
 	}
 	// 调用服务层获取搜索区域列表
-	areas, err := r.svc.FetchList(ctx, params.Name)
+	areas, err := r.svc.FetchAll(ctx, params.Name)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Fail(InternalError))
 	}

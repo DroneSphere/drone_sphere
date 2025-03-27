@@ -7,10 +7,11 @@ import (
 
 	api "github.com/dronesphere/api/http/v1"
 	"github.com/dronesphere/internal/model/dto"
-	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
+	"github.com/dronesphere/internal/model/vo"
 	"github.com/dronesphere/internal/service"
 	"github.com/gofiber/fiber/v2"
+	"github.com/jinzhu/copier"
 )
 
 type JobRouter struct {
@@ -20,7 +21,7 @@ type JobRouter struct {
 	l        *slog.Logger
 }
 
-func newJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.AreaSvc, modelSvc service.ModelSvc, l *slog.Logger) {
+func NewJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.AreaSvc, modelSvc service.ModelSvc, l *slog.Logger) {
 	r := &JobRouter{
 		svc:      svc,
 		areaSvc:  areaSvc,
@@ -33,7 +34,7 @@ func newJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.Area
 		h.Get("/:id", r.getJob)
 		h.Get("/creation/options", r.getCreationOptions)
 		h.Get("/creation/drones", r.getCreationDrones)
-		h.Get("/edition/:id/options", r.getEditionOptions)
+		// h.Get("/edition/:id/options", r.getEditionOptions)
 		h.Post("/", r.create)
 		h.Put("/", r.update)
 	}
@@ -88,99 +89,86 @@ func (r *JobRouter) getJob(c *fiber.Ctx) error {
 	return c.JSON(Success(result))
 }
 
-type JobCreationArea struct {
-	ID     uint               `json:"id"`
-	Name   string             `json:"name"`
-	Points []JobCreationPoint `json:"points"`
-}
-
-type JobCreationPoint struct {
-	Lat float64 `json:"lat"`
-	Lng float64 `json:"lng"`
-}
-
-type JobCreationOptionDrone struct {
-	ID          uint         `json:"id"`
-	Name        string       `json:"name"`
-	Description string       `json:"description"`
-	Model       string       `json:"model"`
-	Variantions []Variantion `json:"variantions"`
-}
-
-// JobCreationDroneVariationResult
-type Variantion struct {
-	Gimbal           *po.GimbalModel  `json:"gimbal,omitempty"`
-	Index            int              `json:"index"`
-	Name             string           `json:"name"`
-	Payload          *po.PayloadModel `json:"payload,omitempty"`
-	RtkAvailable     bool             `json:"rtk_available"`
-	ThermalAvailable bool             `json:"thermal_available"`
-}
-
+// getCreationOptions  创建任务时依赖的选项数据
 func (r *JobRouter) getCreationOptions(c *fiber.Ctx) error {
 	ctx := context.Background()
-	areas, err := r.areaSvc.FetchList(ctx, "")
+	areas, err := r.areaSvc.FetchAll(ctx, "")
+	if err != nil {
+		return c.JSON(FailWithMsg(err.Error()))
+	}
+	droneVariations, err := r.modelSvc.Repo().SelectAllDroneVariation(ctx, nil)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
-	droneModels, err := r.modelSvc.Repo().SelectAllDroneModel(ctx)
-	if err != nil {
-		return c.JSON(Fail(InternalError))
+
+	type jobCreationArea struct {
+		ID          uint          `json:"id"`
+		Name        string        `json:"name"`
+		Description string        `json:"description"`
+		Points      []vo.GeoPoint `json:"points"`
 	}
-	type Result struct {
-		Areas  []JobCreationArea        `json:"areas"`
-		Drones []JobCreationOptionDrone `json:"drones"`
-	}
-	var as []JobCreationArea
+	var as []jobCreationArea
 	for _, area := range areas {
-		var a JobCreationArea
-		a.ID = area.ID
-		a.Name = area.Name
-		var points []JobCreationPoint
-		for _, p := range area.Points {
-			points = append(points, JobCreationPoint{
-				Lat: p.Lat,
-				Lng: p.Lng,
-			})
-		}
-		a.Points = points
-		as = append(as, a)
+		var e jobCreationArea
+		_ = copier.Copy(&e, area)
+		as = append(as, e)
 	}
-	var ds []JobCreationOptionDrone
-	for _, drone := range droneModels {
-		var d JobCreationOptionDrone
-		d.Name = drone.Name
-		d.Description = drone.Description
-		d.ID = drone.ID
-		d.Model = drone.Name
-		d.Variantions = make([]Variantion, 0)
-		for _, g := range drone.Gimbals {
-			var v Variantion
-			v.Gimbal = &g
-			v.Index = g.Gimbalindex
-			v.Name = g.Name
-			// v.RtkAvailable = drone.is()
-			// v.ThermalAvailable = drone.IsThermalAvailable()
-			d.Variantions = append(d.Variantions, v)
+
+	type variantion struct {
+		ID               uint             `json:"id"`
+		Gimbal           *po.GimbalModel  `json:"gimbal,omitempty"`
+		Name             string           `json:"name"`
+		Payload          *po.PayloadModel `json:"payload,omitempty"`
+		RTKAvailable     bool             `json:"rtk_available"`
+		ThermalAvailable bool             `json:"thermal_available"`
+	}
+	type jobCreationDrone struct {
+		ID          uint         `json:"id"`
+		Name        string       `json:"name"`
+		Description string       `json:"description"`
+		Variantions []variantion `json:"variantions"`
+	}
+
+	var ds []jobCreationDrone
+	var dmap = make(map[uint][]po.DroneVariation)
+	for _, dv := range droneVariations {
+		if _, ok := dmap[dv.DroneModel.ID]; !ok {
+			dmap[dv.DroneModel.ID] = []po.DroneVariation{}
 		}
-		// 如果无人机没有云台，则添加一个默认的云台
-		if len(drone.Gimbals) == 0 {
-			var v Variantion
+		dmap[dv.DroneModel.ID] = append(dmap[dv.DroneModel.ID], dv)
+	}
+	for _, variations := range dmap {
+		var e jobCreationDrone
+		_ = copier.Copy(&e, variations[0].DroneModel)
+		for _, variation := range variations {
+			var v variantion
+			_ = copier.Copy(&v, variation)
 			v.Gimbal = nil
-			v.Index = 0
-			v.Name = "默认云台"
-			d.Variantions = append(d.Variantions, v)
+			v.Payload = nil
+			if len(variation.Gimbals) > 0 {
+				v.Gimbal = &variation.Gimbals[0]
+			}
+			if len(variation.Payloads) > 0 {
+				v.Payload = &variation.Payloads[0]
+			}
+			v.RTKAvailable = variation.SupportsRTK()
+			v.ThermalAvailable = variation.SupportsThermal()
+			e.Variantions = append(e.Variantions, v)
 		}
-		ds = append(ds, d)
+		ds = append(ds, e)
 	}
-	// Mock data for creation options
-	result := Result{
+
+	result := struct {
+		Areas  []jobCreationArea  `json:"areas"`
+		Drones []jobCreationDrone `json:"drones"`
+	}{
 		Areas:  as,
 		Drones: ds,
 	}
 	return c.JSON(Success(result))
 }
 
+// getCreationDrones  创建任务时依赖的选项数据
 func (r *JobRouter) getCreationDrones(c *fiber.Ctx) error {
 	ctx := context.Background()
 	drones, err := r.svc.Repo().SelectPhysicalDrones(ctx)
@@ -190,77 +178,77 @@ func (r *JobRouter) getCreationDrones(c *fiber.Ctx) error {
 	return c.JSON(Success(drones))
 }
 
-// getEditionOptions  编辑任务时依赖的选项数据
-//
-//	@Router			/job/edition/{id}/options		[get]
-//	@Summary		编辑任务时依赖的选项数据
-//	@Description	编辑任务时依赖的选项数据，包括可选的无人机列表
-//	@Tags			job
-//	@Accept			json
-//	@Produce		json
-//	@Param			id	path		int												true	"任务ID"
-//	@Success		200	{object}	v1.Response{data=v1.JobEditionOptionsResult}	"成功"
-func (r *JobRouter) getEditionOptions(c *fiber.Ctx) error {
-	// 解析Path 中的 ID
-	id, err := strconv.Atoi(c.Params("id"))
-	ctx := context.Background()
-	var drones []entity.Drone
-	var j *entity.Job
-	drones, err = r.svc.FetchAvailableDrones(ctx)
-	if err != nil {
-		return c.JSON(Fail(InternalError))
-	}
+// // getEditionOptions  编辑任务时依赖的选项数据
+// //
+// //	@Router			/job/edition/{id}/options		[get]
+// //	@Summary		编辑任务时依赖的选项数据
+// //	@Description	编辑任务时依赖的选项数据，包括可选的无人机列表
+// //	@Tags			job
+// //	@Accept			json
+// //	@Produce		json
+// //	@Param			id	path		int												true	"任务ID"
+// //	@Success		200	{object}	v1.Response{data=v1.JobEditionOptionsResult}	"成功"
+// func (r *JobRouter) getEditionOptions(c *fiber.Ctx) error {
+// 	// 解析Path 中的 ID
+// 	id, err := strconv.Atoi(c.Params("id"))
+// 	ctx := context.Background()
+// 	var drones []entity.Drone
+// 	var j *entity.Job
+// 	drones, err = r.svc.FetchAvailableDrones(ctx)
+// 	if err != nil {
+// 		return c.JSON(Fail(InternalError))
+// 	}
 
-	j, err = r.svc.FetchByID(ctx, uint(id))
-	if err != nil {
-		return c.JSON(Fail(InternalError))
-	}
+// 	j, err = r.svc.FetchByID(ctx, uint(id))
+// 	if err != nil {
+// 		return c.JSON(Fail(InternalError))
+// 	}
 
-	var result api.JobEditionOptionsResult
-	for _, drone := range drones {
-		result.Drones = append(result.Drones, struct {
-			ID               uint   `json:"id"`
-			Callsign         string `json:"callsign"`
-			Description      string `json:"description"`
-			SN               string `json:"sn"`
-			Model            string `json:"model"`
-			RTKAvailable     bool   `json:"rtk_available"`
-			ThermalAvailable bool   `json:"thermal_available"`
-		}{
-			ID:               drone.ID,
-			Callsign:         drone.Callsign,
-			Description:      "",
-			SN:               drone.SN,
-			Model:            drone.GetModel(),
-			RTKAvailable:     drone.IsRTKAvailable(),
-			ThermalAvailable: drone.IsThermalAvailable(),
-		})
-	}
-	result.ID = j.ID
-	result.Name = j.Name
-	result.Description = j.Description
-	points := make([]struct {
-		Lat    float64 `json:"lat"`
-		Lng    float64 `json:"lng"`
-		Marker string  `json:"marker"`
-	}, 0)
-	for _, p := range j.Area.Points {
-		points = append(points, struct {
-			Lat    float64 `json:"lat"`
-			Lng    float64 `json:"lng"`
-			Marker string  `json:"marker"`
-		}{
-			Lat:    p.Lat,
-			Lng:    p.Lng,
-			Marker: "",
-		})
-	}
-	result.Area = api.JobAreaResult{
-		Name:   j.Area.Name,
-		Points: points,
-	}
-	return c.JSON(Success(result))
-}
+// 	var result api.JobEditionOptionsResult
+// 	for _, drone := range drones {
+// 		result.Drones = append(result.Drones, struct {
+// 			ID               uint   `json:"id"`
+// 			Callsign         string `json:"callsign"`
+// 			Description      string `json:"description"`
+// 			SN               string `json:"sn"`
+// 			Model            string `json:"model"`
+// 			RTKAvailable     bool   `json:"rtk_available"`
+// 			ThermalAvailable bool   `json:"thermal_available"`
+// 		}{
+// 			ID:               drone.ID,
+// 			Callsign:         drone.Callsign,
+// 			Description:      "",
+// 			SN:               drone.SN,
+// 			Model:            drone.GetModel(),
+// 			RTKAvailable:     drone.IsRTKAvailable(),
+// 			ThermalAvailable: drone.IsThermalAvailable(),
+// 		})
+// 	}
+// 	result.ID = j.ID
+// 	result.Name = j.Name
+// 	result.Description = j.Description
+// 	points := make([]struct {
+// 		Lat    float64 `json:"lat"`
+// 		Lng    float64 `json:"lng"`
+// 		Marker string  `json:"marker"`
+// 	}, 0)
+// 	for _, p := range j.Area.Points {
+// 		points = append(points, struct {
+// 			Lat    float64 `json:"lat"`
+// 			Lng    float64 `json:"lng"`
+// 			Marker string  `json:"marker"`
+// 		}{
+// 			Lat:    p.Lat,
+// 			Lng:    p.Lng,
+// 			Marker: "",
+// 		})
+// 	}
+// 	result.Area = api.JobAreaResult{
+// 		Name:   j.Area.Name,
+// 		Points: points,
+// 	}
+// 	return c.JSON(Success(result))
+// }
 
 func (r *JobRouter) create(c *fiber.Ctx) error {
 	type Request struct {
