@@ -20,10 +20,6 @@ type AreaDefaultRepo struct {
 }
 
 func NewAreaDefaultRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *AreaDefaultRepo {
-	//if err := db.AutoMigrate(&po.ORMSearchArea{}); err != nil {
-	//	l.Error("Auto Migration Error: ", slog.Any("error", err))
-	//	panic(err)
-	//}
 	return &AreaDefaultRepo{
 		tx:        db,
 		rds:       rds,

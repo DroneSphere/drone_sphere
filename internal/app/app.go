@@ -14,21 +14,43 @@ import (
 	"github.com/dronesphere/internal/adapter/http/dji"
 	v1 "github.com/dronesphere/internal/adapter/http/v1"
 	"github.com/dronesphere/internal/adapter/ws"
+	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gofiber/fiber/v2"
 	"github.com/lmittmann/tint"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"gorm.io/driver/postgres"
 
 	"github.com/asaskevich/EventBus"
 	"github.com/dronesphere/configs"
 	"github.com/dronesphere/internal/repo"
 	slogGorm "github.com/orandin/slog-gorm"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
+
+func Migrate(db *gorm.DB) {
+	_ = db.AutoMigrate(
+		&po.GatewayModel{}, &po.DroneModel{}, &po.GimbalModel{}, &po.PayloadModel{}, &po.DroneVariation{},
+	)
+	_ = db.AutoMigrate(
+		&po.Area{},
+	)
+	_ = db.AutoMigrate(
+		&po.Drone{},
+	)
+	_ = db.AutoMigrate(
+		&po.Job{},
+	)
+	_ = db.AutoMigrate(
+		&po.User{},
+	)
+	_ = db.AutoMigrate(
+		&po.Wayline{},
+	)
+}
 
 func Run(cfg *configs.Config) {
 	// Log
@@ -49,13 +71,15 @@ func Run(cfg *configs.Config) {
 		slogGorm.WithTraceAll(),                                       // trace all messages
 		slogGorm.SetLogLevel(slogGorm.DefaultLogType, slog.Level(32)), // Define the default logging level
 	)
-	db, err := gorm.Open(postgres.Open(cfg.GetDBStr()), &gorm.Config{
+	db, err := gorm.Open(mysql.Open(cfg.GetDBStr()), &gorm.Config{
 		Logger:                                   gormLogger,
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
 		panic(err)
 	}
+	Migrate(db)
+	logger.Info("RDB connected")
 
 	// MQTT
 	opts := mqtt.NewClientOptions()

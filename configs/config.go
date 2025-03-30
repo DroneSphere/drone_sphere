@@ -17,12 +17,12 @@ type Config struct {
 
 func (c *Config) GetDBStr() string {
 	return fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Shanghai",
-		c.DB.Host,
+		"%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local",
 		c.DB.Username,
 		c.DB.Password,
-		c.DB.DBName,
+		c.DB.Host,
 		c.DB.Port,
+		c.DB.DBName,
 	)
 }
 

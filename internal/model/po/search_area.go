@@ -15,7 +15,3 @@ type Area struct {
 	CenterLng   float64                          `json:"center_lng"`
 	Points      datatypes.JSONSlice[vo.GeoPoint] `json:"points"`
 }
-
-func (Area) TableName() string {
-	return "search_areas"
-}
