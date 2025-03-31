@@ -19,6 +19,9 @@ type GatewayModel struct {
 	Type int `json:"type"`
 	// 子型号，DJI 文档指定
 	SubType int `json:"sub_type"`
+
+	// 添加唯一索引，使用domain、type和subType组合
+	_ struct{} `gorm:"uniqueIndex:idx_gateway_domain_type_subtype;fields:domain,type,sub_type"`
 }
 
 type DroneModel struct {
@@ -38,6 +41,9 @@ type DroneModel struct {
 	Gimbals        []GimbalModel  `json:"gimbals,omitempty" gorm:"many2many:drone_gimbal;"`
 	Payloads       []PayloadModel `json:"payloads,omitempty" gorm:"many2many:drone_payload;"`
 	IsRTKAvailable bool           `json:"is_rtk_available" gorm:"default:false"`
+
+	// 添加唯一索引，使用domain、type和subType组合
+	_ struct{} `gorm:"uniqueIndex:idx_drone_domain_type_subtype;fields:domain,type,sub_type"`
 }
 
 type GimbalModel struct {
@@ -59,15 +65,36 @@ type GimbalModel struct {
 	// 对应的无人机
 	Drones             []DroneModel `json:"drones,omitempty" gorm:"many2many:drone_gimbal;"`
 	IsThermalAvailable bool         `json:"is_thermal_available" gorm:"default:false"`
+
+	// 添加唯一索引，使用domain、type和subType组合
+	_ struct{} `gorm:"uniqueIndex:idx_gimbal_domain_type_subtype;fields:domain,type,sub_type"`
 }
 
 type PayloadModel struct {
 	misc.BaseModel
-	Name           string       `json:"name"`
-	Description    string       `json:"description,omitempty"`
-	Category       string       `json:"category"`
-	Drones         []DroneModel `json:"drones,omitempty" gorm:"many2many:drone_payload;"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Category    string `json:"category"`
+	// 添加主类型字段
+	Type int `json:"type" gorm:"not null"`
+	// 添加子类型字段
+	SubType int `json:"sub_type" gorm:"not null"`
+	// 与无人机型号的多对多关系
+	Drones []DroneModel `json:"drones,omitempty" gorm:"many2many:drone_payload;"`
+	// 与无人机型号的支持关系，表示该负载可被哪些无人机型号支持
+	SupportedBy    []DroneModel `json:"supported_by,omitempty" gorm:"many2many:payload_drone_support;"`
 	IsRTKAvailable bool         `json:"is_rtk_available" gorm:"default:false"`
+}
+
+// 定义一个关联表，用于记录负载型号被哪些无人机型号支持
+type PayloadDroneSupport struct {
+	PayloadModelID uint `gorm:"primaryKey"`
+	DroneModelID   uint `gorm:"primaryKey"`
+}
+
+// TableName 指定关联表的表名
+func (PayloadDroneSupport) TableName() string {
+	return "payload_drone_support"
 }
 
 type DroneVariation struct {
@@ -89,17 +116,21 @@ type DroneVariation struct {
 }
 
 func (dv *DroneVariation) SupportsRTK() bool {
-	if len(dv.Gimbals) == 0 {
-		return false
+	for _, payload := range dv.Payloads {
+		if payload.IsRTKAvailable {
+			return true
+		}
 	}
-	return dv.DroneModel.IsRTKAvailable || dv.Gimbals[0].IsThermalAvailable
+	return dv.DroneModel.IsRTKAvailable
 }
 
 func (dv *DroneVariation) SupportsThermal() bool {
-	if len(dv.Gimbals) == 0 {
-		return false
+	for _, gimbal := range dv.Gimbals {
+		if gimbal.IsThermalAvailable {
+			return true
+		}
 	}
-	return dv.Gimbals[0].IsThermalAvailable
+	return false
 }
 
 // 生成一个无人机型号的所有可能配置组合
@@ -107,18 +138,31 @@ func GenerateDroneVariations(db *gorm.DB, droneModelID uint) ([]DroneVariation, 
 	var variations []DroneVariation
 	drone := DroneModel{}
 
+	// 加载无人机型号及其支持的云台和负载
 	if err := db.Preload("Gimbals").Preload("Payloads").First(&drone, droneModelID).Error; err != nil {
 		return variations, err
 	}
 
-	// // 如果没有云台或负载，创建一个基础变体
-	// if len(drone.Gimbals) == 0 && len(drone.Payloads) == 0 {
-	// 	variations = append(variations, DroneVariation{
-	// 		DroneModelID: drone.ID,
-	// 		Name:         drone.Name + " 基础配置",
-	// 	})
-	// 	return variations, nil
-	// }
+	// 同时加载该无人机支持的所有负载型号
+	var supportedPayloads []PayloadModel
+	if err := db.Model(&PayloadModel{}).
+		Joins("JOIN payload_drone_support ON payload_models.id = payload_drone_support.payload_model_id").
+		Where("payload_drone_support.drone_model_id = ?", droneModelID).
+		Find(&supportedPayloads).Error; err != nil {
+		return variations, err
+	}
+
+	// 合并普通关联的负载和特别支持的负载，去重
+	payloadMap := make(map[uint]PayloadModel)
+	for _, p := range drone.Payloads {
+		payloadMap[p.ID] = p
+	}
+	for _, p := range supportedPayloads {
+		if _, exists := payloadMap[p.ID]; !exists {
+			payloadMap[p.ID] = p
+			drone.Payloads = append(drone.Payloads, p)
+		}
+	}
 
 	// 对云台生成单选组合（包括无云台选项）
 	gimbalCombos := [][]GimbalModel{{}} // 包含"无云台"选项
@@ -139,16 +183,36 @@ func GenerateDroneVariations(db *gorm.DB, droneModelID uint) ([]DroneVariation, 
 
 	// 为每个组合创建变体
 	for _, gimbalCombo := range gimbalCombos {
+		if len(payloadCombos) == 0 {
+			// 如果没有负载，则只生成一个变体
+			variation := DroneVariation{
+				DroneModelID: drone.ID,
+				Gimbals:      gimbalCombo,
+				Payloads:     []PayloadModel{},
+				Name:         fmt.Sprintf("%s - %s", drone.Name, gimbalCombo[0].Name),
+			}
+			variations = append(variations, variation)
+			continue
+		}
 		for _, payloadCombo := range payloadCombos {
 			// 跳过完全没有配置的情况
 			if len(gimbalCombo) == 0 && len(payloadCombo) == 0 {
 				continue
 			}
 
-			name := fmt.Sprintf("%s - %s", drone.Name, gimbalCombo[0].Name)
-			if len(payloadCombo) > 0 {
-				name = fmt.Sprintf("%s (携带%s)", name, payloadCombo[0].Name)
+			// 生成变体名称
+			var name string
+			if len(gimbalCombo) > 0 {
+				name = fmt.Sprintf("%s - %s", drone.Name, gimbalCombo[0].Name)
+				if len(payloadCombo) > 0 {
+					name = fmt.Sprintf("%s (携带%s)", name, payloadCombo[0].Name)
+				}
+			} else if len(payloadCombo) > 0 {
+				name = fmt.Sprintf("%s (携带%s)", drone.Name, payloadCombo[0].Name)
+			} else {
+				name = fmt.Sprintf("%s - 基础版", drone.Name)
 			}
+
 			variation := DroneVariation{
 				DroneModelID: drone.ID,
 				Gimbals:      gimbalCombo,

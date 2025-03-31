@@ -88,3 +88,50 @@ func (r *ModelDefaultRepo) SelectAllPayloadModel(ctx context.Context) ([]po.Payl
 	}
 	return payloads, nil
 }
+
+// 创建无人机型号
+func (r *ModelDefaultRepo) CreateDroneModel(ctx context.Context, model *po.DroneModel) error {
+	if err := r.tx.WithContext(ctx).Create(model).Error; err != nil {
+		r.l.Error("创建无人机型号失败", "error", err)
+		return err
+	}
+	return nil
+}
+
+// 创建云台型号
+func (r *ModelDefaultRepo) CreateGimbalModel(ctx context.Context, model *po.GimbalModel) error {
+	if err := r.tx.WithContext(ctx).Create(model).Error; err != nil {
+		r.l.Error("创建云台型号失败", "error", err)
+		return err
+	}
+	return nil
+}
+
+// 创建网关型号
+func (r *ModelDefaultRepo) CreateGatewayModel(ctx context.Context, model *po.GatewayModel) error {
+	if err := r.tx.WithContext(ctx).Create(model).Error; err != nil {
+		r.l.Error("创建网关型号失败", "error", err)
+		return err
+	}
+	return nil
+}
+
+// 创建负载型号
+func (r *ModelDefaultRepo) CreatePayloadModel(ctx context.Context, model *po.PayloadModel) error {
+	if err := r.tx.WithContext(ctx).Create(model).Error; err != nil {
+		r.l.Error("创建负载型号失败", "error", err)
+		return err
+	}
+	return nil
+}
+
+// 生成无人机变体
+func (r *ModelDefaultRepo) GenerateDroneVariations(ctx context.Context, droneModelID uint) ([]po.DroneVariation, error) {
+	// 使用po包中已定义的生成变体方法
+	variations, err := po.GenerateDroneVariations(r.tx.WithContext(ctx), droneModelID)
+	if err != nil {
+		r.l.Error("生成无人机变体失败", "drone_model_id", droneModelID, "error", err)
+		return nil, err
+	}
+	return variations, nil
+}
