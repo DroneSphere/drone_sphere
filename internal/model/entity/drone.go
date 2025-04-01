@@ -39,7 +39,11 @@ func NewDrone(po *po.Drone, rt *ro.Drone) *Drone {
 
 	// 实体中添加型号信息
 	d.DroneModelID = po.DroneModelID
-	d.VariationID = po.VariationID
+	d.Type = po.DroneModel.Type
+	d.SubType = po.DroneModel.SubType
+
+	d.CreatedAt = po.CreatedTime
+	d.UpdatedAt = po.UpdatedTime
 
 	// 填充实时状态信息
 	if rt != nil {

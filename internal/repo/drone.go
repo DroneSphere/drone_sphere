@@ -34,7 +34,10 @@ func NewDroneGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *DroneDefa
 func (r *DroneDefaultRepo) SelectAll(ctx context.Context) ([]entity.Drone, error) {
 	var ds []entity.Drone
 	var ps []po.Drone
-	if err := r.tx.Find(&ps).Error; err != nil {
+	if err := r.tx.WithContext(ctx).
+		Preload("DroneModel").
+		Where("drone_state = ?", 0).
+		Find(&ps).Error; err != nil {
 		r.l.Error(err.Error())
 		panic(err)
 	}
@@ -79,7 +82,9 @@ func (r *DroneDefaultRepo) Save(ctx context.Context, d entity.Drone) error {
 func (r *DroneDefaultRepo) SelectBySN(ctx context.Context, sn string) (entity.Drone, error) {
 	var pp po.Drone
 	var rr ro.Drone
-	if err := r.tx.Where("sn = ?", sn).First(&pp).Error; err != nil {
+	if err := r.tx.WithContext(ctx).
+		Preload("DroneModel").
+		Where("sn = ?", sn).First(&pp).Error; err != nil {
 		r.l.Error("持久化数据获取失败", slog.Any("sn", sn), slog.Any("err", err))
 		return entity.Drone{}, err
 	}

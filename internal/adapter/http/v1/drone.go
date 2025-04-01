@@ -37,46 +37,57 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 	}
 }
 
-// list 列出所有无人机
-//
-//	@Router			/drone/list [get]
-//	@Summary		列出所有无人机
-//	@Description	列出所有绑定的无人机，包含不在线的无人机
-//	@Tags			drone
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	v1.Response{data=[]v1.DroneItemResult}	"成功"
+type droneItemResult struct {
+	ID                 uint   `json:"id"`                   // ID
+	Callsign           string `json:"callsign"`             // 呼号
+	SN                 string `json:"sn"`                   // 序列号
+	Description        string `json:"description"`          // 描述
+	Status             string `json:"status"`               // 在线状态
+	ProductModel       string `json:"product_model"`        // 产品型号
+	IsRTKAvailable     bool   `json:"is_rtk_available"`     // 是否支持RTK
+	IsThermalAvailable bool   `json:"is_thermal_available"` // 是否支持热成像
+	CreatedAt          string `json:"created_at"`           // 创建时间
+	LastOnlineAt       string `json:"last_online_at"`       // 最后在线时间
+}
+
 func (r *DroneRouter) list(c *fiber.Ctx) error {
 	ctx := context.Background()
 	drones, err := r.svc.Repo().SelectAll(ctx)
 	if err != nil {
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
-	var res []api.DroneItemResult
+	var res []droneItemResult
 	for _, d := range drones {
-		var e api.DroneItemResult
+		var e droneItemResult
 		if err := copier.Copy(&e, &d); err != nil {
 			return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 		}
 		// 检查是否在线
 		e.Status = d.StatusText()
-		e.CreatedAt = d.CreatedAt.Format("2006年01月02日 15:04:05")
-		e.LastOnlineAt = d.UpdatedAt.Format("2006年01月02日 15:04:05")
+		e.ProductModel = d.GetModelName()
+		e.CreatedAt = d.CreatedAt.Format("2006-01-02 15:04:05")
+		e.LastOnlineAt = d.UpdatedAt.Format("2006-01-02 15:04:05")
 		res = append(res, e)
 	}
 
 	return c.JSON(Success(res))
 }
 
-// getBySN  根据序列号获取无人机信息
-//
-//	@Router			/drone/sn/:sn [get]
-//	@Summary		根据序列号获取无人机信息
-//	@Description	根据序列号获取无人机信息
-//	@Tags			drone
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	v1.Response{data=v1.DroneDetailResult}	"成功"
+type droneDetailResult struct {
+	ID                 uint   `json:"id"`
+	SN                 string `json:"sn" binding:"required"`                // 序列号
+	Callsign           string `json:"callsign"`                             // 呼号
+	Description        string `json:"description"`                          // 描述
+	Domain             int    `json:"domain" binding:"required"`            // 领域
+	Type               int    `json:"type" binding:"required"`              // 类型
+	SubType            int    `json:"sub_type" binding:"required"`          // 子类型
+	ProductModel       string `json:"product_model" binding:"required"`     // 产品型号
+	ProductModelKey    string `json:"product_model_key" binding:"required"` // 产品型号标识符
+	Status             string `json:"status"`                               // 在线状态
+	IsRTKAvailable     bool   `json:"is_rtk_available"`                     // 是否支持RTK◊
+	IsThermalAvailable bool   `json:"is_thermal_available"`                 // 是否支持热成像
+}
+
 func (r *DroneRouter) getBySN(c *fiber.Ctx) error {
 	sn := c.Params("sn")
 	ctx := context.Background()
@@ -84,12 +95,15 @@ func (r *DroneRouter) getBySN(c *fiber.Ctx) error {
 	if err != nil && err.Error() != repo.ErrNoRTData {
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
-	var res api.DroneDetailResult
+	var res droneDetailResult
 	if err := copier.Copy(&res, &drone); err != nil {
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
 	res.IsThermalAvailable = drone.IsThermalAvailable()
 	res.IsRTKAvailable = drone.IsRTKAvailable()
+	res.Status = drone.StatusText()
+	res.ProductModel = drone.GetModelName()
+	res.ProductModelKey = fmt.Sprintf("%d-%d-%d", 0, drone.Type, drone.SubType)
 	return c.JSON(Success(res))
 }
 
