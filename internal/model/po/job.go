@@ -11,8 +11,7 @@ type Job struct {
 	ID          uint                                        `json:"job_id" gorm:"primaryKey;column:job_id"`
 	CreatedTime time.Time                                   `json:"created_time" gorm:"autoCreateTime;column:created_time"`
 	UpdatedTime time.Time                                   `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
-	DeletedTime time.Time                                   `json:"deleted_time" gorm:"autoDeleteTime;column:deleted_time"`
-	State       int                                         `json:"job_state" gorm:"default:0;column:job_state"` // -1: deleted, 0: active
+	State       int                                         `json:"state" gorm:"default:0;column:state"` // -1: deleted, 0: active
 	Name        string                                      `json:"job_name" gorm:"column:job_name"`
 	Description string                                      `json:"job_description" gorm:"column:job_description"`
 	AreaID      uint                                        `json:"area_id" gorm:"column:area_id"`

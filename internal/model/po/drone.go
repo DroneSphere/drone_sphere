@@ -10,8 +10,7 @@ type Drone struct {
 	ID          uint      `json:"drone_id" gorm:"primaryKey;column:drone_id"`
 	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime;column:created_time"`
 	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
-	DeletedTime time.Time `json:"deleted_time" gorm:"autoDeleteTime;column:deleted_time"`
-	State       int       `json:"drone_state" gorm:"default:0;column:drone_state"`   // -1: deleted, 0: active
+	State       int       `json:"state" gorm:"default:0;column:drone_state"`         // -1: deleted, 0: active
 	SN          string    `json:"sn" gorm:"column:sn"`                               // 序列号
 	Callsign    string    `json:"callsign" gorm:"column:callsign"`                   // 呼号
 	Description string    `json:"drone_description" gorm:"column:drone_description"` // 描述

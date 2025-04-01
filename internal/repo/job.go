@@ -186,8 +186,8 @@ func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, name string, dro
 	j.l.Info("Saved KMZ file to S3", slog.Any("info", info))
 
 	po := &po.Wayline{
-		Name:             name,
-		Username:         "admin",
+		Name: name,
+		// Username:         "admin",
 		DroneModelKey:    "0-" + strconv.Itoa(int(droneInfo.DroneEnumValue)) + "-" + strconv.Itoa(int(droneInfo.DroneSubEnumValue)),
 		PayloadModelKeys: []string{"0-" + strconv.Itoa(int(payload.PayloadEnumValue)) + "-" + strconv.Itoa(int(payload.PayloadSubEnumValue))},
 		Favorited:        false,
