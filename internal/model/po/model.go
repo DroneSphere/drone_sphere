@@ -24,6 +24,11 @@ type GatewayModel struct {
 	_ struct{} `gorm:"uniqueIndex:idx_gateway_domain_type_subtype;fields:domain,type,sub_type"`
 }
 
+// TableName 指定 GatewayModel 表名为 tb_gateway_models
+func (gm GatewayModel) TableName() string {
+	return "tb_gateway_models"
+}
+
 type DroneModel struct {
 	misc.BaseModel
 	// 型号名称
@@ -44,6 +49,11 @@ type DroneModel struct {
 
 	// 添加唯一索引，使用domain、type和subType组合
 	_ struct{} `gorm:"uniqueIndex:idx_drone_domain_type_subtype;fields:domain,type,sub_type"`
+}
+
+// TableName 指定 DroneModel 表名为 tb_drone_models
+func (dm DroneModel) TableName() string {
+	return "tb_drone_models"
 }
 
 type GimbalModel struct {
@@ -68,6 +78,11 @@ type GimbalModel struct {
 
 	// 添加唯一索引，使用domain、type和subType组合
 	_ struct{} `gorm:"uniqueIndex:idx_gimbal_domain_type_subtype;fields:domain,type,sub_type"`
+}
+
+// TableName 指定 GimbalModel 表名为 tb_gimbal_models
+func (gm GimbalModel) TableName() string {
+	return "tb_gimbal_models"
 }
 
 type PayloadModel struct {
@@ -113,6 +128,11 @@ type DroneVariation struct {
 	Payloads []PayloadModel `json:"payloads" gorm:"many2many:variation_payload;"`
 	// 是否为有效配置（部分组合可能在物理上不兼容）
 	IsValid bool `json:"is_valid" gorm:"default:true"`
+}
+
+// TableName 指定 DroneVariation 表名为 tb_drone_variations
+func (dv DroneVariation) TableName() string {
+	return "tb_drone_variations"
 }
 
 func (dv *DroneVariation) SupportsRTK() bool {

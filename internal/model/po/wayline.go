@@ -22,3 +22,8 @@ type StartWaylinePoint struct {
 	StartLatitude  float64 `json:"start_latitude" gorm:"column:start_latitude"`
 	StartLontitude float64 `json:"start_lontitude" gorm:"column:start_lontitude"`
 }
+
+// TableName 指定 Wayline 表名为 tb_waylines
+func (w Wayline) TableName() string {
+	return "tb_waylines"
+}

@@ -20,5 +20,5 @@ type Job struct {
 }
 
 func (j Job) TableName() string {
-	return "jobs"
+	return "tb_jobs" // 添加 tb_ 前缀到表名
 }

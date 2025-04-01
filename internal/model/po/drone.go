@@ -53,3 +53,8 @@ func (d *Drone) GetConfigSummary() string {
 	}
 	return d.GetModelSummary()
 }
+
+// TableName 指定 Drone 表名为 tb_drones
+func (d Drone) TableName() string {
+	return "tb_drones"
+}

@@ -14,7 +14,6 @@ import (
 	"github.com/dronesphere/internal/adapter/http/dji"
 	v1 "github.com/dronesphere/internal/adapter/http/v1"
 	"github.com/dronesphere/internal/adapter/ws"
-	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gofiber/fiber/v2"
@@ -32,24 +31,27 @@ import (
 )
 
 func Migrate(db *gorm.DB) {
-	_ = db.AutoMigrate(
-		&po.GatewayModel{}, &po.DroneModel{}, &po.GimbalModel{}, &po.PayloadModel{}, &po.DroneVariation{},
-	)
-	_ = db.AutoMigrate(
-		&po.Area{},
-	)
-	_ = db.AutoMigrate(
-		&po.Drone{},
-	)
-	_ = db.AutoMigrate(
-		&po.Job{},
-	)
-	_ = db.AutoMigrate(
-		&po.User{},
-	)
-	_ = db.AutoMigrate(
-		&po.Wayline{},
-	)
+	// _ = db.AutoMigrate(
+	// 	&po.GatewayModel{}, &po.DroneModel{}, &po.GimbalModel{}, &po.PayloadModel{}, &po.DroneVariation{},
+	// )
+	// _ = db.AutoMigrate(
+	// 	&po.Area{},
+	// )
+	// _ = db.AutoMigrate(
+	// 	&po.Drone{},
+	// )
+	// _ = db.AutoMigrate(
+	// 	&po.Job{},
+	// )
+	// _ = db.AutoMigrate(
+	// 	&po.User{},
+	// )
+	// _ = db.AutoMigrate(
+	// 	&po.Wayline{},
+	// )
+	// _ = db.AutoMigrate(
+	// 	&po.Result{},
+	// )
 }
 
 func Run(cfg *configs.Config) {
@@ -71,6 +73,7 @@ func Run(cfg *configs.Config) {
 		slogGorm.WithTraceAll(),                                       // trace all messages
 		slogGorm.SetLogLevel(slogGorm.DefaultLogType, slog.Level(32)), // Define the default logging level
 	)
+	logger.Info("Initializing database connection", slog.Any("dsn", cfg.GetDBStr()))
 	db, err := gorm.Open(mysql.Open(cfg.GetDBStr()), &gorm.Config{
 		Logger:                                   gormLogger,
 		DisableForeignKeyConstraintWhenMigrating: true,

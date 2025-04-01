@@ -14,3 +14,8 @@ type DetectAlgo struct {
 	Path        string                              `json:"algo_path"`
 	Classes     datatypes.JSONSlice[vo.DetectClass] `json:"classes"`
 }
+
+// TableName 指定 DetectAlgo 表名为 tb_detect_algos
+func (da DetectAlgo) TableName() string {
+	return "tb_detect_algos"
+}
