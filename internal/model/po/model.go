@@ -2,26 +2,27 @@ package po
 
 import (
 	"fmt"
+	"time"
 
-	"github.com/dronesphere/internal/pkg/misc"
 	"gorm.io/gorm"
 )
 
 type GatewayModel struct {
-	misc.BaseModel
+	ID          uint      `json:"gateway_model_id" gorm:"primaryKey;column:gateway_model_id"`
+	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime;column:created_time"`
+	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
+	DeletedTime time.Time `json:"deleted_time" gorm:"autoDeleteTime;column:deleted_time"`
+	State       int       `json:"gateway_model_state" gorm:"default:0;column:gateway_model_state"` // -1: deleted, 0: active
 	// 型号名称，DJI 文档中收录的标准名称
-	Name string `json:"name"`
+	Name string `json:"gateway_model_name" gorm:"column:gateway_model_name"`
 	// 描述，自定义的型号描述
-	Description string `json:"description,omitempty"`
+	Description string `json:"gateway_model_description,omitempty" gorm:"column:gateway_model_description"`
 	// 领域，DJI 文档指定
-	Domain int `json:"domain"`
+	Domain int `json:"gateway_model_domain" gorm:"column:gateway_model_domain"`
 	// 主型号，DJI 文档指定
-	Type int `json:"type"`
+	Type int `json:"gateway_model_type" gorm:"column:gateway_model_type"`
 	// 子型号，DJI 文档指定
-	SubType int `json:"sub_type"`
-
-	// 添加唯一索引，使用domain、type和subType组合
-	_ struct{} `gorm:"uniqueIndex:idx_gateway_domain_type_subtype;fields:domain,type,sub_type"`
+	SubType int `json:"gateway_model_sub_type" gorm:"column:gateway_model_sub_type"`
 }
 
 // TableName 指定 GatewayModel 表名为 tb_gateway_models
@@ -30,25 +31,26 @@ func (gm GatewayModel) TableName() string {
 }
 
 type DroneModel struct {
-	misc.BaseModel
+	ID          uint      `json:"drone_model_id" gorm:"primaryKey;column:drone_model_id"`
+	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime;column:created_time"`
+	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
+	DeletedTime time.Time `json:"deleted_time" gorm:"autoDeleteTime;column:deleted_time"`
+	State       int       `json:"drone_model_state" gorm:"default:0;column:drone_model_state"` // -1: deleted, 0: active
 	// 型号名称
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
+	Name        string `json:"drone_model_name" gorm:"column:drone_model_name"`
+	Description string `json:"drone_model_description,omitempty" gorm:"column:drone_model_description"`
 	// 领域
-	Domain int `json:"domain"`
+	Domain int `json:"drone_model_domain" gorm:"column:drone_model_domain"`
 	// 主类型
-	Type int `json:"type"`
+	Type int `json:"drone_model_type" gorm:"column:drone_model_type"`
 	// 自类型
-	SubType int `json:"sub_type"`
+	SubType int `json:"drone_model_sub_type" gorm:"column:drone_model_sub_type"`
 	// 对应的网关ID
-	GatewayID uint `json:"gateway_id"`
+	GatewayID uint `json:"gateway_model_id" gorm:"column:gateway_model_id"`
 	// 可搭载云台
-	Gimbals        []GimbalModel  `json:"gimbals,omitempty" gorm:"many2many:drone_gimbal;"`
-	Payloads       []PayloadModel `json:"payloads,omitempty" gorm:"many2many:drone_payload;"`
-	IsRTKAvailable bool           `json:"is_rtk_available" gorm:"default:false"`
-
-	// 添加唯一索引，使用domain、type和subType组合
-	_ struct{} `gorm:"uniqueIndex:idx_drone_domain_type_subtype;fields:domain,type,sub_type"`
+	Gimbals        []GimbalModel  `json:"gimbals,omitempty" gorm:"many2many:tb_drone_gimbal;"`
+	Payloads       []PayloadModel `json:"payloads,omitempty" gorm:"many2many:tb_drone_payload;"`
+	IsRTKAvailable bool           `json:"is_rtk_available" gorm:"default:false;column:is_rtk_available"`
 }
 
 // TableName 指定 DroneModel 表名为 tb_drone_models
@@ -57,27 +59,28 @@ func (dm DroneModel) TableName() string {
 }
 
 type GimbalModel struct {
-	misc.BaseModel
+	ID          uint      `json:"gimbal_model_id" gorm:"primaryKey;column:gimbal_model_id"`
+	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime;column:created_time"`
+	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
+	DeletedTime time.Time `json:"deleted_time" gorm:"autoDeleteTime;column:deleted_time"`
+	State       int       `json:"gimbal_model_state" gorm:"default:0;column:gimbal_model_state"` // -1: deleted, 0: active
 	// 云台名称
-	Name string `json:"name"`
+	Name string `json:"gimbal_model_name" gorm:"column:gimbal_model_name"`
 	// 描述
-	Description string `json:"description"`
+	Description string `json:"gimbal_model_description" gorm:"column:gimbal_model_description"`
 	// 产品线名称，FPV相机、云台相机和机场相机
-	Product string `json:"product"`
+	Product string `json:"gimbal_model_product" gorm:"column:gimbal_model_product"`
 	// 领域
-	Domain int `json:"domain"`
+	Domain int `json:"gimbal_model_domain" gorm:"column:gimbal_model_domain"`
 	// 型号
-	Type int `json:"type"`
+	Type int `json:"gimbal_model_type" gorm:"column:gimbal_model_type"`
 	// 子型号
-	SubType int `json:"sub_type"`
+	SubType int `json:"gimbal_model_sub_type" gorm:"column:gimbal_model_sub_type"`
 	// 相机位置索引
-	Gimbalindex int `json:"gimbalindex"`
+	Gimbalindex int `json:"gimbalindex" gorm:"column:gimbalindex"`
 	// 对应的无人机
-	Drones             []DroneModel `json:"drones,omitempty" gorm:"many2many:drone_gimbal;"`
+	Drones             []DroneModel `json:"drones,omitempty" gorm:"many2many:tb_drone_gimbal;"`
 	IsThermalAvailable bool         `json:"is_thermal_available" gorm:"default:false"`
-
-	// 添加唯一索引，使用domain、type和subType组合
-	_ struct{} `gorm:"uniqueIndex:idx_gimbal_domain_type_subtype;fields:domain,type,sub_type"`
 }
 
 // TableName 指定 GimbalModel 表名为 tb_gimbal_models
@@ -86,46 +89,40 @@ func (gm GimbalModel) TableName() string {
 }
 
 type PayloadModel struct {
-	misc.BaseModel
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
+	ID          uint   `json:"payload_model_id" gorm:"primaryKey;column:payload_model_id"`
+	CreatedTune int64  `json:"created_time" gorm:"autoCreateTime;column:created_time"`
+	UpdatedTune int64  `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
+	DeletedTune int64  `json:"deleted_time" gorm:"autoDeleteTime;column:deleted_time"`
+	State       int    `json:"payload_model_state" gorm:"default:0"`
+	Name        string `json:"payload_model_name"`
+	Description string `json:"payload_model_description,omitempty"`
 	Category    string `json:"category"`
 	// 添加主类型字段
-	Type int `json:"type" gorm:"not null"`
+	Type int `json:"payload_model_type" gorm:""`
 	// 添加子类型字段
-	SubType int `json:"sub_type" gorm:"not null"`
+	SubType int `json:"payload_model_sub_type" gorm:""`
 	// 与无人机型号的多对多关系
-	Drones []DroneModel `json:"drones,omitempty" gorm:"many2many:drone_payload;"`
-	// 与无人机型号的支持关系，表示该负载可被哪些无人机型号支持
-	SupportedBy    []DroneModel `json:"supported_by,omitempty" gorm:"many2many:payload_drone_support;"`
+	Drones         []DroneModel `json:"drones,omitempty" gorm:"many2many:tb_drone_payload"`
 	IsRTKAvailable bool         `json:"is_rtk_available" gorm:"default:false"`
 }
 
-// 定义一个关联表，用于记录负载型号被哪些无人机型号支持
-type PayloadDroneSupport struct {
-	PayloadModelID uint `gorm:"primaryKey"`
-	DroneModelID   uint `gorm:"primaryKey"`
-}
-
-// TableName 指定关联表的表名
-func (PayloadDroneSupport) TableName() string {
-	return "payload_drone_support"
-}
-
 type DroneVariation struct {
-	misc.BaseModel
-	// 变体名称，可自动生成或自定义
-	Name string `json:"name"`
+	ID          uint      `json:"drone_variation_id" gorm:"primaryKey;column:drone_variation_id"`
+	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime;column:created_time"`
+	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
+	DeletedTime time.Time `json:"deleted_time" gorm:"autoDeleteTime;column:deleted_time"`
+	State       int       `json:"drone_variation_state" gorm:"default:0;column:drone_variation_state"` // -1: deleted, 0: active	// 变体名称，可自动生成或自定义
+	Name        string    `json:"drone_variation_name" gorm:"column:drone_variation_name"`
 	// 变体描述
-	Description string `json:"description,omitempty"`
+	Description string `json:"drone_variation_description,omitempty" gorm:"column:drone_variation_description"`
 	// 关联的无人机型号ID
-	DroneModelID uint `json:"drone_model_id" gorm:"index"`
+	DroneModelID uint `json:"drone_model_id" gorm:"index;column:drone_model_id"` // 无人机型号ID
 	// 关联的无人机型号
-	DroneModel DroneModel `json:"drone_model" gorm:"foreignKey:DroneModelID"`
+	DroneModel DroneModel `json:"drone_model" gorm:"foreignKey:DroneModelID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"` // 无人机型号信息
 	// 关联的云台型号，多对多关系
-	Gimbals []GimbalModel `json:"gimbals" gorm:"many2many:variation_gimbal;"`
+	Gimbals []GimbalModel `json:"gimbals" gorm:"many2many:tb_variation_gimbal;"`
 	// 关联的负载型号，多对多关系
-	Payloads []PayloadModel `json:"payloads" gorm:"many2many:variation_payload;"`
+	Payloads []PayloadModel `json:"payloads" gorm:"many2many:tb_variation_payload;"`
 	// 是否为有效配置（部分组合可能在物理上不兼容）
 	IsValid bool `json:"is_valid" gorm:"default:true"`
 }

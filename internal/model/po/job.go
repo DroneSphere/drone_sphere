@@ -1,22 +1,24 @@
 package po
 
 import (
+	"time"
+
 	"github.com/dronesphere/internal/model/dto"
 	"gorm.io/datatypes"
-	"gorm.io/gorm"
 )
 
 type Job struct {
-	gorm.Model
-	Name        string                                      `json:"name"`
-	Description string                                      `json:"description"`
-	AreaID      uint                                        `json:"area_id"`
-	AlgoID      uint                                        `json:"algo_id"`       // Deprecated
-	DroneSNList datatypes.JSONSlice[string]                 `json:"drone_sn_list"` // Deprecated
-	DroneIDs    datatypes.JSONSlice[uint]                   `json:"drone_ids"`     // Deprecated
-	Drones      datatypes.JSONSlice[dto.JobCreationDrone]   `json:"drones"`
-	Waylines    datatypes.JSONSlice[dto.JobCreationWayline] `json:"waylines"`
-	Mappings    datatypes.JSONSlice[dto.JobCreationMapping] `json:"mappings"`
+	ID          uint                                        `json:"job_id" gorm:"primaryKey;column:job_id"`
+	CreatedTime time.Time                                   `json:"created_time" gorm:"autoCreateTime;column:created_time"`
+	UpdatedTime time.Time                                   `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
+	DeletedTime time.Time                                   `json:"deleted_time" gorm:"autoDeleteTime;column:deleted_time"`
+	State       int                                         `json:"job_state" gorm:"default:0;column:job_state"` // -1: deleted, 0: active
+	Name        string                                      `json:"job_name" gorm:"column:job_name"`
+	Description string                                      `json:"job_description" gorm:"column:job_description"`
+	AreaID      uint                                        `json:"area_id" gorm:"column:area_id"`
+	Drones      datatypes.JSONSlice[dto.JobCreationDrone]   `json:"drones" gorm:"column:drones"`
+	Waylines    datatypes.JSONSlice[dto.JobCreationWayline] `json:"waylines" gorm:"column:waylines"`
+	Mappings    datatypes.JSONSlice[dto.JobCreationMapping] `json:"mappings" gorm:"column:mappings"`
 }
 
 func (j Job) TableName() string {

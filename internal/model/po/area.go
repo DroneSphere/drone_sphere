@@ -1,22 +1,23 @@
 package po
 
 import (
+	"time"
+
 	"github.com/dronesphere/internal/model/vo"
 	"gorm.io/datatypes"
 )
 
 // Area 搜索区域
 type Area struct {
-	AreaID      uint                             `json:"area_id" gorm:"primaryKey"`
-	CreatedTune int64                            `json:"created_time" gorm:"autoCreateTime"`
-	UpdatedTune int64                            `json:"updated_time" gorm:"autoUpdateTime"`
-	DeletedTune int64                            `json:"deleted_time" gorm:"autoDeleteTime"`
-	State       int                              `json:"area_state" gorm:"default:0"` // -1: deleted, 0: active
-	Name        string                           `json:"area_name" gorm:"unique"`
-	Description string                           `json:"area_description"`
-	CenterLat   float64                          `json:"center_lat"`
-	CenterLng   float64                          `json:"center_lng"`
-	Points      datatypes.JSONSlice[vo.GeoPoint] `json:"area_points"`
+	ID          uint                             `json:"area_id" gorm:"primaryKey;column:area_id"`
+	CreatedTime time.Time                        `json:"created_time" gorm:"autoCreateTime;column:created_time"`
+	UpdatedTime time.Time                        `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
+	State       int                              `json:"area_state" gorm:"default:0;column:area_state"` // -1: deleted, 0: active
+	Name        string                           `json:"area_name" gorm:"unique;column:area_name"`
+	Description string                           `json:"area_description" gorm:"column:area_description"`
+	CenterLat   float64                          `json:"center_lat" gorm:"column:center_lat"`
+	CenterLng   float64                          `json:"center_lng" gorm:"column:center_lng"`
+	Points      datatypes.JSONSlice[vo.GeoPoint] `json:"area_points" gorm:"column:area_points"`
 }
 
 // TableName 指定 Area 表名为 tb_areas

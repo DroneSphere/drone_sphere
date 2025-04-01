@@ -167,7 +167,7 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 	if description != "" {
 		p.Description = description
 	}
-	p.DroneIDs = droneIDs
+	// p. = droneIDs
 	if err := j.jobRepo.Save(ctx, p); err != nil {
 		return nil, err
 	}

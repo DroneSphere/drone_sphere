@@ -1,10 +1,12 @@
 package middleware
 
 import (
-	"github.com/dronesphere/internal/pkg/token"
-	"github.com/gofiber/fiber/v2"
+	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/dronesphere/internal/pkg/token"
+	"github.com/gofiber/fiber/v2"
 )
 
 const UserClaimsKey = "claims"
@@ -17,6 +19,9 @@ func Authenticate(c *fiber.Ctx) error {
 			"message": "missing Authorization header",
 		})
 	}
+	fmt.Printf("Authorization header: %s\n", auth)
+	tmp := strings.Split(auth, " ")
+	fmt.Printf("tmp: %v\n", tmp)
 	t := strings.Split(auth, " ")[1]
 	if t == "" {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{

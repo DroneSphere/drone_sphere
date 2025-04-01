@@ -5,7 +5,6 @@ import (
 
 	"github.com/asaskevich/EventBus"
 	"github.com/dronesphere/internal/model/po"
-	"github.com/dronesphere/internal/pkg/misc"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -46,9 +45,7 @@ func (r *GatewayRouter) getAll(c *fiber.Ctx) error {
 	}
 
 	model := po.GatewayModel{
-		BaseModel: misc.BaseModel{
-			ID: 1,
-		},
+		ID:          1,
 		Name:        "DJI RC Pro 行业版",
 		Description: "",
 		Domain:      2,

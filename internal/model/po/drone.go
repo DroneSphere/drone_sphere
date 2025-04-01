@@ -1,22 +1,33 @@
 package po
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 )
 
 type Drone struct {
-	gorm.Model
-	SN          string `json:"sn"`          // 序列号
-	Callsign    string `json:"callsign"`    // 呼号
-	Description string `json:"description"` // 描述
+	ID          uint      `json:"drone_id" gorm:"primaryKey;column:drone_id"`
+	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime;column:created_time"`
+	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
+	DeletedTime time.Time `json:"deleted_time" gorm:"autoDeleteTime;column:deleted_time"`
+	State       int       `json:"drone_state" gorm:"default:0;column:drone_state"`   // -1: deleted, 0: active
+	SN          string    `json:"sn" gorm:"column:sn"`                               // 序列号
+	Callsign    string    `json:"callsign" gorm:"column:callsign"`                   // 呼号
+	Description string    `json:"drone_description" gorm:"column:drone_description"` // 描述
 
 	// 与 DroneModel 的关联（多对一）
-	DroneModelID uint       `json:"drone_model_id" gorm:"index"` // 无人机型号ID
-	DroneModel   DroneModel `json:"drone_model" gorm:"-"`        // 无人机型号信息
+	DroneModelID uint       `json:"drone_model_id" gorm:"index;column:drone_model_id"` // 无人机型号ID
+	DroneModel   DroneModel `json:"drone_model" gorm:"-"`                              // 无人机型号信息
 
 	// 与 DroneVariation 的关联（多对一）
-	VariationID uint           `json:"variation_id" gorm:"index"` // 变体ID
-	Variation   DroneVariation `json:"variation" gorm:"-"`        // 无人机配置变体
+	VariationID uint           `json:"variation_id" gorm:"index;column:variation_id"` // 变体ID
+	Variation   DroneVariation `json:"variation" gorm:"-"`                            // 无人机配置变体
+}
+
+// TableName 指定 Drone 表名为 tb_drones
+func (d Drone) TableName() string {
+	return "tb_drones"
 }
 
 // 根据无人机查询型号和变体信息
@@ -52,9 +63,4 @@ func (d *Drone) GetConfigSummary() string {
 		return d.Variation.GetSummary()
 	}
 	return d.GetModelSummary()
-}
-
-// TableName 指定 Drone 表名为 tb_drones
-func (d Drone) TableName() string {
-	return "tb_drones"
 }

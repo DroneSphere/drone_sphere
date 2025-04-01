@@ -130,7 +130,6 @@ func Run(cfg *configs.Config) {
 	userRepo := repo.NewUserGormRepo(db, logger)
 	droneRepo := repo.NewDroneGormRepo(db, rds, logger)
 	saRepo := repo.NewAreaDefaultRepo(db, rds, logger)
-	algoRepo := repo.NewDetectAlgoGormRepo(db, logger)
 	wlRepo := repo.NewWaylineGormRepo(db, s3Client, logger)
 	jobRepo := repo.NewJobDefaultRepo(db, s3Client, rds, logger)
 	modelRepo := repo.NewModelDefaultRepo(db, logger)
@@ -139,7 +138,6 @@ func Run(cfg *configs.Config) {
 	userSvc := service.NewUserSvc(userRepo, logger)
 	droneSvc := service.NewDroneImpl(droneRepo, logger, client)
 	saSvc := service.NewAreaImpl(saRepo, logger, client)
-	algoSvc := service.NewDetectAlgoImpl(algoRepo, logger)
 	wlSvc := service.NewWaylineImpl(wlRepo, logger)
 	jobSvc := service.NewJobImpl(jobRepo, saRepo, droneRepo, logger)
 	modelSvc := service.NewModelImpl(modelRepo, logger)
@@ -149,7 +147,7 @@ func Run(cfg *configs.Config) {
 
 	// Servers
 	httpV1 := fiber.New()
-	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, algoSvc, wlSvc, jobSvc, modelSvc)
+	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, wlSvc, jobSvc, modelSvc)
 	httpDJI := fiber.New()
 	dji.NewRouter(httpDJI, eb, logger, droneSvc, wlSvc)
 	wss := fiber.New()

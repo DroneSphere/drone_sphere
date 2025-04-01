@@ -75,6 +75,8 @@ func (s *AreaImpl) toEntity(p *po.Area) *entity.Area {
 		return nil
 	}
 	area.Points = points
+	area.CreatedAt = p.CreatedTime
+	area.UpdatedAt = p.UpdatedTime
 	return &area
 }
 
@@ -106,6 +108,11 @@ func (s *AreaImpl) CreateArea(ctx context.Context, name, description string, poi
 		Name:        name,
 		Description: description,
 		Points:      points,
+	}
+	// 计算区域中心点
+	if err := area.CalcCenter(); err != nil {
+		s.l.Error("计算区域中心点失败", slog.Any("error", err))
+		return nil, err
 	}
 
 	// 转换为 PO 对象并保存

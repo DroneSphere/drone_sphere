@@ -85,21 +85,21 @@ func (j *JobDefaultRepo) SelectPhysicalDrones(ctx context.Context) ([]dto.Physic
 	if err := j.tx.Raw(`
 			SELECT JSON_ARRAYAGG(
 				JSON_OBJECT(
-					'id', d.id,
+					'id', d.drone_id,
 					'sn', d.sn,
 					'callsign', d.callsign,
-					'model', JSON_OBJECT('id', dm.id, 'name', dm.name),
+					'model', JSON_OBJECT('id', dm.drone_model_id, 'name', dm.drone_model_name),
 					'gimbals', dg.gimbals
 				)
 			) AS drone_data
-			FROM drone.drones d
-			LEFT JOIN drone.drone_models dm ON d.drone_model_id = dm.id
+			FROM drone.tb_drones d
+			LEFT JOIN drone.tb_drone_models dm ON d.drone_model_id = dm.gateway_model_id
 			LEFT JOIN (
 				SELECT
 					dg.drone_model_id AS drone_model_id,
-					JSON_ARRAYAGG(JSON_OBJECT('id', gm.id, 'name', gm.name)) AS gimbals
-				FROM drone.drone_gimbal dg
-				LEFT JOIN drone.gimbal_models gm ON dg.gimbal_model_id = gm.id
+					JSON_ARRAYAGG(JSON_OBJECT('id', gm.gimbal_model_id, 'name', gm.gimbal_model_name)) AS gimbals
+				FROM drone.tb_drone_gimbal dg
+				LEFT JOIN drone.tb_gimbal_models gm ON dg.gimbal_model_id = gm.gimbal_model_id
 				GROUP BY dg.drone_model_id
 			) dg ON d.drone_model_id = dg.drone_model_id;
 		`).Scan(&jsonStr).Error; err != nil {

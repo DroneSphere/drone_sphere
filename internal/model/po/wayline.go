@@ -1,17 +1,22 @@
 package po
 
 import (
+	"time"
+
 	"gorm.io/datatypes"
-	"gorm.io/gorm"
 )
 
 type Wayline struct {
-	gorm.Model
-	Name              string                                `json:"name" gorm:"column:name"`
-	Username          string                                `json:"username" gorm:"column:username"`
+	ID                uint                                  `json:"wayline_id" gorm:"primaryKey;column:wayline_id"`
+	CreatedTime       time.Time                             `json:"created_time" gorm:"autoCreateTime"`
+	UpdatedTime       time.Time                             `json:"updated_time" gorm:"autoUpdateTime"`
+	DeletedTime       time.Time                             `json:"deleted_time" gorm:"autoDeleteTime"`
+	State             int                                   `json:"wayline_state" gorm:"default:0"` // -1: deleted, 0: active
+	Name              string                                `json:"wayline_name" gorm:"column:wayline_name"`
+	Username          string                                `json:"username" gorm:"column:create_user"`
 	DroneModelKey     string                                `json:"drone_model_key" gorm:"column:drone_model_key"`
 	PayloadModelKeys  datatypes.JSONSlice[string]           `json:"payload_model_keys" gorm:"column:payload_model_keys;type:json"`
-	Favorited         bool                                  `json:"favorited" gorm:"column:favorited"`
+	Favorited         bool                                  `json:"favorited" gorm:"column:is_favorited"`
 	TemplateTypes     datatypes.JSONSlice[int]              `json:"template_types" gorm:"column:template_types;type:json"`
 	ActionType        int                                   `json:"action_type" gorm:"column:action_type"`
 	S3Key             string                                `json:"s3_key" gorm:"column:s3_key"`

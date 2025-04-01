@@ -37,7 +37,7 @@ func (r *AreaDefaultRepo) Save(ctx context.Context, area *po.Area) error {
 // SelectByID 根据ID查询区域
 func (r *AreaDefaultRepo) SelectByID(ctx context.Context, id uint) (*po.Area, error) {
 	var area po.Area
-	if err := r.tx.Where("id = ?", id).First(&area).Error; err != nil {
+	if err := r.tx.Where("area_id = ?", id).First(&area).Error; err != nil {
 		r.l.Error("通过ID查询区域失败", slog.Any("id", id), slog.Any("error", err))
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (r *AreaDefaultRepo) SelectByID(ctx context.Context, id uint) (*po.Area, er
 // SelectByName 根据名称查询区域
 func (r *AreaDefaultRepo) SelectByName(ctx context.Context, name string) (*po.Area, error) {
 	var area po.Area
-	if err := r.tx.Where("name = ?", name).First(&area).Error; err != nil {
+	if err := r.tx.Where("area_name = ?", name).First(&area).Error; err != nil {
 		r.l.Error("通过名称查询区域失败", slog.Any("name", name), slog.Any("error", err))
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (r *AreaDefaultRepo) FetchAll(ctx context.Context, name string) ([]*po.Area
 
 // DeleteByID 根据ID删除区域
 func (r *AreaDefaultRepo) DeleteByID(ctx context.Context, id uint) error {
-	if err := r.tx.Unscoped().Where("id = ?", id).Delete(&po.Area{}).Error; err != nil {
+	if err := r.tx.Unscoped().Where("area_id = ?", id).Delete(&po.Area{}).Error; err != nil {
 		r.l.Error("删除区域失败", slog.Any("id", id), slog.Any("error", err))
 		return err
 	}

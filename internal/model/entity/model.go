@@ -35,7 +35,7 @@ func (d *DroneModel) SuppportsRTK() bool {
 
 func NewDroneModelFromPO(drone po.DroneModel, gateway po.GatewayModel) *DroneModel {
 	return &DroneModel{
-		BaseModel:          drone.BaseModel,
+		BaseModel:          misc.BaseModel{ID: drone.ID},
 		Name:               drone.Name,
 		Description:        drone.Description,
 		Domain:             drone.Domain,
