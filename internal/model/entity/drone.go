@@ -1,11 +1,8 @@
 package entity
 
 import (
-	"fmt"
-	"strconv"
 	"time"
 
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/model/ro"
@@ -13,41 +10,38 @@ import (
 )
 
 type Drone struct {
-	ID              uint   `json:"id"`
-	SN              string `json:"sn"`                // 序列号
-	Callsign        string `json:"callsign"`          // 呼号
-	Description     string `json:"description"`       // 描述
-	Domain          int    `json:"domain"`            // 领域
-	Type            int    `json:"type"`              // 类型
-	SubType         int    `json:"sub_type"`          // 子类型
-	ProductModel    string `json:"product_model"`     // 产品型号
-	ProductModelKey string `json:"product_model_key"` // 产品型号标识符
-	Status          string `json:"status"`            // 在线状态
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID          uint   `json:"id"`
+	SN          string `json:"sn"`          // 序列号
+	Callsign    string `json:"callsign"`    // 呼号
+	Description string `json:"description"` // 描述
+	Type        int    `json:"type"`        // 类型（已废弃，保留向后兼容）
+	SubType     int    `json:"sub_type"`    // 子类型（已废弃，保留向后兼容）
+
+	// 型号信息 - 关联字段
+	DroneModelID uint              `json:"drone_model_id"` // 无人机型号ID
+	DroneModel   po.DroneModel     `json:"drone_model"`    // 无人机型号
+	VariationID  uint              `json:"variation_id"`   // 变体ID
+	Variation    po.DroneVariation `json:"variation"`      // 无人机变体配置
+
+	// 状态信息
+	Status    string `json:"status"` // 在线状态
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	dto.DroneMessageProperty
 }
 
-func NewDroneFromMsg(sn string, msg dto.ProductTopo) *Drone {
-	domain, _ := strconv.Atoi(msg.Domain)
-	d := &Drone{
-		SN:      sn,
-		Domain:  domain,
-		Type:    msg.Type,
-		SubType: msg.SubType,
-	}
-	d.ProductModelKey = d.GetModelKey()
-	d.ProductModel = d.GetModel()
-	return d
-}
-
+// NewDrone 从持久化对象和实时对象创建无人机实体
 func NewDrone(po *po.Drone, rt *ro.Drone) *Drone {
 	var d = &Drone{}
 	if err := copier.Copy(d, po); err != nil {
 		panic(err)
 	}
-	d.ProductModelKey = d.GetModelKey()
-	d.ProductModel = d.GetModel()
+
+	// 实体中添加型号信息
+	d.DroneModelID = po.DroneModelID
+	d.VariationID = po.VariationID
+
+	// 填充实时状态信息
 	if rt != nil {
 		d.Status = rt.Status
 		d.DroneMessageProperty = rt.DroneMessageProperty
@@ -55,6 +49,7 @@ func NewDrone(po *po.Drone, rt *ro.Drone) *Drone {
 	return d
 }
 
+// StatusText 获取状态文本描述
 func (d *Drone) StatusText() string {
 	var statusMap = map[string]string{
 		ro.DroneStatusOffline: "离线",
@@ -64,67 +59,46 @@ func (d *Drone) StatusText() string {
 	return statusMap[d.Status]
 }
 
-// GetModelKey 产品标识符
-// 产品标识符由领域、类型、子类型组成, 例如 0-89-0
-func (d *Drone) GetModelKey() string {
-	t := "%d-%d-%d"
-	return fmt.Sprintf(t, d.Domain, d.Type, d.SubType)
+// GetModelName 获取无人机型号名称
+func (d *Drone) GetModelName() string {
+	if d.DroneModel.ID > 0 {
+		return d.DroneModel.Name
+	}
+	return "未知型号"
 }
 
-// GetModel 无人机的型号名称
-func (d *Drone) GetModel() string {
-	var productMap = map[string]string{
-		"0-77-0": "Mavic 3E",
-		"0-77-1": "Mavic 3T",
-		"0-99-0": "Mavic 4E",
-		"0-99-1": "Mavic 4T",
+// GetConfigSummary 获取无人机配置摘要
+func (d *Drone) GetConfigSummary() string {
+	if d.Variation.ID > 0 {
+		return d.Variation.GetSummary()
 	}
-	if _, ok := productMap[d.GetModelKey()]; !ok {
-		return "未知"
-	}
-	return productMap[d.GetModelKey()]
+	return d.GetModelName()
 }
 
 // IsRTKAvailable 是否支持RTK
 func (d *Drone) IsRTKAvailable() bool {
-	// 主型号支持RTK的集合
-	supportTypes := mapset.NewSet[int]()
-	supportTypes.Add(99)
-	if supportTypes.Contains(d.Type) {
-		return true
+	// 优先从变体信息判断
+	if d.Variation.ID > 0 {
+		return d.Variation.SupportsRTK()
 	}
-	// 主型号不全都支持，但部分子型号支持RTK
-	type SubType struct {
-		Type    int
-		SubType int
+
+	// 从型号信息判断
+	if d.DroneModel.ID > 0 {
+		return d.DroneModel.IsRTKAvailable
 	}
-	supportSubTypes := mapset.NewSet[SubType]()
-	supportSubTypes.Add(SubType{Type: 77, SubType: -1})
-	if supportSubTypes.Contains(SubType{Type: d.Type, SubType: d.SubType}) {
-		return true
-	}
-	// 其他情况均不支持RTK
+
+	// 无法确定时假设不支持
 	return false
 }
 
 // IsThermalAvailable 是否支持热成像
 func (d *Drone) IsThermalAvailable() bool {
-	// 主型号支持热成像的集合
-	supportTypes := mapset.NewSet[int]()
-	supportTypes.Add(-1)
-	if supportTypes.Contains(d.Type) {
-		return true
+	// 优先从变体信息判断
+	if d.Variation.ID > 0 {
+		return d.Variation.SupportsThermal()
 	}
-	// 主型号不全都支持，但部分子型号支持热成像
-	type SubType struct {
-		Type    int
-		SubType int
-	}
-	supportSubTypes := mapset.NewSet[SubType]()
-	supportSubTypes.Add(SubType{Type: 77, SubType: 1})
-	supportSubTypes.Add(SubType{Type: 99, SubType: 1})
-	if supportSubTypes.Contains(SubType{Type: d.Type, SubType: d.SubType}) {
-		return true
-	}
+
+	// 从无人机型号的云台判断（需要进一步实现）
+	// 无法确定时假设不支持
 	return false
 }

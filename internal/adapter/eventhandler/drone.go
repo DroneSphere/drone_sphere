@@ -3,29 +3,32 @@ package eventhandler
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"github.com/asaskevich/EventBus"
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/event"
 	"github.com/dronesphere/internal/model/dto"
-	"github.com/dronesphere/internal/model/entity"
+	"github.com/dronesphere/internal/repo"
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"log/slog"
 )
 
 type DroneEventHandler struct {
-	eb   EventBus.Bus
-	l    *slog.Logger
-	svc  service.DroneSvc
-	mqtt mqtt.Client
+	eb        EventBus.Bus
+	l         *slog.Logger
+	svc       service.DroneSvc
+	mqtt      mqtt.Client
+	modelRepo *repo.ModelDefaultRepo // 添加模型仓库依赖
 }
 
-func registerDroneHandlers(eb EventBus.Bus, l *slog.Logger, mqtt mqtt.Client, drone service.DroneSvc) {
+func registerDroneHandlers(eb EventBus.Bus, l *slog.Logger, mqtt mqtt.Client, drone service.DroneSvc, modelRepo *repo.ModelDefaultRepo) {
 	handler := &DroneEventHandler{
-		eb:   eb,
-		l:    l,
-		svc:  drone,
-		mqtt: mqtt,
+		eb:        eb,
+		l:         l,
+		svc:       drone,
+		mqtt:      mqtt,
+		modelRepo: modelRepo, // 初始化模型仓库
 	}
 	var err error
 	err = eb.Subscribe(event.RemoteControllerLoggedIn, handler.HandleTopoUpdate)
@@ -94,7 +97,15 @@ func (d *DroneEventHandler) HandleDroneConnected(ctx context.Context) error {
 	topo := ctx.Value(event.DroneEventTopoKey).(dto.ProductTopo)
 	d.l.Info("处理无人机连接事件", slog.Any("droneSN", droneSN), slog.Any("topo", topo))
 
-	e := entity.NewDroneFromMsg(droneSN, topo)
+	// 使用服务层的 CreateDroneFromMsg 方法创建无人机实体
+	// 传递 modelRepo 用于查找匹配的无人机型号和变体
+	e, err := d.svc.CreateDroneFromMsg(ctx, droneSN, topo, d.modelRepo)
+	if err != nil {
+		d.l.Error("创建无人机实体失败", slog.Any("error", err))
+		return err
+	}
+
+	// 保存无人机信息
 	if err := d.svc.Repo().Save(ctx, *e); err != nil {
 		d.l.Error("保存无人机信息失败", slog.Any("err", err))
 		return err

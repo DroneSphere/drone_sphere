@@ -83,42 +83,25 @@ func (j *JobDefaultRepo) SelectAll(ctx context.Context) ([]*entity.Job, error) {
 func (j *JobDefaultRepo) SelectPhysicalDrones(ctx context.Context) ([]dto.PhysicalDrone, error) {
 	var jsonStr string
 	if err := j.tx.Raw(`
-		WITH t_gimbal AS (
-			SELECT 
-				drone_models.id AS drone_id, 
-				gimbal_models.id AS gimbal_id, 
-				gimbal_models.name AS gimbal_name
-			FROM drone_gimbal
-			LEFT JOIN drone_models ON drone_models.id = drone_gimbal.drone_model_id
-			LEFT JOIN gimbal_models ON drone_gimbal.gimbal_model_id = gimbal_models.id
-		),
-		drone_data AS (
-			SELECT 
-				drones.id,
-				drones.sn,
-				drones.callsign,
-				json_build_object(
-					'id', drone_models.id,
-					'name', drone_models.name
-				) AS model,
-				CASE
-					WHEN count(t_gimbal) > 0 THEN
-						json_agg(
-							json_build_object(
-								'id', t_gimbal.gimbal_id,
-								'name', t_gimbal.gimbal_name
-							)
-						)
-					ELSE NULL
-				END AS gimbal
-			FROM drones
-			LEFT JOIN drone_models ON drones.model_id = drone_models.id
-			LEFT JOIN t_gimbal ON t_gimbal.drone_id = drones.id
-			GROUP BY drones.id, drones.sn, drones.callsign, drone_models.id, drone_models.name
-			ORDER BY drones.callsign
-		)
-
-		SELECT json_agg(drone_data) FROM drone_data
+			SELECT JSON_ARRAYAGG(
+				JSON_OBJECT(
+					'id', d.id,
+					'sn', d.sn,
+					'callsign', d.callsign,
+					'model', JSON_OBJECT('id', dm.id, 'name', dm.name),
+					'gimbals', dg.gimbals
+				)
+			) AS drone_data
+			FROM drone.drones d
+			LEFT JOIN drone.drone_models dm ON d.drone_model_id = dm.id
+			LEFT JOIN (
+				SELECT
+					dg.drone_model_id AS drone_model_id,
+					JSON_ARRAYAGG(JSON_OBJECT('id', gm.id, 'name', gm.name)) AS gimbals
+				FROM drone.drone_gimbal dg
+				LEFT JOIN drone.gimbal_models gm ON dg.gimbal_model_id = gm.id
+				GROUP BY dg.drone_model_id
+			) dg ON d.drone_model_id = dg.drone_model_id;
 		`).Scan(&jsonStr).Error; err != nil {
 		j.l.Error("Failed to fetch physical drones", slog.Any("err", err))
 		return nil, err

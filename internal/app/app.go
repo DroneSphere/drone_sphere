@@ -142,7 +142,7 @@ func Run(cfg *configs.Config) {
 	modelSvc := service.NewModelImpl(modelRepo, logger)
 
 	// Event Handlers
-	eventhandler.NewHandler(eb, logger, client, droneSvc)
+	eventhandler.NewHandler(eb, logger, client, droneSvc, modelRepo)
 
 	// Servers
 	httpV1 := fiber.New()

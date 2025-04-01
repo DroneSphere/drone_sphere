@@ -7,6 +7,8 @@ import (
 	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
+	"github.com/dronesphere/internal/model/vo"
+	"github.com/jinzhu/copier"
 )
 
 type (
@@ -46,6 +48,32 @@ func NewJobImpl(jobRepo JobRepo, areaRepo AreaRepo, droneRepo DroneRepo, l *slog
 	}
 }
 
+// toEntity 将 po.Area 转换为 entity.Area
+// 在服务层中进行包装，避免循环引用
+func (s *JobImpl) toAreaEntity(p *po.Area) *entity.Area {
+	if p == nil {
+		return nil
+	}
+
+	var points []vo.GeoPoint
+	for _, point := range p.Points {
+		var p vo.GeoPoint
+		if err := copier.Copy(&p, point); err != nil {
+			s.l.Error("复制点数据失败", slog.Any("error", err))
+			return nil
+		}
+		points = append(points, p)
+	}
+
+	var area entity.Area
+	if err := copier.Copy(&area, p); err != nil {
+		s.l.Error("复制区域数据失败", slog.Any("error", err))
+		return nil
+	}
+	area.Points = points
+	return &area
+}
+
 func (j *JobImpl) Repo() JobRepo {
 	return j.jobRepo
 }
@@ -55,8 +83,17 @@ func (j *JobImpl) FetchAvailableAreas(ctx context.Context) ([]*entity.Area, erro
 	if err != nil {
 		return nil, err
 	}
+	var areaEntities []*entity.Area
+	for _, area := range areas {
+		areaEntity := j.toAreaEntity(area)
+		if areaEntity == nil {
+			j.l.Error("转换区域数据失败", slog.Any("area", area))
+			return nil, err
+		}
+		areaEntities = append(areaEntities, areaEntity)
+	}
 
-	return areas, nil
+	return areaEntities, nil
 }
 
 func (j *JobImpl) FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error) {
@@ -77,7 +114,12 @@ func (j *JobImpl) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	job.Area = *area
+	areaEntity := j.toAreaEntity(area)
+	if areaEntity == nil {
+		j.l.Error("转换区域数据失败", slog.Any("area", area))
+		return nil, err
+	}
+	job.Area = *areaEntity
 
 	return job, nil
 }
@@ -142,7 +184,12 @@ func (j *JobImpl) FetchAll(ctx context.Context) ([]*entity.Job, error) {
 		if err != nil {
 			return nil, err
 		}
-		e.Area = *area
+		areaEntity := j.toAreaEntity(area)
+		if areaEntity == nil {
+			j.l.Error("转换区域数据失败", slog.Any("area", area))
+			return nil, err
+		}
+		e.Area = *areaEntity
 	}
 	return job, nil
 }

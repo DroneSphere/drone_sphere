@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"log/slog"
+	"strconv"
 
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
@@ -134,4 +135,80 @@ func (r *ModelDefaultRepo) GenerateDroneVariations(ctx context.Context, droneMod
 		return nil, err
 	}
 	return variations, nil
+}
+
+// FindDroneModelByDomainTypeSubType 根据 Domain、Type、SubType 查找无人机型号
+// 参数说明：
+// domain: 设备领域，字符串类型，需要转换为整数
+// deviceType: 设备类型
+// subType: 设备子类型
+func (r *ModelDefaultRepo) FindDroneModelByDomainTypeSubType(ctx context.Context, domain string, deviceType int, subType int) (*po.DroneModel, error) {
+	// 将 domain 字符串转换为整数
+	var domainInt int
+	var err error
+
+	// 兼容不同类型的 domain 格式
+	if domain != "" {
+		domainInt, err = strconv.Atoi(domain)
+		if err != nil {
+			r.l.Error("域名转换为整数失败", "domain", domain, "error", err)
+			// 默认为 0，表示未知领域
+			domainInt = 0
+		}
+	}
+
+	r.l.Debug("查询无人机型号",
+		"domain", domainInt,
+		"type", deviceType,
+		"sub_type", subType)
+
+	// 在数据库中查询匹配的无人机型号
+	var droneModel po.DroneModel
+	if err := r.tx.WithContext(ctx).
+		Where("domain = ? AND type = ? AND sub_type = ?", domainInt, deviceType, subType).
+		First(&droneModel).Error; err != nil {
+		r.l.Error("根据标识查找无人机型号失败",
+			"domain", domainInt,
+			"type", deviceType,
+			"sub_type", subType,
+			"error", err)
+		return nil, err
+	}
+
+	// 加载关联的云台和负载信息
+	if err := r.tx.WithContext(ctx).
+		Preload("Gimbals").
+		Preload("Payloads").
+		First(&droneModel, droneModel.ID).Error; err != nil {
+		r.l.Warn("加载无人机型号的关联数据失败", "model_id", droneModel.ID, "error", err)
+		// 继续使用不完整的型号信息
+	}
+
+	return &droneModel, nil
+}
+
+// FindDefaultDroneVariation 根据 DroneModel 查找默认变体
+func (r *ModelDefaultRepo) FindDefaultDroneVariation(ctx context.Context, droneModelID uint) (*po.DroneVariation, error) {
+	// 查询指定型号的默认变体配置
+	var variation po.DroneVariation
+	if err := r.tx.WithContext(ctx).
+		Where("drone_model_id = ? AND is_default = ?", droneModelID, true).
+		Preload("DroneModel").
+		Preload("Gimbals").
+		Preload("Payloads").
+		First(&variation).Error; err != nil {
+
+		// 如果没有默认变体，则尝试获取该型号的任意变体
+		if err := r.tx.WithContext(ctx).
+			Where("drone_model_id = ?", droneModelID).
+			Preload("DroneModel").
+			Preload("Gimbals").
+			Preload("Payloads").
+			First(&variation).Error; err != nil {
+			r.l.Error("查找无人机默认变体失败", "model_id", droneModelID, "error", err)
+			return nil, err
+		}
+	}
+
+	return &variation, nil
 }
