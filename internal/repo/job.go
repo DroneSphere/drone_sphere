@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"log/slog"
+	"os"
 	"strconv"
 
 	"github.com/bytedance/sonic"
@@ -170,11 +171,11 @@ func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, name string, dro
 
 	// 删除本地文件
 	defer func() {
-		// if err := os.Remove(filename); err != nil {
-		// 	j.l.Error("Failed to remove local KMZ file", slog.Any("err", err))
-		// } else {
-		// 	j.l.Info("Removed local KMZ file", slog.Any("filename", filename))
-		// }
+		if err := os.Remove(filename); err != nil {
+			j.l.Error("Failed to remove local KMZ file", slog.Any("err", err))
+		} else {
+			j.l.Info("Removed local KMZ file", slog.Any("filename", filename))
+		}
 	}()
 
 	// 保存到 s3
