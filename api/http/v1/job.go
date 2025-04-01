@@ -18,8 +18,8 @@ func (r *JobItemResult) FromJobEntity(j *entity.Job) error {
 	r.Name = j.Name
 	r.Description = j.Description
 	r.AreaName = j.Area.Name
-	for _, d := range j.Drones {
-		r.Drones = append(r.Drones, d.Name)
+	for _, m := range j.Mappings {
+		r.Drones = append(r.Drones, m.PhysicalDroneCallsign)
 	}
 	return nil
 }

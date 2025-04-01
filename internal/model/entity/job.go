@@ -10,7 +10,6 @@ type Job struct {
 	Name        string                   `json:"name"`
 	Description string                   `json:"description"`
 	Area        Area                     `json:"area"`
-	Algo        DetectAlgo               `json:"algo"`
 	Drones      []dto.JobCreationDrone   `json:"drones"`
 	Waylines    []dto.JobCreationWayline `json:"waylines"`
 	Mappings    []dto.JobCreationMapping `json:"mappings"`
