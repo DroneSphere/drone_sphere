@@ -40,6 +40,16 @@ func NewJobDefaultRepo(db *gorm.DB, s3 *minio.Client, rds *redis.Client, l *slog
 	}
 }
 
+func (j *JobDefaultRepo) DeleteByID(ctx context.Context, id uint) error {
+	if err := j.tx.Model(&po.Job{}).
+		Where("job_id = ?", id).
+		Update("state", -1).Error; err != nil {
+		j.l.Error("Failed to delete job", slog.Any("err", err))
+		return err
+	}
+	return nil
+}
+
 func (j *JobDefaultRepo) Save(ctx context.Context, job *po.Job) error {
 	if err := j.tx.Save(job).Error; err != nil {
 		j.l.Error("Failed to create job", slog.Any("err", err))
@@ -101,6 +111,7 @@ func (j *JobDefaultRepo) FetchByID(ctx context.Context, id uint) (*entity.Job, e
 				tb_drones d ON JSON_EXTRACT(j.mappings, '$[0].physical_drone_sn') = d.sn
 			WHERE
 				j.job_id = ?
+			AND j.state = 0
 			GROUP BY j.job_id`, id).Scan(&jsonStr).Error; err != nil {
 		j.l.Error("获取任务失败", slog.Any("err", err))
 		return nil, err
@@ -130,6 +141,8 @@ func (j *JobDefaultRepo) SelectAll(ctx context.Context) ([]*entity.Job, error) {
 			tb_jobs j
 		LEFT JOIN 
 			tb_areas a ON j.area_id = a.area_id
+		WHERE 
+			j.state = 0
 		ORDER BY
 			j.job_id DESC
 	`).Scan(&jobs).Error; err != nil {

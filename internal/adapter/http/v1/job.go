@@ -37,6 +37,7 @@ func NewJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.Area
 		// h.Get("/edition/:id/options", r.getEditionOptions)
 		h.Post("/", r.create)
 		h.Put("/", r.update)
+		h.Delete("/:id", r.delete)
 	}
 }
 
@@ -300,4 +301,16 @@ func (r *JobRouter) update(c *fiber.Ctx) error {
 		return c.JSON(Fail(InternalError))
 	}
 	return c.JSON(Success(result))
+}
+
+func (r *JobRouter) delete(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.JSON(Fail(InvalidParams))
+	}
+	ctx := context.Background()
+	if err := r.svc.Repo().DeleteByID(ctx, uint(id)); err != nil {
+		return c.JSON(Fail(InternalError))
+	}
+	return c.JSON(Success(nil))
 }

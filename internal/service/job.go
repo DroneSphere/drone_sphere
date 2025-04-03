@@ -24,6 +24,7 @@ type (
 
 	JobRepo interface {
 		Save(ctx context.Context, job *po.Job) error
+		DeleteByID(ctx context.Context, id uint) error
 		FetchPOByID(ctx context.Context, id uint) (*po.Job, error)
 		FetchByID(ctx context.Context, id uint) (*entity.Job, error)
 		SelectAll(ctx context.Context) ([]*entity.Job, error)
