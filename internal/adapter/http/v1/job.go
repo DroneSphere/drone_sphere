@@ -52,7 +52,15 @@ func NewJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.Area
 //	@Success		200	{object}	v1.Response{data=[]v1.JobItemResult}	"成功"
 func (r *JobRouter) getJobs(c *fiber.Ctx) error {
 	ctx := context.Background()
-	jobs, err := r.svc.FetchAll(ctx)
+	var params struct {
+		JobName  string `query:"job_name"`
+		AreaName string `query:"area_name"`
+	}
+	if err := c.QueryParser(&params); err != nil {
+		return c.JSON(Fail(InvalidParams))
+	}
+	r.l.Debug("getJobs", "params", params)
+	jobs, err := r.svc.FetchAll(ctx, params.JobName, params.AreaName)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}

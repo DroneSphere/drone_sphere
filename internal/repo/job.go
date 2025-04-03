@@ -126,8 +126,8 @@ func (j *JobDefaultRepo) FetchByID(ctx context.Context, id uint) (*entity.Job, e
 	return &job, nil
 }
 
-func (j *JobDefaultRepo) SelectAll(ctx context.Context) ([]*entity.Job, error) {
-	// 使用JOIN连接查询一次性获取所有任务和区域数据
+func (j *JobDefaultRepo) SelectAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error) {
+	j.l.Info("查询所有任务", slog.Any("jobName", jobName), slog.Any("areaName", areaName))
 	var jobs []*po.Job
 	if err := j.tx.Raw(`
 		SELECT 
@@ -143,9 +143,11 @@ func (j *JobDefaultRepo) SelectAll(ctx context.Context) ([]*entity.Job, error) {
 			tb_areas a ON j.area_id = a.area_id
 		WHERE 
 			j.state = 0
+		AND j.job_name LIKE ?
+		AND a.area_name LIKE ?
 		ORDER BY
 			j.job_id DESC
-	`).Scan(&jobs).Error; err != nil {
+	`, "%"+jobName+"%", "%"+areaName+"%").Scan(&jobs).Error; err != nil {
 		j.l.Error("获取所有任务失败", slog.Any("err", err))
 		return nil, err
 	}

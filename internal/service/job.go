@@ -19,7 +19,7 @@ type (
 		FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error)
 		CreateJob(ctx context.Context, name, description string, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (uint, error)
 		ModifyJob(ctx context.Context, id uint, name, description string, droneIDs []uint) (*entity.Job, error)
-		FetchAll(ctx context.Context) ([]*entity.Job, error)
+		FetchAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error)
 	}
 
 	JobRepo interface {
@@ -27,7 +27,7 @@ type (
 		DeleteByID(ctx context.Context, id uint) error
 		FetchPOByID(ctx context.Context, id uint) (*po.Job, error)
 		FetchByID(ctx context.Context, id uint) (*entity.Job, error)
-		SelectAll(ctx context.Context) ([]*entity.Job, error)
+		SelectAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error)
 		SelectPhysicalDrones(ctx context.Context) ([]dto.PhysicalDrone, error)
 		CreateWaylineFile(ctx context.Context, name string, drone dto.JobCreationDrone, wayline dto.JobCreationWayline) (string, error)
 	}
@@ -175,8 +175,8 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 	return j.FetchByID(ctx, id)
 }
 
-func (j *JobImpl) FetchAll(ctx context.Context) ([]*entity.Job, error) {
-	job, err := j.jobRepo.SelectAll(ctx)
+func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error) {
+	job, err := j.jobRepo.SelectAll(ctx, jobName, areaName)
 	if err != nil {
 		return nil, err
 	}
