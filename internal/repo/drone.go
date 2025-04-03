@@ -36,7 +36,7 @@ func (r *DroneDefaultRepo) SelectAll(ctx context.Context) ([]entity.Drone, error
 	var ps []po.Drone
 	if err := r.tx.WithContext(ctx).
 		Preload("DroneModel").
-		Where("drone_state = ?", 0).
+		Where("state = ?", 0).
 		Find(&ps).Error; err != nil {
 		r.l.Error(err.Error())
 		panic(err)
