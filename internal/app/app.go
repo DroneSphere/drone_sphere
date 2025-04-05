@@ -179,16 +179,44 @@ func Run(cfg *configs.Config) {
 
 func bootServers(cfg *configs.Config, wg *sync.WaitGroup, l *slog.Logger, apps ...*fiber.App) {
 	port := cfg.Server.Port
-	for _, app := range apps {
+	// 创建互斥锁，确保服务器逐个启动
+	var mu sync.Mutex
+	var startupWg sync.WaitGroup
+
+	for i, app := range apps {
 		wg.Add(1)
-		go func(p int, a *fiber.App) {
+		startupWg.Add(1)
+
+		go func(index int, p int, a *fiber.App) {
 			defer wg.Done()
+
+			// 使用互斥锁确保服务器按顺序启动
+			mu.Lock()
+			serverName := fmt.Sprintf("Server %d", index+1)
+			l.Info("Starting server", slog.String("server", serverName), slog.Int("port", p))
+
+			// 启动服务器
+			go func() {
+				// 服务器启动后释放锁，允许下一个服务器启动
+				defer mu.Unlock()
+				defer startupWg.Done()
+
+				// 短暂延迟，确保服务器有时间进行初始化
+				time.Sleep(100 * time.Millisecond)
+				l.Info("Server started", slog.String("server", serverName), slog.Int("port", p))
+			}()
+
 			if err := a.Listen(fmt.Sprintf(":%d", p)); err != nil {
-				l.Error("Server failed to start", slog.Any("err", err))
+				l.Error("Server failed to start", slog.String("server", serverName), slog.Int("port", p), slog.Any("err", err))
 			}
-		}(port, app)
+		}(i, port, app)
+
 		port++
 	}
+
+	// 等待所有服务器完成启动过程
+	startupWg.Wait()
+	l.Info("All servers started sequentially")
 }
 
 func shutdownServers(ctx context.Context, l *slog.Logger, apps ...*fiber.App) {
