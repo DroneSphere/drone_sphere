@@ -11,7 +11,11 @@ import (
 )
 
 // NewHandler 创建事件处理器
-// 添加 modelRepo 参数，用于提供无人机型号相关的查询功能
-func NewHandler(eb EventBus.Bus, l *slog.Logger, mq mqtt.Client, drone service.DroneSvc, modelRepo *repo.ModelDefaultRepo) {
+func NewHandler(eb EventBus.Bus, l *slog.Logger, mq mqtt.Client, drone service.DroneSvc, modelRepo *repo.ModelDefaultRepo, gatewayRepo repo.GatewayRepo) {
+	// 注册无人机事件处理器
 	registerDroneHandlers(eb, l, mq, drone, modelRepo)
+
+	// 注册网关事件处理器
+	gatewayHandler := NewGatewayHandler(eb, mq, gatewayRepo, l)
+	gatewayHandler.Subscribe(eb)
 }

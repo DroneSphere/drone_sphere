@@ -24,7 +24,8 @@ import (
 //	@license.name	Apache 2.0
 //	@host			lqhirwdzgkvv.sealoshzh.site
 //	@BasePath		/api/v1
-func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.UserSvc, drone service.DroneSvc, sa service.AreaSvc, wl service.WaylineSvc, job service.JobSvc, model service.ModelSvc) {
+func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.UserSvc, drone service.DroneSvc,
+	sa service.AreaSvc, wl service.WaylineSvc, job service.JobSvc, model service.ModelSvc, gateway service.GatewaySvc) {
 	sfCfg := slogfiber.Config{
 		WithTraceID: true,
 		WithSpanID:  true,
@@ -63,8 +64,7 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 		newDroneRouter(api, drone, eb, l)
 		NewSearchAreaRouter(api, sa, eb, l)
 		NewJobRouter(api, job, sa, model, l)
-		// newWaylineRouter(api, wl, l)
-		NewGatewayRouter(api, eb, l)
+		NewGatewayRouter(api, gateway, eb, l) // 使用新的网关服务
 		NewModelsRouter(api, model, eb, l)
 		api.Get("/sse", handleSSE(l))
 	}

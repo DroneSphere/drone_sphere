@@ -30,30 +30,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func Migrate(db *gorm.DB) {
-	// _ = db.AutoMigrate(
-	// 	&po.GatewayModel{}, &po.DroneModel{}, &po.GimbalModel{}, &po.PayloadModel{}, &po.DroneVariation{},
-	// )
-	// _ = db.AutoMigrate(
-	// 	&po.Area{},
-	// )
-	// _ = db.AutoMigrate(
-	// 	&po.Drone{},
-	// )
-	// _ = db.AutoMigrate(
-	// 	&po.Job{},
-	// )
-	// _ = db.AutoMigrate(
-	// 	&po.User{},
-	// )
-	// _ = db.AutoMigrate(
-	// 	&po.Wayline{},
-	// )
-	// _ = db.AutoMigrate(
-	// 	&po.Result{},
-	// )
-}
-
 func Run(cfg *configs.Config) {
 	// Log
 	w := os.Stdout
@@ -81,7 +57,6 @@ func Run(cfg *configs.Config) {
 	if err != nil {
 		panic(err)
 	}
-	Migrate(db)
 	logger.Info("RDB connected")
 
 	// MQTT
@@ -133,6 +108,7 @@ func Run(cfg *configs.Config) {
 	wlRepo := repo.NewWaylineGormRepo(db, s3Client, logger)
 	jobRepo := repo.NewJobDefaultRepo(db, s3Client, rds, logger)
 	modelRepo := repo.NewModelDefaultRepo(db, logger)
+	gatewayRepo := repo.NewGatewayRepo(db, logger) // 添加网关仓储
 
 	// Services
 	userSvc := service.NewUserSvc(userRepo, logger)
@@ -141,13 +117,14 @@ func Run(cfg *configs.Config) {
 	wlSvc := service.NewWaylineImpl(wlRepo, logger)
 	jobSvc := service.NewJobImpl(jobRepo, saRepo, droneRepo, logger)
 	modelSvc := service.NewModelImpl(modelRepo, logger)
+	gatewaySvc := service.NewGatewayImpl(gatewayRepo, logger) // 添加网关服务
 
 	// Event Handlers
-	eventhandler.NewHandler(eb, logger, client, droneSvc, modelRepo)
+	eventhandler.NewHandler(eb, logger, client, droneSvc, modelRepo, gatewayRepo)
 
 	// Servers
 	httpV1 := fiber.New()
-	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, wlSvc, jobSvc, modelSvc)
+	v1.NewRouter(httpV1, eb, logger, userSvc, droneSvc, saSvc, wlSvc, jobSvc, modelSvc, gatewaySvc) // 添加网关服务到路由
 	httpDJI := fiber.New()
 	dji.NewRouter(httpDJI, eb, logger, droneSvc, wlSvc)
 	wss := fiber.New()

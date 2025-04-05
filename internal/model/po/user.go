@@ -1,7 +1,7 @@
 package po
 
 type User struct {
-	ID          uint   `json:"user_id" gorm:"primaryKey"`
+	ID          uint   `json:"user_id" gorm:"primaryKey;column:user_id"`
 	CreatedTune int64  `json:"created_time" gorm:"autoCreateTime"`
 	UpdatedTune int64  `json:"updated_time" gorm:"autoUpdateTime"`
 	DeletedTune int64  `json:"deleted_time" gorm:"autoDeleteTime"`
