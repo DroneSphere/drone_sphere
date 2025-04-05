@@ -16,6 +16,12 @@ import (
 	"github.com/jinzhu/copier"
 )
 
+// 无人机型号选择项 DTO
+type DroneModelOption struct {
+	ID   uint   `json:"id"`   // 型号 ID
+	Name string `json:"name"` // 型号名称
+}
+
 type DroneRouter struct {
 	svc service.DroneSvc
 	eb  EventBus.Bus
@@ -34,6 +40,7 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 		h.Put("/:sn", r.update)
 		h.Get("/sn/:sn", r.getBySN)
 		h.Get("/state/sse", r.pushState)
+		h.Get("/models", r.getModels) // 添加获取无人机型号列表的路由
 	}
 }
 
@@ -190,4 +197,26 @@ func (r *DroneRouter) pushState(c *fiber.Ctx) error {
 	})
 
 	return nil
+}
+
+// getModels 获取无人机型号列表
+//
+//	@Router			/drone/models [get]
+//	@Summary		获取无人机型号列表
+//	@Description	获取当前系统中已有无人机的型号列表，供前端下拉选择器使用
+//	@Tags			drone
+//	@Produce		json
+//	@Success		200	{object}	v1.Response{data=[]dto.DroneModelOption}	"成功"
+func (r *DroneRouter) getModels(c *fiber.Ctx) error {
+	ctx := context.Background()
+
+	// 调用仓库层方法获取无人机型号列表
+	models, err := r.svc.Repo().FetchDroneModelOptions(ctx)
+	if err != nil {
+		r.l.Error("获取无人机型号列表失败", slog.Any("error", err))
+		return c.JSON(Fail(ErrorBody{Code: 500, Msg: "获取无人机型号列表失败: " + err.Error()}))
+	}
+
+	// 返回结果
+	return c.JSON(Success(models))
 }

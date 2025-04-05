@@ -30,6 +30,7 @@ type (
 		SaveState(ctx context.Context, state ro.Drone) error
 		SelectAllByID(ctx context.Context, ids []uint) ([]entity.Drone, error)
 		UpdateCallsign(ctx context.Context, sn, callsign string) error
+		FetchDroneModelOptions(ctx context.Context) ([]dto.DroneModelOption, error) // 获取无人机型号选项列表
 	}
 )
 

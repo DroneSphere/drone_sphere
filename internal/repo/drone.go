@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/bytedance/sonic"
+	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/model/ro"
@@ -28,6 +29,11 @@ func NewDroneGormRepo(db *gorm.DB, rds *redis.Client, l *slog.Logger) *DroneDefa
 		l:         l,
 		rdsPrefix: "drone:",
 	}
+}
+
+// GetDB 获取数据库连接
+func (r *DroneDefaultRepo) GetDB() *gorm.DB {
+	return r.tx
 }
 
 // SelectAll 列出所有无人机
@@ -154,4 +160,24 @@ func (r *DroneDefaultRepo) UpdateCallsign(ctx context.Context, sn, callsign stri
 		return err
 	}
 	return nil
+}
+
+// FetchDroneModelOptions 查询无人机型号选项列表
+// 此方法执行原生SQL查询，获取现有无人机对应的型号列表（去重）
+// 主要用于前端下拉选择框的数据源
+func (r *DroneDefaultRepo) FetchDroneModelOptions(ctx context.Context) ([]dto.DroneModelOption, error) {
+	// 查询有效无人机的所有型号
+	var models []dto.DroneModelOption
+	if err := r.tx.WithContext(ctx).Raw(`
+		SELECT DISTINCT dm.drone_model_id as id, dm.drone_model_name as name
+		FROM tb_drones d
+		JOIN tb_drone_models dm ON d.drone_model_id = dm.drone_model_id
+		WHERE d.state = 0
+		ORDER BY dm.drone_model_name
+	`).Scan(&models).Error; err != nil {
+		r.l.Error("获取无人机型号列表失败", slog.Any("error", err))
+		return nil, err
+	}
+
+	return models, nil
 }
