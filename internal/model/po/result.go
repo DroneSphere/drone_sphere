@@ -1,14 +1,15 @@
 package po
 
 import (
+	"time"
+
 	"gorm.io/datatypes"
 )
 
 type Result struct {
-	ID               uint           `json:"result_id" gorm:"primaryKey"`
-	CreatedTune      int64          `json:"created_time" gorm:"autoCreateTime"`
-	UpdatedTune      int64          `json:"updated_time" gorm:"autoUpdateTime"`
-	DeletedTune      int64          `json:"deleted_time" gorm:"autoDeleteTime"`
+	ID               uint           `json:"result_id" gorm:"primaryKey;column:result_id"`
+	CreatedTime      time.Time      `json:"created_time" gorm:"autoCreateTime;column:created_time"`
+	UpdatedTime      time.Time      `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
 	State            int            `json:"state" gorm:"default:0"` // -1: deleted, 0: active
 	JobID            uint           `json:"job_id"`                 // 任务ID
 	WaylineID        uint           `json:"wayline_id"`             // 航线ID

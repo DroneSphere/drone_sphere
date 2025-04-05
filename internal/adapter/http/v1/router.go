@@ -15,17 +15,8 @@ import (
 	slogfiber "github.com/samber/slog-fiber"
 )
 
-// NewRouter -.
-// Swagger spec:
-//
-//	@title			DroneSphere API
-//	@description	DroneSphere API
-//	@version		1.0
-//	@license.name	Apache 2.0
-//	@host			lqhirwdzgkvv.sealoshzh.site
-//	@BasePath		/api/v1
-func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.UserSvc, drone service.DroneSvc,
-	sa service.AreaSvc, wl service.WaylineSvc, job service.JobSvc, model service.ModelSvc, gateway service.GatewaySvc) {
+// NewRouter 初始化路由
+func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, svc *service.Container) {
 	sfCfg := slogfiber.Config{
 		WithTraceID: true,
 		WithSpanID:  true,
@@ -37,14 +28,6 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 	app.Use(slogfiber.NewWithConfig(l, sfCfg))
 	app.Use(recover.New())
 	app.Use(cors.New())
-
-	// Swagger
-	// app.Use(swagger.New(swagger.Config{
-	// 	BasePath: "/",
-	// 	FilePath: "./docs/http/v1/swagger.json",
-	// 	Path:     "swagger",
-	// 	Title:    "Server Swagger API Docs",
-	// }))
 
 	// Prometheus metrics
 	prometheus := fiberprometheus.New("dronesphere")
@@ -60,12 +43,13 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, user service.Use
 	api := app.Group("/api/v1")
 	{
 		newPlatformRouter(api, l)
-		newUserRouter(api, user, eb, l)
-		newDroneRouter(api, drone, eb, l)
-		NewSearchAreaRouter(api, sa, eb, l)
-		NewJobRouter(api, job, sa, model, l)
-		NewGatewayRouter(api, gateway, eb, l) // 使用新的网关服务
-		NewModelsRouter(api, model, eb, l)
+		newUserRouter(api, svc.User, eb, l)
+		newDroneRouter(api, svc.Drone, eb, l)
+		NewSearchAreaRouter(api, svc.Area, eb, l)
+		NewJobRouter(api, svc.Job, svc.Area, svc.Model, l)
+		NewGatewayRouter(api, svc.Gateway, eb, l)
+		NewModelsRouter(api, svc.Model, eb, l)
+		newResultRouter(api, svc.Result, l)
 		api.Get("/sse", handleSSE(l))
 	}
 }

@@ -60,7 +60,10 @@ func (j *JobDefaultRepo) Save(ctx context.Context, job *po.Job) error {
 
 func (j *JobDefaultRepo) FetchPOByID(ctx context.Context, id uint) (*po.Job, error) {
 	var job po.Job
-	if err := j.tx.First(&job, id).Error; err != nil {
+	if err := j.tx.
+		WithContext(ctx).
+		Where("job_id = ?", id).
+		First(&job).Error; err != nil {
 		j.l.Error("Failed to fetch job by id", slog.Any("err", err))
 		return nil, err
 	}
