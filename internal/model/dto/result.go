@@ -20,6 +20,7 @@ type ResultItemDTO struct {
 	Lng         string `json:"lng"`          // 经度
 	Lat         string `json:"lat"`          // 纬度
 	CreatedAt   string `json:"created_at"`   // 检测时间
+	ImageUrl    string `json:"image_url"`    // 图片URL
 }
 
 // ResultDetailDTO 结果详情
@@ -35,6 +36,7 @@ type ResultDetailDTO struct {
 	Position         datatypes.JSON `json:"position"`          // 位置信息(经纬度)
 	Coordinate       datatypes.JSON `json:"coordinate"`        // 坐标信息
 	CreatedAt        string         `json:"created_at"`        // 创建时间
+	ImageUrl         string         `json:"image_url"`         // 图片URL
 }
 
 // CreateResultDTO 创建结果的请求
@@ -47,6 +49,7 @@ type CreateResultDTO struct {
 	ObjectConfidence float32        `json:"object_confidence"` // 物体置信度
 	Position         datatypes.JSON `json:"position"`          // 位置信息
 	Coordinate       datatypes.JSON `json:"coordinate"`        // 坐标信息
+	ImageUrl         string         `json:"image_url"`         // 图片URL
 }
 
 // ObjectTypeOption 物体类型选项

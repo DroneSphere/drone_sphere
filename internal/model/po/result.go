@@ -19,6 +19,7 @@ type Result struct {
 	ObjectConfidence float32        `json:"object_confidence" `     // 物体置信度
 	ObjectPosition   datatypes.JSON `json:"object_position"`        // 物体位置
 	ObjectCoordinate datatypes.JSON `json:"object_coordinate"`      // 物体坐标
+	ImageUrl         string         `json:"image_url"`              // 图片URL
 }
 
 // TableName 指定 Result 表名为 tb_results

@@ -66,6 +66,7 @@ func (s *ResultImpl) Create(ctx context.Context, result dto.CreateResultDTO) (ui
 		ObjectConfidence: result.ObjectConfidence,
 		ObjectPosition:   result.Position,
 		ObjectCoordinate: result.Coordinate,
+		ImageUrl:         result.ImageUrl,
 	}
 
 	if err := s.repo.Create(ctx, r); err != nil {
@@ -99,6 +100,7 @@ func (s *ResultImpl) GetByID(ctx context.Context, id uint) (*dto.ResultDetailDTO
 		ObjectConfidence: r.ObjectConfidence,
 		Position:         r.ObjectPosition,
 		Coordinate:       r.ObjectCoordinate,
+		ImageUrl:         r.ImageUrl,
 		CreatedAt:        r.CreatedTime.Format("2006-01-02 15:04:05"),
 	}, nil
 }
@@ -131,8 +133,9 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 			ID:          r.ID,
 			JobName:     job.Name,
 			TargetLabel: r.ObjectLabel,
-			Lng:         formatCoordinate(position.Lng),              // 从解析后的结构体获取经度并格式化
-			Lat:         formatCoordinate(position.Lat),              // 从解析后的结构体获取纬度并格式化
+			Lng:         formatCoordinate(position.Lng), // 从解析后的结构体获取经度并格式化
+			Lat:         formatCoordinate(position.Lat), // 从解析后的结构体获取纬度并格式化
+			ImageUrl:    r.ImageUrl,
 			CreatedAt:   r.CreatedTime.Format("2006-01-02 15:04:05"), // 添加创建时间
 		})
 	}
