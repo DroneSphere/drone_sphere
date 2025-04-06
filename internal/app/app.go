@@ -11,9 +11,7 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/adapter/eventhandler"
-	"github.com/dronesphere/internal/adapter/http/dji"
 	v1 "github.com/dronesphere/internal/adapter/http/v1"
-	"github.com/dronesphere/internal/adapter/ws"
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gofiber/fiber/v2"
@@ -145,8 +143,8 @@ func Run(cfg *configs.Config) {
 
 	// Routes
 	v1.NewRouter(app, eb, logger, container)
-	dji.NewRouter(app, eb, logger, droneSvc, wlSvc)
-	ws.NewRouter(app, eb, logger, userSvc, droneSvc)
+	// dji.NewRouter(app, eb, logger, droneSvc, wlSvc)
+	// ws.NewRouter(app, eb, logger, userSvc, droneSvc)
 
 	// Graceful Shutdown
 	sigChan := make(chan os.Signal, 1)

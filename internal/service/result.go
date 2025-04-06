@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -97,6 +99,7 @@ func (s *ResultImpl) GetByID(ctx context.Context, id uint) (*dto.ResultDetailDTO
 		ObjectConfidence: r.ObjectConfidence,
 		Position:         r.ObjectPosition,
 		Coordinate:       r.ObjectCoordinate,
+		CreatedAt:        r.CreatedTime.Format("2006-01-02 15:04:05"),
 	}, nil
 }
 
@@ -114,13 +117,23 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 			s.l.Error("获取任务信息失败", slog.Any("err", err))
 			continue
 		}
+		// 从ObjectPosition JSON字段中提取经纬度信息
+		var position struct {
+			Lng float64 `json:"lng"` // 使用float64类型接收数值类型的经度
+			Lat float64 `json:"lat"` // 使用float64类型接收数值类型的纬度
+		}
+		// 尝试解析JSON数据
+		if err := json.Unmarshal(r.ObjectPosition, &position); err != nil {
+			s.l.Warn("解析位置信息失败", slog.Any("err", err), slog.Any("result_id", r.ID))
+		}
 
 		items = append(items, dto.ResultItemDTO{
 			ID:          r.ID,
 			JobName:     job.Name,
 			TargetLabel: r.ObjectLabel,
-			// Lng:         r.ObjectPosition.,
-			// Lat:         pos.Lat,
+			Lng:         formatCoordinate(position.Lng),              // 从解析后的结构体获取经度并格式化
+			Lat:         formatCoordinate(position.Lat),              // 从解析后的结构体获取纬度并格式化
+			CreatedAt:   r.CreatedTime.Format("2006-01-02 15:04:05"), // 添加创建时间
 		})
 	}
 
@@ -142,4 +155,9 @@ func (s *ResultImpl) GetObjectTypeOptions(ctx context.Context) []dto.ObjectTypeO
 // formatTime 格式化时间戳
 func (s *ResultImpl) formatTime(timestamp int64) string {
 	return time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
+}
+
+// formatCoordinate 将坐标浮点数转换为字符串
+func formatCoordinate(value float64) string {
+	return fmt.Sprintf("%.6f", value) // 保留6位小数的坐标字符串
 }
