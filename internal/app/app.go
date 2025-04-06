@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -9,9 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/adapter/eventhandler"
+	"github.com/dronesphere/internal/adapter/http/dji"
 	v1 "github.com/dronesphere/internal/adapter/http/v1"
+	"github.com/dronesphere/internal/adapter/ws"
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gofiber/fiber/v2"
@@ -135,37 +137,84 @@ func Run(cfg *configs.Config) {
 	// Event Handlers
 	eventhandler.NewHandler(eb, logger, client, droneSvc, modelRepo, gatewayRepo)
 
-	// Servers
-	app := fiber.New(fiber.Config{
-		JSONEncoder: sonic.Marshal,
-		JSONDecoder: sonic.Unmarshal,
-	})
-
-	// Routes
-	v1.NewRouter(app, eb, logger, container)
-	// dji.NewRouter(app, eb, logger, droneSvc, wlSvc)
-	// ws.NewRouter(app, eb, logger, userSvc, droneSvc)
-
-	// Graceful Shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+	httpV1 := fiber.New()
+	v1.NewRouter(httpV1, eb, logger, container) // 添加网关服务到路由
+	httpDJI := fiber.New()
+	dji.NewRouter(httpDJI, eb, logger, droneSvc, wlSvc)
+	wss := fiber.New()
+	ws.NewRouter(wss, eb, logger, userSvc, droneSvc)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		s := <-sigChan
-		logger.Info("Received signal", slog.Any("signal", s))
+	// 启动所有服务器
+	bootServers(cfg, &wg, logger, httpV1, httpDJI, wss)
+	logger.Info("Servers all started")
 
-		if err := app.Shutdown(); err != nil {
-			logger.Error("Failed to shutdown HTTP server", slog.Any("err", err))
-		}
-	}()
+	// 监听系统信号
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	<-sigChan
+	logger.Info("Received shutdown signal, gracefully shutting down servers...")
 
-	// 启动 HTTP 服务器
-	if err := app.Listen(fmt.Sprintf(":%d", cfg.Server.Port)); err != nil {
-		logger.Error("Failed to start HTTP server", slog.Any("err", err))
+	// 创建一个带有超时的 context
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 关闭所有服务器
+	shutdownServers(ctx, logger, httpV1, httpDJI, wss)
+
+	// 等待所有服务器关闭
+	wg.Wait()
+	logger.Info("All servers have been shut down. Exiting...")
+}
+
+func bootServers(cfg *configs.Config, wg *sync.WaitGroup, l *slog.Logger, apps ...*fiber.App) {
+	port := cfg.Server.Port
+	// 创建互斥锁，确保服务器逐个启动
+	var mu sync.Mutex
+	var startupWg sync.WaitGroup
+
+	for i, app := range apps {
+		wg.Add(1)
+		startupWg.Add(1)
+
+		go func(index int, p int, a *fiber.App) {
+			defer wg.Done()
+
+			// 使用互斥锁确保服务器按顺序启动
+			mu.Lock()
+			serverName := fmt.Sprintf("Server %d", index+1)
+			l.Info("Starting server", slog.String("server", serverName), slog.Int("port", p))
+
+			// 启动服务器
+			go func() {
+				// 服务器启动后释放锁，允许下一个服务器启动
+				defer mu.Unlock()
+				defer startupWg.Done()
+
+				// 短暂延迟，确保服务器有时间进行初始化
+				time.Sleep(100 * time.Millisecond)
+				l.Info("Server started", slog.String("server", serverName), slog.Int("port", p))
+			}()
+
+			if err := a.Listen(fmt.Sprintf(":%d", p)); err != nil {
+				l.Error("Server failed to start", slog.String("server", serverName), slog.Int("port", p), slog.Any("err", err))
+			}
+		}(i, port, app)
+
+		port++
 	}
 
-	wg.Wait()
+	// 等待所有服务器完成启动过程
+	startupWg.Wait()
+	l.Info("All servers started sequentially")
+}
+
+func shutdownServers(ctx context.Context, l *slog.Logger, apps ...*fiber.App) {
+	for _, app := range apps {
+		if err := app.ShutdownWithContext(ctx); err != nil {
+			l.Error("Server shutdown error", slog.Any("err", err))
+		} else {
+			l.Info("Server gracefully stopped")
+		}
+	}
 }
