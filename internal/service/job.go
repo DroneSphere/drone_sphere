@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/entity"
@@ -17,8 +18,8 @@ type (
 		FetchByID(ctx context.Context, id uint) (*entity.Job, error)
 		FetchAvailableAreas(ctx context.Context) ([]*entity.Area, error)
 		FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error)
-		CreateJob(ctx context.Context, name, description string, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (uint, error)
-		ModifyJob(ctx context.Context, id uint, name, description string, droneIDs []uint) (*entity.Job, error)
+		CreateJob(ctx context.Context, name, description string, areaID uint, scheduleTime time.Time, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (uint, error)
+		ModifyJob(ctx context.Context, id uint, name, description string, scheduleTime *time.Time, droneIDs []uint) (*entity.Job, error)
 		FetchAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error)
 	}
 
@@ -125,14 +126,15 @@ func (j *JobImpl) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
 	return job, nil
 }
 
-func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (uint, error) {
+func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaID uint, scheduleTime time.Time, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (uint, error) {
 	job := &po.Job{
-		Name:        name,
-		Description: description,
-		AreaID:      areaID,
-		Drones:      drones,
-		Waylines:    waylines,
-		Mappings:    mappings,
+		Name:         name,
+		Description:  description,
+		AreaID:       areaID,
+		ScheduleTime: scheduleTime, // 添加计划执行时间
+		Drones:       drones,
+		Waylines:     waylines,
+		Mappings:     mappings,
 	}
 	if err := j.jobRepo.Save(ctx, job); err != nil {
 		return 0, err
@@ -157,7 +159,7 @@ func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaI
 	return job.ID, nil
 }
 
-func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description string, droneIDs []uint) (*entity.Job, error) {
+func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description string, scheduleTime *time.Time, droneIDs []uint) (*entity.Job, error) {
 	p, err := j.jobRepo.FetchPOByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -167,6 +169,9 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 	}
 	if description != "" {
 		p.Description = description
+	}
+	if scheduleTime != nil {
+		p.ScheduleTime = *scheduleTime
 	}
 	// p. = droneIDs
 	if err := j.jobRepo.Save(ctx, p); err != nil {

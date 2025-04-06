@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"strconv"
+	"time"
 
 	api "github.com/dronesphere/api/http/v1"
 	"github.com/dronesphere/internal/model/dto"
@@ -261,21 +262,40 @@ func (r *JobRouter) getCreationDrones(c *fiber.Ctx) error {
 
 func (r *JobRouter) create(c *fiber.Ctx) error {
 	type Request struct {
-		Name        string                   `json:"name"`
-		Description string                   `json:"description"`
-		AreaID      int64                    `json:"area_id"`
-		Drones      []dto.JobCreationDrone   `json:"drones"`
-		Waylines    []dto.JobCreationWayline `json:"waylines"`
-		Mappings    []dto.JobCreationMapping `json:"mappings"`
+		Name         string                   `json:"name"`
+		Description  string                   `json:"description"`
+		AreaID       int64                    `json:"area_id"`
+		ScheduleTime string                   `json:"schedule_time"` // 新增：任务计划执行时间
+		Drones       []dto.JobCreationDrone   `json:"drones"`
+		Waylines     []dto.JobCreationWayline `json:"waylines"`
+		Mappings     []dto.JobCreationMapping `json:"mappings"`
 	}
 
 	var req Request
 	if err := c.BodyParser(&req); err != nil {
 		return c.JSON(Fail(InvalidParams))
 	}
+
+	// 解析时间字符串为当天的时间
+	scheduleTime, err := time.Parse("15:04:05", req.ScheduleTime)
+	if err != nil {
+		r.l.Error("无效的时间格式", slog.Any("err", err))
+		return c.JSON(Fail(InvalidParams))
+	}
+
+	// 获取当前的日期部分
+	now := time.Now()
+	// 组合当前日期和用户指定的时间
+	scheduleTime = time.Date(
+		now.Year(), now.Month(), now.Day(),
+		scheduleTime.Hour(), scheduleTime.Minute(), scheduleTime.Second(),
+		0, now.Location(),
+	)
+
 	r.l.Info("create job", "req", req)
 	ctx := context.Background()
-	id, err := r.svc.CreateJob(ctx, req.Name, req.Description, uint(req.AreaID), req.Drones, req.Waylines, req.Mappings)
+
+	id, err := r.svc.CreateJob(ctx, req.Name, req.Description, uint(req.AreaID), scheduleTime, req.Drones, req.Waylines, req.Mappings)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
@@ -299,8 +319,27 @@ func (r *JobRouter) update(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.JSON(Fail(InvalidParams))
 	}
+
+	var scheduleTime *time.Time
+	if req.ScheduleTime != "" {
+		t, err := time.Parse("15:04:05", req.ScheduleTime)
+		if err != nil {
+			r.l.Error("无效的时间格式", slog.Any("err", err))
+			return c.JSON(Fail(InvalidParams))
+		}
+		// 获取当前的日期部分
+		now := time.Now()
+		// 组合当前日期和用户指定的时间
+		combinedTime := time.Date(
+			now.Year(), now.Month(), now.Day(),
+			t.Hour(), t.Minute(), t.Second(),
+			0, now.Location(),
+		)
+		scheduleTime = &combinedTime
+	}
+
 	ctx := context.Background()
-	j, err := r.svc.ModifyJob(ctx, req.ID, req.Name, req.Description, req.DroneIDs)
+	j, err := r.svc.ModifyJob(ctx, req.ID, req.Name, req.Description, scheduleTime, req.DroneIDs)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}

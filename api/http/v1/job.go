@@ -6,11 +6,12 @@ import (
 )
 
 type JobItemResult struct {
-	ID          uint     `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	AreaName    string   `json:"area_name"`
-	Drones      []string `json:"drones"`
+	ID           uint     `json:"id"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	AreaName     string   `json:"area_name"`
+	ScheduleTime string   `json:"schedule_time"` // 任务计划执行时间
+	Drones       []string `json:"drones"`
 }
 
 func (r *JobItemResult) FromJobEntity(j *entity.Job) error {
@@ -18,6 +19,7 @@ func (r *JobItemResult) FromJobEntity(j *entity.Job) error {
 	r.Name = j.Name
 	r.Description = j.Description
 	r.AreaName = j.Area.Name
+	r.ScheduleTime = j.ScheduleTime.Format("15:04:05")
 	for _, m := range j.Mappings {
 		r.Drones = append(r.Drones, m.PhysicalDroneCallsign)
 	}
@@ -55,9 +57,10 @@ type JobCreationOptionsResult struct {
 
 // JobCreationRequest 创建任务请求
 type JobCreationRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	AreaID      uint   `json:"area_id"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	AreaID       uint   `json:"area_id"`
+	ScheduleTime string `json:"schedule_time"` // 任务计划执行时间，格式：HH:mm:ss
 }
 
 // JobCreationResult 创建任务结果
@@ -85,18 +88,20 @@ type JobEditionOptionsResult struct {
 
 // JobEditionRequest 编辑任务请求
 type JobEditionRequest struct {
-	ID          uint   `json:"id"`          // 任务ID
-	Name        string `json:"name"`        // 任务名称
-	Description string `json:"description"` // 任务描述
-	DroneIDs    []uint `json:"drone_ids"`   // 无人机ID列表
+	ID           uint   `json:"id"`            // 任务ID
+	Name         string `json:"name"`          // 任务名称
+	Description  string `json:"description"`   // 任务描述
+	ScheduleTime string `json:"schedule_time"` // 任务计划执行时间
+	DroneIDs     []uint `json:"drone_ids"`     // 无人机ID列表
 }
 
 // JobDetailResult 任务详情
 type JobDetailResult struct {
-	ID          uint   `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Area        struct {
+	ID           uint   `json:"id"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	ScheduleTime string `json:"schedule_time"` // 任务计划执行时间
+	Area         struct {
 		ID          uint   `json:"id"`
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -155,6 +160,7 @@ func (r *JobDetailResult) FromJobEntity(j *entity.Job) error {
 	r.ID = j.ID
 	r.Name = j.Name
 	r.Description = j.Description
+	r.ScheduleTime = j.ScheduleTime.Format("15:04:05")
 	r.Area.ID = j.Area.ID
 	r.Area.Name = j.Area.Name
 	r.Area.Description = j.Area.Description
