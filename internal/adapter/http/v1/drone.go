@@ -173,6 +173,7 @@ func (r *DroneRouter) pushState(c *fiber.Ctx) error {
 					Height:  drone.Height,
 					Speed:   drone.HorizontalSpeed,
 					Battery: drone.Battery.CapacityPercent,
+					Heading: drone.AttitudeHead,
 				}
 				json, err := sonic.Marshal(res)
 				if err != nil {
