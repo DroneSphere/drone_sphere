@@ -4,16 +4,19 @@ import (
 	"log/slog"
 
 	api "github.com/dronesphere/api/http/v1"
+	"github.com/dronesphere/configs"
 	"github.com/gofiber/fiber/v2"
 )
 
 type PlatformRouter struct {
-	l *slog.Logger
+	l   *slog.Logger
+	cfg *configs.Config // 添加配置对象
 }
 
-func newPlatformRouter(handler fiber.Router, l *slog.Logger) {
+func newPlatformRouter(handler fiber.Router, l *slog.Logger, cfg *configs.Config) {
 	r := &PlatformRouter{
-		l: l,
+		l:   l,
+		cfg: cfg,
 	}
 	h := handler.Group("/platform")
 	{
@@ -33,10 +36,10 @@ func newPlatformRouter(handler fiber.Router, l *slog.Logger) {
 //	@Success		200	{object}	v1.Response{data=v1.PlatformResult}	"成功"
 func (r *PlatformRouter) getInfo(c *fiber.Ctx) error {
 	result := &api.PlatformResult{
-		Platform:    "无人机搜索原型系统",
-		Workspace:   "演示工作空间",
-		WorkspaceID: "e3dea0f5-37f2-4d79-ae58-490af3228069",
-		Desc:        "本工作空间为无人机搜索原型系统演示工作空间，用于展示无人机搜索原型系统的功能和特性。",
+		Platform:    r.cfg.Platform.Name,
+		Workspace:   r.cfg.Platform.Workspace,
+		WorkspaceID: r.cfg.Platform.WorkspaceID,
+		Desc:        r.cfg.Platform.Desc,
 	}
 	return c.JSON(Success(result))
 }
@@ -53,17 +56,17 @@ func (r *PlatformRouter) getInfo(c *fiber.Ctx) error {
 func (r *PlatformRouter) getConnectionParams(c *fiber.Ctx) error {
 	result := &api.ConnectionParamsResult{
 		Thing: api.ThingParamResult{
-			Host:     "tcp://47.245.40.222:1883",
-			Username: "drone",
-			Password: "drone",
+			Host:     r.cfg.Platform.Thing.Host,
+			Username: r.cfg.Platform.Thing.Username,
+			Password: r.cfg.Platform.Thing.Password,
 		},
 		API: api.APIParamResult{
-			Host:  "http://192.168.1.108:10087",
-			Token: "123456",
+			Host:  r.cfg.Platform.API.Host,
+			Token: r.cfg.Platform.API.Token,
 		},
 		WS: api.WSParamResult{
-			Host:  "ws://192.168.1.108:10088",
-			Token: "123456",
+			Host:  r.cfg.Platform.WS.Host,
+			Token: r.cfg.Platform.WS.Token,
 		},
 	}
 	return c.JSON(Success(result))

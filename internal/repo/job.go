@@ -251,25 +251,34 @@ func (j *JobDefaultRepo) SelectAll(ctx context.Context, jobName, areaName string
 func (j *JobDefaultRepo) SelectPhysicalDrones(ctx context.Context) ([]dto.PhysicalDrone, error) {
 	var jsonStr string
 	if err := j.tx.Raw(`
-			SELECT JSON_ARRAYAGG(
-				JSON_OBJECT(
-					'id', d.drone_id,
-					'sn', d.sn,
-					'callsign', d.callsign,
-					'model', JSON_OBJECT('id', dm.drone_model_id, 'name', dm.drone_model_name),
-					'gimbals', dg.gimbals
-				)
-			) AS drone_data
-			FROM drone.tb_drones d
-			LEFT JOIN drone.tb_drone_models dm ON d.drone_model_id = dm.gateway_model_id
-			LEFT JOIN (
-				SELECT
-					dg.drone_model_id AS drone_model_id,
-					JSON_ARRAYAGG(JSON_OBJECT('id', gm.gimbal_model_id, 'name', gm.gimbal_model_name)) AS gimbals
-				FROM drone.tb_drone_gimbal dg
-				LEFT JOIN drone.tb_gimbal_models gm ON dg.gimbal_model_id = gm.gimbal_model_id
-				GROUP BY dg.drone_model_id
-			) dg ON d.drone_model_id = dg.drone_model_id;
+			SELECT
+				JSON_ARRAYAGG(
+					JSON_OBJECT(
+						'id',
+						d.drone_id,
+						'sn',
+						d.sn,
+						'callsign',
+						d.callsign,
+						'model',
+						JSON_OBJECT('id', dm.drone_model_id, 'name', dm.drone_model_name),
+						'gimbals',
+						dg.gimbals
+					)
+				) AS drone_data
+			FROM
+				drone.tb_drones d
+				LEFT JOIN drone.tb_drone_models dm ON d.drone_model_id = dm.drone_model_id
+				LEFT JOIN (
+					SELECT
+						dg.drone_model_id AS drone_model_id,
+						JSON_ARRAYAGG(JSON_OBJECT('id', gm.gimbal_model_id, 'name', gm.gimbal_model_name)) AS gimbals
+					FROM
+						drone.tb_drone_gimbal dg
+						LEFT JOIN drone.tb_gimbal_models gm ON dg.gimbal_model_id = gm.gimbal_model_id
+					GROUP BY
+						dg.drone_model_id
+				) dg ON d.drone_model_id = dg.drone_model_id;
 		`).Scan(&jsonStr).Error; err != nil {
 		j.l.Error("Failed to fetch physical drones", slog.Any("err", err))
 		return nil, err

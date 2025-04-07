@@ -69,15 +69,27 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 			d.l.Info("识别无人机上线", slog.Any("droneSN", droneSN))
 			ctx = context.WithValue(ctx, event.DroneEventSNKey, droneSN)
 			ctx = context.WithValue(ctx, event.DroneEventTopoKey, p.Data.SubDevices[0].ProductTopo)
-			d.eb.Publish(event.DroneConnected, ctx)
+
+			// 使用goroutine异步发布事件，避免死锁
+			go func(eventCtx context.Context) {
+				d.eb.Publish(event.DroneConnected, eventCtx)
+			}(ctx)
 		} else {
 			d.l.Info("识别无人机下线", slog.Any("gatewaySN", gatewaySN))
 		}
 
 		// 发布成功消息响应
-		r, _ := sonic.Marshal(dto.NewMessageResult(0))
+		r, _ := sonic.Marshal(dto.NewMessageResult(p.MessageCommon, 0))
 		publishTopic := fmt.Sprintf("sys/product/%s/status_reply", gatewaySN)
-		d.mqtt.Publish(publishTopic, 1, false, []byte(r))
+		d.l.Info("应答网关设备上下线消息", slog.Any("topic", publishTopic), slog.Any("payload", r))
+		// MQTT客户端的Publish方法返回的是Token，而不是error
+		token := d.mqtt.Publish(publishTopic, 1, false, r)
+		if token.Wait() && token.Error() != nil {
+
+			panic(
+				fmt.Sprintf("发布网关响应消息失败: %s", token.Error()),
+			)
+		}
 	})
 	if token.Wait() && token.Error() != nil {
 		d.l.Error("设备上下线订阅失败", slog.Any("topic", subscribeTopic), slog.Any("err", token.Error()))
@@ -120,7 +132,9 @@ func (d *DroneEventHandler) parseHeartBeat(m mqtt.Message) (dto.DroneMessageProp
 		dto.MessageCommon
 		Data dto.DroneMessageProperty `json:"data"`
 	}
-	_ = sonic.Unmarshal(m.Payload(), &p)
+	if err := sonic.Unmarshal(m.Payload(), &p); err != nil {
+		return dto.DroneMessageProperty{}, false
+	}
 
 	return p.Data, true
 }

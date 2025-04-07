@@ -90,7 +90,7 @@ func (h *GatewayHandler) handleUpdateTopo(c mqtt.Client, msg mqtt.Message) {
 	h.eb.Publish(event.GatewayUpdateTopoEvent, payload)
 
 	// 返回响应消息
-	response := dto.NewMessageResult(0)
+	response := dto.NewMessageResult(dto.MessageCommon{}, 0)
 	response.TID = p.TID
 	response.BID = p.BID
 	response.Method = p.Method

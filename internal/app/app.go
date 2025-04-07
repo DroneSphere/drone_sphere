@@ -138,7 +138,7 @@ func Run(cfg *configs.Config) {
 	eventhandler.NewHandler(eb, logger, client, droneSvc, modelRepo, gatewayRepo)
 
 	httpV1 := fiber.New()
-	v1.NewRouter(httpV1, eb, logger, container) // 添加网关服务到路由
+	v1.NewRouter(httpV1, eb, logger, container, cfg) // 添加配置参数
 	httpDJI := fiber.New()
 	dji.NewRouter(httpDJI, eb, logger, droneSvc, wlSvc)
 	wss := fiber.New()

@@ -9,10 +9,11 @@ import (
 )
 
 type Config struct {
-	Server ServerConfig `mapstructure:"server"`
-	DB     DBConfig     `mapstructure:"db"`
-	MQTT   MQTTConfig   `mapstructure:"mqtt"`
-	Redis  RedisConfig  `mapstructure:"redis"`
+	Server   ServerConfig   `mapstructure:"server"`
+	DB       DBConfig       `mapstructure:"db"`
+	MQTT     MQTTConfig     `mapstructure:"mqtt"`
+	Redis    RedisConfig    `mapstructure:"redis"`
+	Platform PlatformConfig `mapstructure:"platform"` // 新增平台配置
 }
 
 func (c *Config) GetDBStr() string {
@@ -63,6 +64,27 @@ type RedisConfig struct {
 	DB       int    `mapstructure:"db"`
 }
 
+// PlatformConfig 平台配置
+type PlatformConfig struct {
+	Name        string `mapstructure:"name"`         // 平台名称
+	Workspace   string `mapstructure:"workspace"`    // 工作空间名称
+	WorkspaceID string `mapstructure:"workspace_id"` // 工作空间ID
+	Desc        string `mapstructure:"desc"`         // 平台描述
+	Thing       struct {
+		Host     string `mapstructure:"host"`     // 物联网平台连接地址
+		Username string `mapstructure:"username"` // 物联网平台用户名
+		Password string `mapstructure:"password"` // 物联网平台密码
+	} `mapstructure:"thing"`
+	API struct {
+		Host  string `mapstructure:"host"`  // API服务地址
+		Token string `mapstructure:"token"` // API访问令牌
+	} `mapstructure:"api"`
+	WS struct {
+		Host  string `mapstructure:"host"`  // WebSocket服务地址
+		Token string `mapstructure:"token"` // WebSocket访问令牌
+	} `mapstructure:"ws"`
+}
+
 func LoadConfig() (*Config, error) {
 	// Development 环境下加载.env文件，默认为development
 	env := os.Getenv("APP_ENV")
@@ -92,6 +114,19 @@ func LoadConfig() (*Config, error) {
 	_ = viper.BindEnv("redis.port", "REDIS_PORT")
 	_ = viper.BindEnv("redis.password", "REDIS_PASSWORD")
 	_ = viper.BindEnv("redis.db", "REDIS_DB")
+
+	// 平台相关环境变量
+	_ = viper.BindEnv("platform.name", "PLATFORM_NAME")
+	_ = viper.BindEnv("platform.workspace", "PLATFORM_WORKSPACE")
+	_ = viper.BindEnv("platform.workspace_id", "PLATFORM_WORKSPACE_ID")
+	_ = viper.BindEnv("platform.desc", "PLATFORM_DESC")
+	_ = viper.BindEnv("platform.thing.host", "PLATFORM_THING_HOST")
+	_ = viper.BindEnv("platform.thing.username", "PLATFORM_THING_USERNAME")
+	_ = viper.BindEnv("platform.thing.password", "PLATFORM_THING_PASSWORD")
+	_ = viper.BindEnv("platform.api.host", "PLATFORM_API_HOST")
+	_ = viper.BindEnv("platform.api.token", "PLATFORM_API_TOKEN")
+	_ = viper.BindEnv("platform.ws.host", "PLATFORM_WS_HOST")
+	_ = viper.BindEnv("platform.ws.token", "PLATFORM_WS_TOKEN")
 
 	// 反序列化配置文件到结构体
 	var config Config

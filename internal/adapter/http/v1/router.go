@@ -8,6 +8,7 @@ import (
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/asaskevich/EventBus"
+	"github.com/dronesphere/configs"
 	"github.com/dronesphere/internal/service"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -16,7 +17,7 @@ import (
 )
 
 // NewRouter 初始化路由
-func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, svc *service.Container) {
+func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, svc *service.Container, cfg *configs.Config) {
 	sfCfg := slogfiber.Config{
 		WithTraceID: true,
 		WithSpanID:  true,
@@ -42,7 +43,7 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, svc *service.Con
 	// Routers
 	api := app.Group("/api/v1")
 	{
-		newPlatformRouter(api, l)
+		newPlatformRouter(api, l, cfg)
 		newUserRouter(api, svc.User, eb, l)
 		newDroneRouter(api, svc.Drone, eb, l)
 		NewSearchAreaRouter(api, svc.Area, eb, l)

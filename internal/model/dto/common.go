@@ -16,8 +16,9 @@ type MessageResultData struct {
 	Result int `json:"result"`
 }
 
-func NewMessageResult(res int) MessageResultCommon {
+func NewMessageResult(com MessageCommon, res int) MessageResultCommon {
 	return MessageResultCommon{
+		MessageCommon: com,
 		Data: MessageResultData{
 			Result: res,
 		},

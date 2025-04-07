@@ -176,7 +176,7 @@ func (r *ModelDefaultRepo) FindDefaultDroneVariation(ctx context.Context, droneM
 	// 查询指定型号的默认变体配置
 	var variation po.DroneVariation
 	if err := r.tx.WithContext(ctx).
-		Where("drone_model_id = ? AND is_default = ?", droneModelID, true).
+		Where("drone_model_id = ?", droneModelID).
 		Preload("DroneModel").
 		Preload("Gimbals").
 		Preload("Payloads").
