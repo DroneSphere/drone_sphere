@@ -32,7 +32,7 @@ func NewGatewayHandler(eb EventBus.Bus, mqtt mqtt.Client, repo repo.GatewayRepo,
 	}
 
 	// 订阅网关相关的 MQTT 主题
-	handler.subscribeMQTTTopics()
+	// handler.subscribeMQTTTopics()
 
 	return handler
 }

@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"log/slog"
-	"strconv"
 
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
@@ -143,32 +142,17 @@ func (r *ModelDefaultRepo) GenerateDroneVariations(ctx context.Context, droneMod
 // deviceType: 设备类型
 // subType: 设备子类型
 func (r *ModelDefaultRepo) FindDroneModelByDomainTypeSubType(ctx context.Context, domain string, deviceType int, subType int) (*po.DroneModel, error) {
-	// 将 domain 字符串转换为整数
-	var domainInt int
-	var err error
-
-	// 兼容不同类型的 domain 格式
-	if domain != "" {
-		domainInt, err = strconv.Atoi(domain)
-		if err != nil {
-			r.l.Error("域名转换为整数失败", "domain", domain, "error", err)
-			// 默认为 0，表示未知领域
-			domainInt = 0
-		}
-	}
-
 	r.l.Debug("查询无人机型号",
-		"domain", domainInt,
 		"type", deviceType,
 		"sub_type", subType)
+	r.l.Warn("domain 参数已弃，使用 deviceType 和 subType 进行查询")
 
 	// 在数据库中查询匹配的无人机型号
 	var droneModel po.DroneModel
 	if err := r.tx.WithContext(ctx).
-		Where("domain = ? AND type = ? AND sub_type = ?", domainInt, deviceType, subType).
+		Where("drone_model_type = ? AND drone_model_sub_type = ?", deviceType, subType).
 		First(&droneModel).Error; err != nil {
 		r.l.Error("根据标识查找无人机型号失败",
-			"domain", domainInt,
 			"type", deviceType,
 			"sub_type", subType,
 			"error", err)

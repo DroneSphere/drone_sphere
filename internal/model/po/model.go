@@ -11,7 +11,7 @@ type GatewayModel struct {
 	ID          uint      `json:"gateway_model_id" gorm:"primaryKey;column:gateway_model_id"`
 	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime;column:created_time"`
 	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
-	State       int       `json:"state" gorm:"default:0;column:gateway_model_state"` // -1: deleted, 0: active
+	State       int       `json:"state" gorm:"default:0;column:state"` // -1: deleted, 0: active
 	// 型号名称，DJI 文档中收录的标准名称
 	Name string `json:"gateway_model_name" gorm:"column:gateway_model_name"`
 	// 描述，自定义的型号描述
@@ -33,7 +33,7 @@ type DroneModel struct {
 	ID          uint      `json:"drone_model_id" gorm:"primaryKey;column:drone_model_id"`
 	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime;column:created_time"`
 	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
-	State       int       `json:"state" gorm:"default:0;column:drone_model_state"` // -1: deleted, 0: active
+	State       int       `json:"state" gorm:"default:0;column:state"` // -1: deleted, 0: active
 	// 型号名称
 	Name        string `json:"drone_model_name" gorm:"column:drone_model_name"`
 	Description string `json:"drone_model_description,omitempty" gorm:"column:drone_model_description"`
@@ -60,7 +60,7 @@ type GimbalModel struct {
 	ID          uint      `json:"gimbal_model_id" gorm:"primaryKey;column:gimbal_model_id"`
 	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime;column:created_time"`
 	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
-	State       int       `json:"state" gorm:"default:0;column:gimbal_model_state"` // -1: deleted, 0: active
+	State       int       `json:"state" gorm:"default:0;column:state"` // -1: deleted, 0: active
 	// 云台名称
 	Name string `json:"gimbal_model_name" gorm:"column:gimbal_model_name"`
 	// 描述

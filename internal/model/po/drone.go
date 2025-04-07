@@ -14,7 +14,7 @@ type Drone struct {
 	SN          string    `json:"sn" gorm:"column:sn"`                               // 序列号
 	Callsign    string    `json:"callsign" gorm:"column:callsign"`                   // 呼号
 	Description string    `json:"drone_description" gorm:"column:drone_description"` // 描述
-	Status      int       `json:"status" gorm:"default:0;column:status"`             // 0: offline, 1: online
+	Status      int       `json:"status" gorm:"-"`                                   // 0: offline, 1: online
 
 	// 与 DroneModel 的关联（多对一）
 	DroneModelID uint       `json:"drone_model_id" gorm:"index;column:drone_model_id"` // 无人机型号ID

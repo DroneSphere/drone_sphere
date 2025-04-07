@@ -132,7 +132,7 @@ func (s *DroneImpl) CreateDroneFromMsg(ctx context.Context, sn string, msg dto.P
 	// 使用 modelRepo 查询匹配的无人机型号
 	if modelRepo != nil {
 		// 找到匹配的无人机型号
-		droneModel, err := findDroneModelByDomainTypeSubType(ctx, modelRepo, msg.Domain, msg.Type, msg.SubType)
+		droneModel, err := findDroneModelByDomainTypeSubType(ctx, modelRepo, "0", msg.Type, msg.SubType)
 		if err == nil && droneModel != nil {
 			// 找到匹配的无人机型号
 			d.DroneModelID = droneModel.ID

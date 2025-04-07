@@ -58,11 +58,11 @@ func (r *PlatformRouter) getConnectionParams(c *fiber.Ctx) error {
 			Password: "drone",
 		},
 		API: api.APIParamResult{
-			Host:  "http://192.168.1.112:10087",
+			Host:  "http://192.168.1.108:10087",
 			Token: "123456",
 		},
 		WS: api.WSParamResult{
-			Host:  "ws://192.168.1.112:10088",
+			Host:  "ws://192.168.1.108:10088",
 			Token: "123456",
 		},
 	}
