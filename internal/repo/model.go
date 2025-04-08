@@ -45,7 +45,7 @@ func (r *ModelDefaultRepo) SelectAllDroneModel(ctx context.Context) ([]entity.Dr
 	var res []entity.DroneModel
 	for _, drone := range drones {
 		var gateway po.GatewayModel
-		if err := r.tx.WithContext(ctx).Where("id = ?", drone.GatewayID).First(&gateway).Error; err != nil {
+		if err := r.tx.WithContext(ctx).Where("gateway_model_id = ?", drone.GatewayID).First(&gateway).Error; err != nil {
 			r.l.Error("select drone model's gateway", "error", err)
 			return nil, err
 		}
