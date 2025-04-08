@@ -41,6 +41,7 @@ func (r *DroneDefaultRepo) SelectAll(ctx context.Context) ([]entity.Drone, error
 	var ds []entity.Drone
 	var ps []po.Drone
 	if err := r.tx.WithContext(ctx).
+		Preload("DroneModel.Gimbals").
 		Preload("DroneModel").
 		Where("state = ?", 0).
 		Find(&ps).Error; err != nil {

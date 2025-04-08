@@ -74,6 +74,12 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 		e.ProductModel = d.GetModelName()
 		e.CreatedAt = d.CreatedAt.Format("2006-01-02 15:04:05")
 		e.LastOnlineAt = d.UpdatedAt.Format("2006-01-02 15:04:05")
+		for _, g := range d.DroneModel.Gimbals {
+			if g.IsThermalAvailable {
+				e.IsThermalAvailable = true
+				break
+			}
+		}
 		res = append(res, e)
 	}
 
