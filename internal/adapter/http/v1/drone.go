@@ -133,12 +133,25 @@ func (r *DroneRouter) getBySN(c *fiber.Ctx) error {
 //	@Success		200		{object}	v1.Response{data=nil}	"成功"
 func (r *DroneRouter) update(c *fiber.Ctx) error {
 	sn := c.Params("sn")
-	req := new(api.DroneUpdateRequest)
+	if sn == "" {
+		return c.JSON(Fail(ErrorBody{Code: 400, Msg: "sn is required"}))
+	}
+	req := new(struct {
+		Callsign    string `json:"callsign"`    // 呼号
+		Description string `json:"description"` // 描述
+	})
 	if err := c.BodyParser(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(Fail(ErrorBody{Code: 400, Msg: err.Error()}))
 	}
+
+	// 构造更新字段映射
+	updates := map[string]interface{}{
+		"callsign":          req.Callsign,
+		"drone_description": req.Description,
+	}
+
 	ctx := context.Background()
-	if err := r.svc.Repo().UpdateCallsign(ctx, sn, req.Callsign); err != nil {
+	if err := r.svc.Repo().UpdateDroneInfo(ctx, sn, updates); err != nil {
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
 	return c.JSON(Success(nil))
