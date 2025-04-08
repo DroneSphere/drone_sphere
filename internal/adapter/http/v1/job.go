@@ -188,78 +188,6 @@ func (r *JobRouter) getCreationDrones(c *fiber.Ctx) error {
 	return c.JSON(Success(drones))
 }
 
-// // getEditionOptions  编辑任务时依赖的选项数据
-// //
-// //	@Router			/job/edition/{id}/options		[get]
-// //	@Summary		编辑任务时依赖的选项数据
-// //	@Description	编辑任务时依赖的选项数据，包括可选的无人机列表
-// //	@Tags			job
-// //	@Accept			json
-// //	@Produce		json
-// //	@Param			id	path		int												true	"任务ID"
-// //	@Success		200	{object}	v1.Response{data=v1.JobEditionOptionsResult}	"成功"
-// func (r *JobRouter) getEditionOptions(c *fiber.Ctx) error {
-// 	// 解析Path 中的 ID
-// 	id, err := strconv.Atoi(c.Params("id"))
-// 	ctx := context.Background()
-// 	var drones []entity.Drone
-// 	var j *entity.Job
-// 	drones, err = r.svc.FetchAvailableDrones(ctx)
-// 	if err != nil {
-// 		return c.JSON(Fail(InternalError))
-// 	}
-
-// 	j, err = r.svc.FetchByID(ctx, uint(id))
-// 	if err != nil {
-// 		return c.JSON(Fail(InternalError))
-// 	}
-
-// 	var result api.JobEditionOptionsResult
-// 	for _, drone := range drones {
-// 		result.Drones = append(result.Drones, struct {
-// 			ID               uint   `json:"id"`
-// 			Callsign         string `json:"callsign"`
-// 			Description      string `json:"description"`
-// 			SN               string `json:"sn"`
-// 			Model            string `json:"model"`
-// 			RTKAvailable     bool   `json:"rtk_available"`
-// 			ThermalAvailable bool   `json:"thermal_available"`
-// 		}{
-// 			ID:               drone.ID,
-// 			Callsign:         drone.Callsign,
-// 			Description:      "",
-// 			SN:               drone.SN,
-// 			Model:            drone.GetModel(),
-// 			RTKAvailable:     drone.IsRTKAvailable(),
-// 			ThermalAvailable: drone.IsThermalAvailable(),
-// 		})
-// 	}
-// 	result.ID = j.ID
-// 	result.Name = j.Name
-// 	result.Description = j.Description
-// 	points := make([]struct {
-// 		Lat    float64 `json:"lat"`
-// 		Lng    float64 `json:"lng"`
-// 		Marker string  `json:"marker"`
-// 	}, 0)
-// 	for _, p := range j.Area.Points {
-// 		points = append(points, struct {
-// 			Lat    float64 `json:"lat"`
-// 			Lng    float64 `json:"lng"`
-// 			Marker string  `json:"marker"`
-// 		}{
-// 			Lat:    p.Lat,
-// 			Lng:    p.Lng,
-// 			Marker: "",
-// 		})
-// 	}
-// 	result.Area = api.JobAreaResult{
-// 		Name:   j.Area.Name,
-// 		Points: points,
-// 	}
-// 	return c.JSON(Success(result))
-// }
-
 func (r *JobRouter) create(c *fiber.Ctx) error {
 	type Request struct {
 		Name         string                   `json:"name"`
@@ -302,44 +230,42 @@ func (r *JobRouter) create(c *fiber.Ctx) error {
 	return c.JSON(Success(id))
 }
 
-// update 更新任务
-//
-//	@Router			/job		[put]
-//	@Summary		更新任务
-//	@Description	更新任务
-//	@Tags			job
-//	@Accept			json
-//	@Produce		json
-//
-//	@Param			req	body		v1.JobEditionRequest					true	"更新任务请求"
-//
-//	@Success		200	{object}	v1.Response{data=v1.JobDetailResult}	"成功"
 func (r *JobRouter) update(c *fiber.Ctx) error {
-	var req api.JobEditionRequest
+	// 定义接收参数的结构体，与create方法保持一致
+	type Request struct {
+		ID           uint                     `json:"id"`            // 任务ID
+		Name         string                   `json:"name"`          // 任务名称
+		Description  string                   `json:"description"`   // 任务描述
+		AreaID       int64                    `json:"area_id"`       // 区域ID
+		ScheduleTime string                   `json:"schedule_time"` // 任务计划执行时间
+		Drones       []dto.JobCreationDrone   `json:"drones"`        // 无人机列表
+		Waylines     []dto.JobCreationWayline `json:"waylines"`      // 航线列表
+		Mappings     []dto.JobCreationMapping `json:"mappings"`      // 映射列表
+	}
+
+	var req Request
 	if err := c.BodyParser(&req); err != nil {
 		return c.JSON(Fail(InvalidParams))
 	}
 
-	var scheduleTime *time.Time
-	if req.ScheduleTime != "" {
-		t, err := time.Parse("15:04:05", req.ScheduleTime)
-		if err != nil {
-			r.l.Error("无效的时间格式", slog.Any("err", err))
-			return c.JSON(Fail(InvalidParams))
-		}
-		// 获取当前的日期部分
-		now := time.Now()
-		// 组合当前日期和用户指定的时间
-		combinedTime := time.Date(
-			now.Year(), now.Month(), now.Day(),
-			t.Hour(), t.Minute(), t.Second(),
-			0, now.Location(),
-		)
-		scheduleTime = &combinedTime
+	// 解析时间字符串为当天的时间
+	scheduleTime, err := time.Parse("15:04:05", req.ScheduleTime)
+	if err != nil {
+		r.l.Error("无效的时间格式", slog.Any("err", err))
+		return c.JSON(Fail(InvalidParams))
 	}
 
+	// 获取当前的日期部分
+	now := time.Now()
+	// 组合当前日期和用户指定的时间
+	scheduleTime = time.Date(
+		now.Year(), now.Month(), now.Day(),
+		scheduleTime.Hour(), scheduleTime.Minute(), scheduleTime.Second(),
+		0, now.Location(),
+	)
+
 	ctx := context.Background()
-	j, err := r.svc.ModifyJob(ctx, req.ID, req.Name, req.Description, scheduleTime, req.DroneIDs)
+	j, err := r.svc.ModifyJob(ctx, req.ID, req.Name, req.Description, scheduleTime, uint(req.AreaID), req.Drones, req.Waylines, req.Mappings)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}

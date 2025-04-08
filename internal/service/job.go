@@ -19,7 +19,7 @@ type (
 		FetchAvailableAreas(ctx context.Context) ([]*entity.Area, error)
 		FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error)
 		CreateJob(ctx context.Context, name, description string, areaID uint, scheduleTime time.Time, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (uint, error)
-		ModifyJob(ctx context.Context, id uint, name, description string, scheduleTime *time.Time, droneIDs []uint) (*entity.Job, error)
+		ModifyJob(ctx context.Context, id uint, name, description string, scheduleTime time.Time, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (*entity.Job, error)
 		FetchAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error)
 	}
 
@@ -159,43 +159,63 @@ func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaI
 	return job.ID, nil
 }
 
-func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description string, scheduleTime *time.Time, droneIDs []uint) (*entity.Job, error) {
+func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description string, scheduleTime time.Time, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (*entity.Job, error) {
+	// 获取已存在的任务
 	p, err := j.jobRepo.FetchPOByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if name != "" {
-		p.Name = name
-	}
-	if description != "" {
-		p.Description = description
-	}
-	if scheduleTime != nil {
-		p.ScheduleTime = *scheduleTime
-	}
-	// p. = droneIDs
+
+	// 更新任务信息
+	p.Name = name
+	p.Description = description
+	p.AreaID = areaID
+	p.ScheduleTime = scheduleTime
+	p.Drones = drones
+	p.Waylines = waylines
+	p.Mappings = mappings
+
+	// 保存更新
 	if err := j.jobRepo.Save(ctx, p); err != nil {
 		return nil, err
 	}
+
+	// 更新航线文件
+	for _, w := range waylines {
+		var dr dto.JobCreationDrone
+		for _, d := range drones {
+			if d.Key == w.DroneKey {
+				dr = d
+				break
+			}
+		}
+		waylineKey, err := j.jobRepo.CreateWaylineFile(ctx, p.Name, dr, w)
+		if err != nil {
+			j.l.Error("更新航线文件失败", slog.Any("error", err))
+			return nil, err
+		}
+		j.l.Info("航线文件已更新", "waylineKey", waylineKey)
+	}
+
+	// 返回更新后的任务
 	return j.FetchByID(ctx, id)
 }
 
 func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error) {
-	job, err := j.jobRepo.SelectAll(ctx, jobName, areaName)
+	jobs, err := j.jobRepo.SelectAll(ctx, jobName, areaName)
 	if err != nil {
 		return nil, err
 	}
-	for _, e := range job {
-		area, err := j.areaRepo.SelectByID(ctx, e.Area.ID)
-		if err != nil {
+
+	var jobEntities []*entity.Job
+	for _, job := range jobs {
+		jobEntity := &entity.Job{}
+		if err := copier.Copy(jobEntity, job); err != nil {
+			j.l.Error("复制任务数据失败", slog.Any("error", err))
 			return nil, err
 		}
-		areaEntity := j.toAreaEntity(area)
-		if areaEntity == nil {
-			j.l.Error("转换区域数据失败", slog.Any("area", area))
-			return nil, err
-		}
-		e.Area = *areaEntity
+		jobEntities = append(jobEntities, jobEntity)
 	}
-	return job, nil
+
+	return jobEntities, nil
 }
