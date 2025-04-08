@@ -20,7 +20,6 @@ type (
 		FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error)
 		CreateJob(ctx context.Context, name, description string, areaID uint, scheduleTime time.Time, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (uint, error)
 		ModifyJob(ctx context.Context, id uint, name, description string, scheduleTime time.Time, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (*entity.Job, error)
-		FetchAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error)
 	}
 
 	JobRepo interface {

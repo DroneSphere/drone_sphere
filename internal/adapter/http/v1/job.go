@@ -61,7 +61,7 @@ func (r *JobRouter) getJobs(c *fiber.Ctx) error {
 		return c.JSON(Fail(InvalidParams))
 	}
 	r.l.Debug("getJobs", "params", params)
-	jobs, err := r.svc.FetchAll(ctx, params.JobName, params.AreaName)
+	jobs, err := r.svc.Repo().SelectAll(ctx, params.JobName, params.AreaName)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}

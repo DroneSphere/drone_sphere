@@ -131,7 +131,10 @@ func (j *JobDefaultRepo) FetchByID(ctx context.Context, id uint) (*entity.Job, e
 
 func (j *JobDefaultRepo) SelectAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error) {
 	j.l.Info("查询所有任务", slog.Any("jobName", jobName), slog.Any("areaName", areaName))
-	var jobs []*po.Job
+	var jobs []struct {
+		po.Job
+		AreaName string `json:"area_name"`
+	}
 	if err := j.tx.Raw(`
 		SELECT 
 			j.*,
@@ -158,7 +161,8 @@ func (j *JobDefaultRepo) SelectAll(ctx context.Context, jobName, areaName string
 	// 创建任务实体列表
 	var jobEntities []*entity.Job
 	for _, job := range jobs {
-		jobEntity := entity.NewJob(job)
+		jobEntity := entity.NewJob(&job.Job)
+		jobEntity.Area.Name = job.AreaName
 		jobEntities = append(jobEntities, jobEntity)
 	}
 
