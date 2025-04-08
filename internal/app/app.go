@@ -17,6 +17,7 @@ import (
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/lmittmann/tint"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -137,11 +138,27 @@ func Run(cfg *configs.Config) {
 	// Event Handlers
 	eventhandler.NewHandler(eb, logger, client, droneSvc, modelRepo, gatewayRepo)
 
+	// 创建通用的 CORS 配置
+	corsConfig := cors.Config{
+		AllowOrigins:     "*",                                      // 允许所有来源，也可以设置具体的域名
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS,HEAD,PATCH", // 允许的 HTTP 方法
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization,X-Requested-With",
+		ExposeHeaders:    "Content-Length,Content-Range",
+		AllowCredentials: true,
+		MaxAge:           3600, // 预检请求的缓存时间
+	}
+
+	// 初始化各服务
 	httpV1 := fiber.New()
-	v1.NewRouter(httpV1, eb, logger, container, cfg) // 添加配置参数
+	httpV1.Use(cors.New(corsConfig))
+	v1.NewRouter(httpV1, eb, logger, container, cfg)
+
 	httpDJI := fiber.New()
+	httpDJI.Use(cors.New(corsConfig))
 	dji.NewRouter(httpDJI, eb, logger, droneSvc, wlSvc)
+
 	wss := fiber.New()
+	wss.Use(cors.New(corsConfig))
 	ws.NewRouter(wss, eb, logger, userSvc, droneSvc)
 
 	var wg sync.WaitGroup
