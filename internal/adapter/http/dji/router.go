@@ -51,6 +51,10 @@ func NewRouter(app *fiber.App, eb EventBus.Bus, l *slog.Logger, drone service.Dr
 	// Routers
 	api := app.Group("/")
 	{
+		api.Get("/", func(c *fiber.Ctx) error {
+			l.Info("API root")
+			return c.SendString("DJI API root")
+		})
 		newTSARouter(api, drone, eb, l)
 		NewWaylineRouter(api, wayline, eb, l)
 	}

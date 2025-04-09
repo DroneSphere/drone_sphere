@@ -24,6 +24,9 @@ func NewWaylineRouter(handler fiber.Router, svc service.WaylineSvc, eb EventBus.
 	h := handler.Group("/wayline/api/v1")
 	{
 		h.Get("/workspaces/:workspace_id/waylines", r.getWaylines)
+		// /wayline/api/v1/workspaces/{workspace_id}/waylines/{id}/url
+		h.Get("/workspaces/:workspace_id/waylines/:id/url", r.getWaylineURL)
+
 	}
 }
 
@@ -81,4 +84,19 @@ func (r *WaylineRouter) getWaylines(c *fiber.Ctx) error {
 		},
 	}
 	return c.JSON(Success(res))
+}
+
+func (r *WaylineRouter) getWaylineURL(c *fiber.Ctx) error {
+	workspaceID := c.Params("workspace_id")
+	waylineID := c.Params("id")
+	r.l.Info("getWaylineURL", slog.Any("workspaceID", workspaceID), slog.Any("waylineID", waylineID))
+
+	url, err := r.svc.GetWaylineURL(c.Context(), workspaceID, waylineID)
+	if err != nil {
+		r.l.Error("Failed to get wayline URL", slog.Any("err", err))
+		return c.JSON(Fail(InternalError))
+	}
+	r.l.Info("getWaylineURL", slog.Any("url", url))
+
+	return c.JSON(Success(url))
 }
