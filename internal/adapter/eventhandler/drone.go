@@ -15,20 +15,22 @@ import (
 )
 
 type DroneEventHandler struct {
-	eb        EventBus.Bus
-	l         *slog.Logger
-	svc       service.DroneSvc
-	mqtt      mqtt.Client
-	modelRepo *repo.ModelDefaultRepo // 添加模型仓库依赖
+	eb         EventBus.Bus
+	l          *slog.Logger
+	svc        service.DroneSvc
+	gatewaySvc service.GatewaySvc
+	mqtt       mqtt.Client
+	modelRepo  *repo.ModelDefaultRepo // 添加模型仓库依赖
 }
 
-func registerDroneHandlers(eb EventBus.Bus, l *slog.Logger, mqtt mqtt.Client, drone service.DroneSvc, modelRepo *repo.ModelDefaultRepo) {
+func registerDroneHandlers(eb EventBus.Bus, l *slog.Logger, mqtt mqtt.Client, drone service.DroneSvc, gateway service.GatewaySvc, modelRepo *repo.ModelDefaultRepo) {
 	handler := &DroneEventHandler{
-		eb:        eb,
-		l:         l,
-		svc:       drone,
-		mqtt:      mqtt,
-		modelRepo: modelRepo, // 初始化模型仓库
+		eb:         eb,
+		l:          l,
+		svc:        drone,
+		gatewaySvc: gateway,
+		mqtt:       mqtt,
+		modelRepo:  modelRepo, // 初始化模型仓库
 	}
 	var err error
 	err = eb.Subscribe(event.RemoteControllerLoggedIn, handler.HandleTopoUpdate)
@@ -62,6 +64,11 @@ func (d *DroneEventHandler) HandleTopoUpdate(ctx context.Context) error {
 		}
 		_ = sonic.Unmarshal(m.Payload(), &p)
 		d.l.Info("接收网关设备上下线消息", slog.Any("topic", m.Topic()), slog.Any("payload", p))
+
+		// 保存网关数据
+		if err := d.gatewaySvc.Repo().Save(ctx, gatewaySN, p.Data.Type, p.Data.SubType); err != nil {
+			d.l.Error("保存网关数据失败", slog.Any("error", err))
+		}
 
 		// SubDevices 够长说明为无人机上线事件，否则为下线事件
 		if len(p.Data.SubDevices) > 0 {

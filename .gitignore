@@ -9,6 +9,7 @@
 # 忽略 IDE 和编辑器相关文件
 .idea/
 .vscode/
+__debug*
 *.swp
 *.swo
 

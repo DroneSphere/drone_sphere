@@ -135,7 +135,7 @@ func Run(cfg *configs.Config) {
 	)
 
 	// Event Handlers
-	eventhandler.NewHandler(eb, logger, client, droneSvc, modelRepo, gatewayRepo)
+	eventhandler.NewHandler(eb, logger, client, droneSvc, gatewaySvc, modelRepo, gatewayRepo)
 
 	// 初始化各服务
 	httpV1 := fiber.New()

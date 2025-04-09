@@ -11,9 +11,9 @@ import (
 )
 
 // NewHandler 创建事件处理器
-func NewHandler(eb EventBus.Bus, l *slog.Logger, mq mqtt.Client, drone service.DroneSvc, modelRepo *repo.ModelDefaultRepo, gatewayRepo repo.GatewayRepo) {
+func NewHandler(eb EventBus.Bus, l *slog.Logger, mq mqtt.Client, drone service.DroneSvc, gatewaySvc service.GatewaySvc, modelRepo *repo.ModelDefaultRepo, gatewayRepo repo.GatewayRepo) {
 	// 注册无人机事件处理器
-	registerDroneHandlers(eb, l, mq, drone, modelRepo)
+	registerDroneHandlers(eb, l, mq, drone, gatewaySvc, modelRepo)
 
 	// 注册网关事件处理器
 	gatewayHandler := NewGatewayHandler(eb, mq, gatewayRepo, l)
