@@ -55,12 +55,12 @@ func (r *ResultDefaultRepo) List(ctx context.Context, query dto.ResultQuery) ([]
 
 	tx := r.tx.WithContext(ctx).Model(&po.Result{}).Where("state = ?", 0)
 
-	if query.JobID != nil {
-		tx = tx.Where("job_id = ?", *query.JobID)
+	if query.JobID != 0 {
+		tx = tx.Where("job_id = ?", query.JobID)
 	}
 
-	if query.ObjectType != nil {
-		tx = tx.Where("object_type = ?", *query.ObjectType)
+	if query.ObjectType != 0 {
+		tx = tx.Where("object_type = ?", query.ObjectType)
 	}
 
 	// 获取总数

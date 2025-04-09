@@ -6,10 +6,10 @@ import (
 
 // ResultQuery 查询结果的参数
 type ResultQuery struct {
-	JobID      *uint `json:"job_id"`      // 任务ID,可选
-	ObjectType *int  `json:"object_type"` // 物体类型,可选
-	Page       int   `json:"page"`        // 页码
-	PageSize   int   `json:"page_size"`   // 每页数量
+	JobID      uint `query:"job_id"`      // 任务ID,可选
+	ObjectType int  `query:"object_type"` // 物体类型,可选
+	Page       int  `query:"page"`        // 页码
+	PageSize   int  `query:"page_size"`   // 每页数量
 }
 
 // ResultItemDTO 结果列表项
