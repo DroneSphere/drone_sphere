@@ -62,7 +62,7 @@ func Run(cfg *configs.Config) {
 	// MQTT
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(cfg.MQTT.Broker)
-	opts.SetClientID(cfg.MQTT.ClientID)
+	opts.SetClientID(cfg.MQTT.ClientID + "-" + fmt.Sprintf("%d", time.Now().Unix()))
 	opts.SetUsername(cfg.MQTT.Username)
 	opts.SetPassword(cfg.MQTT.Password)
 	opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
