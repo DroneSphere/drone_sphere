@@ -26,11 +26,31 @@ func NewGatewayRouter(handler fiber.Router, svc service.GatewaySvc, eb EventBus.
 	}
 	h := handler.Group("/gateway")
 	{
+		h.Post("", r.create)                     // 创建网关
 		h.Get("/list", r.list)                   // 获取网关列表
 		h.Put("/:sn", r.update)                  // 更新网关信息
 		h.Get("/sn/:sn", r.getBySN)              // 获取单个网关详情
 		h.Get("/sn/:sn/drones", r.getDronesBySN) // 获取网关关联的无人机列表
 	}
+}
+
+func (r *GatewayRouter) create(c *fiber.Ctx) error {
+	req := new(struct {
+		SN      string `json:"sn"`       // 序列号
+		Type    int    `json:"type"`     // 网关类型
+		SubType int    `json:"sub_type"` // 网关子类型
+	})
+	if err := c.BodyParser(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(Fail(ErrorBody{Code: 400, Msg: err.Error()}))
+	}
+
+	ctx := context.Background()
+	err := r.svc.Repo().Save(ctx, req.SN, req.Type, req.SubType)
+	if err != nil {
+		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
+	}
+
+	return c.JSON(Success(nil))
 }
 
 // gatewayItemResult 网关列表项响应结构
@@ -62,6 +82,7 @@ func (r *GatewayRouter) list(c *fiber.Ctx) error {
 		e.Status = g.StatusText()
 		e.CreatedAt = g.CreatedAt.Format("2006-01-02 15:04:05")
 		e.LastOnlineAt = g.LastOnlineAt.Format("2006-01-02 15:04:05")
+		e.ProductModel = g.GatewayModel.Name
 		res = append(res, e)
 	}
 

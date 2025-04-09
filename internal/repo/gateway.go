@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
@@ -13,6 +14,7 @@ type (
 	// GatewaySvc 网关设备仓储接口定义
 	GatewayRepo interface {
 		// 基础的CRUD操作
+		Save(ctx context.Context, sn string, ttype, subType int) error
 		Create(ctx context.Context, gateway *po.Gateway) error
 		UpdateCallsign(ctx context.Context, sn, callsign string) error
 		UpdateStatus(ctx context.Context, sn string, status int) error
@@ -43,6 +45,47 @@ func NewGatewayRepo(tx *gorm.DB, l *slog.Logger) GatewayRepo {
 		tx: tx,
 		l:  l,
 	}
+}
+
+func (r *GatewayDefaultRepo) Save(ctx context.Context, sn string, ttype, subType int) error {
+	// 创建网关对象
+	var gateway *po.Gateway
+
+	// 先查询是否已经有记录
+	if err := r.tx.WithContext(ctx).Where("sn = ?", sn).First(&gateway).Error; err == nil {
+		// 如果已经存在，则更新最后在线时间
+		gateway.LastOnlineAt = time.Now()
+		if err := r.tx.WithContext(ctx).Save(&gateway).Error; err != nil {
+			r.l.Error("更新网关最后在线时间失败", "error", err, "sn", sn)
+		}
+		return nil
+	}
+
+	// 如果不存在，则创建新的网关对象
+	gateway = &po.Gateway{
+		SN:           sn,
+		LastOnlineAt: time.Now(),
+	}
+
+	// 查询网关对应的型号信息，添加到网关对象中
+	var model po.GatewayModel
+	if err := r.tx.WithContext(ctx).Where("gateway_model_type = ? AND gateway_model_sub_type = ?", ttype, subType).First(&model).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			r.l.Error("网关型号不存在", "type", ttype, "sub_type", subType)
+			return err
+		}
+	}
+	// 设置网关型号信息
+	gateway.GatewayModelID = model.ID
+	gateway.GatewayModel = model
+
+	// 保存网关对象到数据库
+	if err := r.tx.WithContext(ctx).Save(gateway).Error; err != nil {
+		r.l.Error("保存网关信息失败", "error", err, "sn", sn)
+		return err
+	}
+
+	return nil
 }
 
 func (r *GatewayDefaultRepo) Create(ctx context.Context, gateway *po.Gateway) error {

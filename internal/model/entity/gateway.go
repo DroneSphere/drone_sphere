@@ -11,13 +11,14 @@ import (
 // Gateway 网关设备实体
 type Gateway struct {
 	misc.BaseModel
-	SN             string    `json:"sn"`               // 序列号
-	Callsign       string    `json:"callsign"`         // 呼号
-	Description    string    `json:"description"`      // 描述
-	GatewayModelID uint      `json:"gateway_model_id"` // 网关型号ID
-	UserID         uint      `json:"user_id"`          // 用户ID
-	Status         int       `json:"status"`           // 在线状态
-	LastOnlineAt   time.Time `json:"last_online_at"`   // 最后在线时间
+	SN             string          `json:"sn"`               // 序列号
+	Callsign       string          `json:"callsign"`         // 呼号
+	Description    string          `json:"description"`      // 描述
+	GatewayModelID uint            `json:"gateway_model_id"` // 网关型号ID
+	GatewayModel   po.GatewayModel `json:"gateway_model"`    // 网关型号
+	UserID         uint            `json:"user_id"`          // 用户ID
+	Status         int             `json:"status"`           // 在线状态
+	LastOnlineAt   time.Time       `json:"last_online_at"`   // 最后在线时间
 }
 
 // NewGatewayFromPO 从持久化对象创建网关实体
