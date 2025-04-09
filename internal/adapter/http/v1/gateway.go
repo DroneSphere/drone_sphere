@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/asaskevich/EventBus"
-	api "github.com/dronesphere/api/http/v1"
 	"github.com/dronesphere/internal/service"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
@@ -162,14 +161,24 @@ func (r *GatewayRouter) getDronesBySN(c *fiber.Ctx) error {
 
 // update 更新网关信息
 func (r *GatewayRouter) update(c *fiber.Ctx) error {
+	// 获取URL参数中的SN
 	sn := c.Params("sn")
-	req := new(api.GatewayUpdateRequest)
+	if sn == "" {
+		return c.JSON(Fail(ErrorBody{Code: 400, Msg: "网关SN不能为空"}))
+	}
+
+	// 解析请求体
+	req := new(struct {
+		Callsign    string `json:"callsign"`    // 呼号
+		Description string `json:"description"` // 描述
+	})
 	if err := c.BodyParser(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(Fail(ErrorBody{Code: 400, Msg: err.Error()}))
 	}
 
+	// 使用新的Update方法同时更新呼号和描述
 	ctx := context.Background()
-	if err := r.svc.Repo().UpdateCallsign(ctx, sn, req.Callsign); err != nil {
+	if err := r.svc.Repo().Update(ctx, sn, req.Callsign, req.Description); err != nil {
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
 

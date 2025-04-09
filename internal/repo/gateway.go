@@ -17,6 +17,8 @@ type (
 		Save(ctx context.Context, sn string, ttype, subType int) error
 		Create(ctx context.Context, gateway *po.Gateway) error
 		UpdateCallsign(ctx context.Context, sn, callsign string) error
+		// Update 同时更新网关的呼号和描述
+		Update(ctx context.Context, sn string, callsign, description string) error
 		UpdateStatus(ctx context.Context, sn string, status int) error
 		UpdateOnlineStatus(ctx context.Context, sn string, isOnline bool) error
 		DeleteBySN(ctx context.Context, sn string) error
@@ -94,6 +96,16 @@ func (r *GatewayDefaultRepo) Create(ctx context.Context, gateway *po.Gateway) er
 
 func (r *GatewayDefaultRepo) UpdateCallsign(ctx context.Context, sn, callsign string) error {
 	return r.tx.WithContext(ctx).Model(&po.Gateway{}).Where("sn = ?", sn).Update("callsign", callsign).Error
+}
+
+// Update 同时更新网关的呼号和描述信息
+func (r *GatewayDefaultRepo) Update(ctx context.Context, sn string, callsign, description string) error {
+	// 使用map来更新多个字段
+	updates := map[string]interface{}{
+		"callsign":    callsign,
+		"description": description,
+	}
+	return r.tx.WithContext(ctx).Model(&po.Gateway{}).Where("sn = ?", sn).Updates(updates).Error
 }
 
 func (r *GatewayDefaultRepo) UpdateStatus(ctx context.Context, sn string, status int) error {
