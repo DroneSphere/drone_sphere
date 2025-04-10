@@ -12,6 +12,7 @@ import (
 	api "github.com/dronesphere/api/http/v1"
 	"github.com/dronesphere/internal/repo"
 	"github.com/dronesphere/internal/service"
+	"github.com/dronesphere/pkg/coordinate"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
 )
@@ -185,10 +186,11 @@ func (r *DroneRouter) pushState(c *fiber.Ctx) error {
 					r.l.Error("Fetch drone state failed", "error", err)
 					return
 				}
+				lng, lat := coordinate.WGS84ToGCJ02(drone.Longitude, drone.Latitude)
 				res := api.DroneState{
 					SN:      sn,
-					Lat:     drone.Latitude,
-					Lng:     drone.Longitude,
+					Lat:     lat,
+					Lng:     lng,
 					Height:  drone.Height,
 					Speed:   drone.HorizontalSpeed,
 					Battery: drone.Battery.CapacityPercent,

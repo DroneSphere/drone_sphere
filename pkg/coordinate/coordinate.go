@@ -63,3 +63,20 @@ func GCJ02ToWGS84(lng, lat float64) (float64, float64) {
 	}
 	return gcj02ToWGS84(lng, lat)
 }
+
+func WGS84ToGCJ02(lng, lat float64) (float64, float64) {
+	if outOfChina(lat, lng) {
+		return lng, lat
+	}
+	dlat := transformLat(lng-105.0, lat-35.0)
+	dlng := transformLng(lng-105.0, lat-35.0)
+	radlat := lat / 180.0 * pi
+	magic := math.Sin(radlat)
+	magic = 1 - ee*magic*magic
+	sqrtmagic := math.Sqrt(magic)
+	dlat = (dlat * 180.0) / ((a * (1 - ee)) / (magic * sqrtmagic) * pi)
+	dlng = (dlng * 180.0) / (a / sqrtmagic * math.Cos(radlat) * pi)
+	mglat := lat + dlat
+	mglng := lng + dlng
+	return mglng, mglat
+}
