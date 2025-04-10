@@ -12,6 +12,7 @@ type Wayline struct {
 	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime"`
 	State       int       `json:"state" gorm:"default:0"` // -1: deleted, 0: active
 	Name        string    `json:"wayline_name" gorm:"column:wayline_name"`
+	UUID        string    `json:"uuid" gorm:"column:uuid"`
 	// Username          string                                `json:"username" gorm:"column:create_user_id"`
 	DroneModelKey     string                                `json:"drone_model_key" gorm:"column:drone_model_key"`
 	PayloadModelKeys  datatypes.JSONSlice[string]           `json:"payload_model_keys" gorm:"column:payload_model_keys;type:json"`

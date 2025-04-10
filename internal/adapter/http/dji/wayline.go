@@ -38,9 +38,11 @@ func (r *WaylineRouter) getWaylines(c *fiber.Ctx) error {
 		StartLontitude float64 `json:"start_lontitude" gorm:"column:start_lontitude"`
 	}
 	type WaylineItemResult struct {
-		ID                uint       `json:"id" gorm:"column:id"`
+		ID                string     `json:"id" gorm:"column:id"`
 		Name              string     `json:"name" gorm:"column:name"`
 		Username          string     `json:"username" gorm:"column:username"`
+		UpdateTime        int64      `json:"update_time" gorm:"column:update_time"`
+		CreateTime        int64      `json:"create_time" gorm:"column:create_time"`
 		DroneModelKey     string     `json:"drone_model_key" gorm:"column:drone_model_key"`
 		PayloadModelKeys  []string   `json:"payload_model_keys" gorm:"column:payload_model_keys;type:json"`
 		Favorited         bool       `json:"favorited" gorm:"column:favorited"`
@@ -61,6 +63,11 @@ func (r *WaylineRouter) getWaylines(c *fiber.Ctx) error {
 			r.l.Error("Failed to copy wayline", slog.Any("err", err))
 			return c.JSON(Fail(InternalError))
 		}
+		// 根据原有 ID 生成 UUID 作为返回的 ID
+		e.ID = w.UUID
+		e.Username = "admin"
+		e.UpdateTime = w.UpdatedTime.UnixMilli()
+		e.CreateTime = w.CreatedTime.UnixMilli()
 		e.StartWaylinePoint = StartPoint(w.StartWaylinePoint.Data())
 
 		list = append(list, e)

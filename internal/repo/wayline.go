@@ -40,7 +40,7 @@ func (w *WaylineGormRepo) SelectAll(ctx context.Context) ([]po.Wayline, error) {
 // SelectByID 根据航线ID获取航线详情
 func (w *WaylineGormRepo) SelectByID(ctx context.Context, id string) (*po.Wayline, error) {
 	var wayline po.Wayline
-	if err := w.tx.WithContext(ctx).Where("wayline_id = ?", id).First(&wayline).Error; err != nil {
+	if err := w.tx.WithContext(ctx).Where("uuid = ?", id).First(&wayline).Error; err != nil {
 		w.l.Error("查询航线失败", slog.Any("id", id), slog.Any("err", err))
 		return nil, err
 	}
