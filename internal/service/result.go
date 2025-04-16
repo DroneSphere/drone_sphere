@@ -19,6 +19,8 @@ const (
 )
 
 type ResultSvc interface {
+	// Repo 返回结果仓库
+	Repo() ResultRepo
 	// Create 创建检测结果
 	Create(ctx context.Context, result dto.CreateResultDTO) (uint, error)
 	// GetByID 获取单个检测结果
@@ -40,6 +42,8 @@ type ResultRepo interface {
 	List(ctx context.Context, query dto.ResultQuery) ([]po.Result, int64, error)
 	// GetJobOptions 获取任务选项
 	GetJobOptions(ctx context.Context) ([]dto.JobOption, error)
+	// DeleteByID 根据ID删除结果
+	DeleteByID(ctx context.Context, id uint) error
 }
 
 type ResultImpl struct {
@@ -54,6 +58,11 @@ func NewResultImpl(repo ResultRepo, jobRepo JobRepo, l *slog.Logger) ResultSvc {
 		jobRepo: jobRepo,
 		l:       l,
 	}
+}
+
+// Repo 返回结果仓库
+func (s *ResultImpl) Repo() ResultRepo {
+	return s.repo
 }
 
 func (s *ResultImpl) Create(ctx context.Context, result dto.CreateResultDTO) (uint, error) {
@@ -119,13 +128,13 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 			s.l.Error("获取任务信息失败", slog.Any("err", err))
 			continue
 		}
-		// 从ObjectPosition JSON字段中提取经纬度信息
-		var position struct {
+		// 从 ObjectPosition JSON字段中提取经纬度信息
+		var coordinate struct {
 			Lng float64 `json:"lng"` // 使用float64类型接收数值类型的经度
 			Lat float64 `json:"lat"` // 使用float64类型接收数值类型的纬度
 		}
 		// 尝试解析JSON数据
-		if err := json.Unmarshal(r.ObjectPosition, &position); err != nil {
+		if err := json.Unmarshal(r.ObjectCoordinate, &coordinate); err != nil {
 			s.l.Warn("解析位置信息失败", slog.Any("err", err), slog.Any("result_id", r.ID))
 		}
 
@@ -133,8 +142,8 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 			ID:          r.ID,
 			JobName:     job.Name,
 			TargetLabel: r.ObjectLabel,
-			Lng:         formatCoordinate(position.Lng), // 从解析后的结构体获取经度并格式化
-			Lat:         formatCoordinate(position.Lat), // 从解析后的结构体获取纬度并格式化
+			Lng:         formatCoordinate(coordinate.Lng), // 从解析后的结构体获取经度并格式化
+			Lat:         formatCoordinate(coordinate.Lat), // 从解析后的结构体获取纬度并格式化
 			ImageUrl:    r.ImageUrl,
 			CreatedAt:   r.CreatedTime.Format("2006-01-02 15:04:05"), // 添加创建时间
 		})
