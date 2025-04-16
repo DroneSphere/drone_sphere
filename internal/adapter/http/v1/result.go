@@ -66,7 +66,10 @@ func (r *ResultRouter) getJobOptions(c *fiber.Ctx) error {
 }
 
 func (r *ResultRouter) getObjectTypeOptions(c *fiber.Ctx) error {
-	options := r.svc.GetObjectTypeOptions(context.Background())
+	options, err := r.svc.Repo().GetObjectTypeOptions(context.Background())
+	if err != nil {
+		return c.JSON(Fail(InternalError))
+	}
 	return c.JSON(Success(options))
 }
 

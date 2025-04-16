@@ -11,13 +11,6 @@ import (
 	"github.com/dronesphere/internal/model/po"
 )
 
-// 物体类型常量定义
-const (
-	ObjectTypeSoldier = 1 // 士兵
-	ObjectTypeTank    = 2 // 坦克
-	ObjectTypeCar     = 3 // 车辆
-)
-
 type ResultSvc interface {
 	// Repo 返回结果仓库
 	Repo() ResultRepo
@@ -29,8 +22,6 @@ type ResultSvc interface {
 	List(ctx context.Context, query dto.ResultQuery) ([]dto.ResultItemDTO, int64, error)
 	// GetJobOptions 获取任务选项
 	GetJobOptions(ctx context.Context) ([]dto.JobOption, error)
-	// GetObjectTypeOptions 获取物体类型选项
-	GetObjectTypeOptions(ctx context.Context) []dto.ObjectTypeOption
 }
 
 type ResultRepo interface {
@@ -42,6 +33,8 @@ type ResultRepo interface {
 	List(ctx context.Context, query dto.ResultQuery) ([]po.Result, int64, error)
 	// GetJobOptions 获取任务选项
 	GetJobOptions(ctx context.Context) ([]dto.JobOption, error)
+	// GetObjectTypeOptions 获取物体类型选项
+	GetObjectTypeOptions(ctx context.Context) ([]dto.ObjectTypeOption, error)
 	// DeleteByID 根据ID删除结果
 	DeleteByID(ctx context.Context, id uint) error
 }
@@ -67,15 +60,15 @@ func (s *ResultImpl) Repo() ResultRepo {
 
 func (s *ResultImpl) Create(ctx context.Context, result dto.CreateResultDTO) (uint, error) {
 	r := &po.Result{
-		JobID:            result.JobID,
-		WaylineID:        result.WaylineID,
-		DroneID:          result.DroneID,
-		ObjectType:       result.ObjectType,
-		ObjectLabel:      result.ObjectLabel,
-		ObjectConfidence: result.ObjectConfidence,
-		ObjectPosition:   result.Position,
-		ObjectCoordinate: result.Coordinate,
-		ImageUrl:         result.ImageUrl,
+		JobID:              result.JobID,
+		WaylineID:          result.WaylineID,
+		DroneID:            result.DroneID,
+		DetectObjectTypeID: result.ObjectTypeID, // 使用物体类型ID关联到物体类型表
+		ObjectConfidence:   result.ObjectConfidence,
+		ObjectPosition:     result.Position,
+		ObjectCoordinate:   result.Coordinate,
+		ImageUrl:           result.ImageUrl,
+		// 不再直接设置 ObjectType 和 ObjectLabel，而是通过关联获取
 	}
 
 	if err := s.repo.Create(ctx, r); err != nil {
@@ -98,14 +91,15 @@ func (s *ResultImpl) GetByID(ctx context.Context, id uint) (*dto.ResultDetailDTO
 		return nil, err
 	}
 
+	// 使用从关联的 DetectObjectType 中获取的物体类型信息
 	return &dto.ResultDetailDTO{
 		ID:               r.ID,
 		JobID:            r.JobID,
 		JobName:          job.Name,
 		WaylineID:        r.WaylineID,
 		DroneID:          r.DroneID,
-		ObjectType:       r.ObjectType,
-		ObjectLabel:      r.ObjectLabel,
+		ObjectType:       r.DetectObjectType.Type,  // 从关联表中获取物体类型
+		ObjectLabel:      r.DetectObjectType.Label, // 从关联表中获取物体标签
 		ObjectConfidence: r.ObjectConfidence,
 		Position:         r.ObjectPosition,
 		Coordinate:       r.ObjectCoordinate,
@@ -141,7 +135,7 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 		items = append(items, dto.ResultItemDTO{
 			ID:          r.ID,
 			JobName:     job.Name,
-			TargetLabel: r.ObjectLabel,
+			TargetLabel: r.DetectObjectType.Label,         // 从关联的 DetectObjectType 表中获取物体标签
 			Lng:         formatCoordinate(coordinate.Lng), // 从解析后的结构体获取经度并格式化
 			Lat:         formatCoordinate(coordinate.Lat), // 从解析后的结构体获取纬度并格式化
 			ImageUrl:    r.ImageUrl,
@@ -154,14 +148,6 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 
 func (s *ResultImpl) GetJobOptions(ctx context.Context) ([]dto.JobOption, error) {
 	return s.repo.GetJobOptions(ctx)
-}
-
-func (s *ResultImpl) GetObjectTypeOptions(ctx context.Context) []dto.ObjectTypeOption {
-	return []dto.ObjectTypeOption{
-		{Value: ObjectTypeSoldier, Label: "士兵"},
-		{Value: ObjectTypeTank, Label: "坦克"},
-		{Value: ObjectTypeCar, Label: "车辆"},
-	}
 }
 
 // formatTime 格式化时间戳
