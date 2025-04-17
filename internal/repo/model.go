@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
@@ -195,4 +196,229 @@ func (r *ModelDefaultRepo) FindDefaultDroneVariation(ctx context.Context, droneM
 	}
 
 	return &variation, nil
+}
+
+// SelectGatewayModels 根据条件查询网关型号
+func (r *ModelDefaultRepo) SelectGatewayModels(ctx context.Context, query map[string]interface{}) ([]po.GatewayModel, error) {
+	var gateways []po.GatewayModel
+	db := r.tx.WithContext(ctx)
+
+	// 处理查询条件
+	if query != nil {
+		for k, v := range query {
+			if strings.Contains(k, "?") {
+				db = db.Where(k, v) // 对于包含占位符的条件
+			} else {
+				db = db.Where(k+" = ?", v) // 对于不包含占位符的条件
+			}
+		}
+	}
+
+	if err := db.Find(&gateways).Error; err != nil {
+		r.l.Error("查询网关型号列表失败", "error", err)
+		return nil, err
+	}
+	return gateways, nil
+}
+
+// SelectGatewayModelByID 根据ID查询单个网关型号
+func (r *ModelDefaultRepo) SelectGatewayModelByID(ctx context.Context, id uint) (*po.GatewayModel, error) {
+	var gateway po.GatewayModel
+	if err := r.tx.WithContext(ctx).Where("gateway_model_id = ?", id).First(&gateway).Error; err != nil {
+		r.l.Error("根据ID查询网关型号失败", "id", id, "error", err)
+		return nil, err
+	}
+	return &gateway, nil
+}
+
+// SelectDroneModels 根据条件查询无人机型号
+func (r *ModelDefaultRepo) SelectDroneModels(ctx context.Context, query map[string]interface{}) ([]entity.DroneModel, error) {
+	var drones []po.DroneModel
+	db := r.tx.WithContext(ctx).Preload("Gimbals")
+
+	// 处理查询条件
+	if query != nil {
+		for k, v := range query {
+			if strings.Contains(k, "?") {
+				db = db.Where(k, v) // 对于包含占位符的条件
+			} else {
+				db = db.Where(k+" = ?", v) // 对于不包含占位符的条件
+			}
+		}
+	}
+
+	if err := db.Find(&drones).Error; err != nil {
+		r.l.Error("查询无人机型号列表失败", "error", err)
+		return nil, err
+	}
+
+	// 转换为实体模型
+	var res []entity.DroneModel
+	for _, drone := range drones {
+		var gateway po.GatewayModel
+		if err := r.tx.WithContext(ctx).Where("gateway_model_id = ?", drone.GatewayID).First(&gateway).Error; err != nil {
+			r.l.Error("查询无人机型号的网关失败", "error", err)
+			return nil, err
+		}
+		res = append(res, *entity.NewDroneModelFromPO(drone, gateway))
+	}
+	return res, nil
+}
+
+// SelectDroneModelByID 根据ID查询单个无人机型号
+func (r *ModelDefaultRepo) SelectDroneModelByID(ctx context.Context, id uint) (*entity.DroneModel, error) {
+	var drone po.DroneModel
+	if err := r.tx.WithContext(ctx).Preload("Gimbals").Where("drone_model_id = ?", id).First(&drone).Error; err != nil {
+		r.l.Error("根据ID查询无人机型号失败", "id", id, "error", err)
+		return nil, err
+	}
+
+	// 加载关联的网关信息
+	var gateway po.GatewayModel
+	if err := r.tx.WithContext(ctx).Where("gateway_model_id = ?", drone.GatewayID).First(&gateway).Error; err != nil {
+		r.l.Error("查询无人机型号的网关失败", "gateway_id", drone.GatewayID, "error", err)
+		return nil, err
+	}
+
+	return entity.NewDroneModelFromPO(drone, gateway), nil
+}
+
+// SelectGimbalModels 根据条件查询云台型号
+func (r *ModelDefaultRepo) SelectGimbalModels(ctx context.Context, query map[string]interface{}) ([]po.GimbalModel, error) {
+	var gimbals []po.GimbalModel
+	db := r.tx.WithContext(ctx)
+
+	// 处理查询条件
+	if query != nil {
+		for k, v := range query {
+			if strings.Contains(k, "?") {
+				db = db.Where(k, v) // 对于包含占位符的条件
+			} else {
+				db = db.Where(k+" = ?", v) // 对于不包含占位符的条件
+			}
+		}
+	}
+
+	if err := db.Find(&gimbals).Error; err != nil {
+		r.l.Error("查询云台型号列表失败", "error", err)
+		return nil, err
+	}
+	return gimbals, nil
+}
+
+// SelectGimbalModelByID 根据ID查询单个云台型号
+func (r *ModelDefaultRepo) SelectGimbalModelByID(ctx context.Context, id uint) (*po.GimbalModel, error) {
+	var gimbal po.GimbalModel
+	if err := r.tx.WithContext(ctx).Where("gimbal_model_id = ?", id).First(&gimbal).Error; err != nil {
+		r.l.Error("根据ID查询云台型号失败", "id", id, "error", err)
+		return nil, err
+	}
+	return &gimbal, nil
+}
+
+// UpdateDroneModel 更新无人机型号
+func (r *ModelDefaultRepo) UpdateDroneModel(ctx context.Context, id uint, model *po.DroneModel) error {
+	// 先检查记录是否存在
+	var existing po.DroneModel
+	if err := r.tx.WithContext(ctx).Where("drone_model_id = ?", id).First(&existing).Error; err != nil {
+		r.l.Error("更新无人机型号失败，记录不存在", "id", id, "error", err)
+		return err
+	}
+
+	// 更新记录
+	if err := r.tx.WithContext(ctx).Model(&po.DroneModel{}).Where("drone_model_id = ?", id).Updates(map[string]interface{}{
+		"drone_model_name":        model.Name,
+		"drone_model_description": model.Description,
+		"drone_model_domain":      model.Domain,
+		"drone_model_type":        model.Type,
+		"drone_model_sub_type":    model.SubType,
+		"gateway_model_id":        model.GatewayID,
+		"is_rtk_available":        model.IsRTKAvailable,
+	}).Error; err != nil {
+		r.l.Error("更新无人机型号失败", "id", id, "error", err)
+		return err
+	}
+
+	// 如果有云台关联信息，需要更新关联
+	if len(model.Gimbals) > 0 {
+		// 清除原有关联
+		if err := r.tx.WithContext(ctx).Model(&existing).Association("Gimbals").Clear(); err != nil {
+			r.l.Error("清除无人机型号云台关联失败", "id", id, "error", err)
+			return err
+		}
+
+		// 添加新关联
+		if err := r.tx.WithContext(ctx).Model(&existing).Association("Gimbals").Replace(&model.Gimbals); err != nil {
+			r.l.Error("更新无人机型号云台关联失败", "id", id, "error", err)
+			return err
+		}
+	}
+
+	// 如果有负载关联信息，需要更新关联
+	if len(model.Payloads) > 0 {
+		// 清除原有关联
+		if err := r.tx.WithContext(ctx).Model(&existing).Association("Payloads").Clear(); err != nil {
+			r.l.Error("清除无人机型号负载关联失败", "id", id, "error", err)
+			return err
+		}
+
+		// 添加新关联
+		if err := r.tx.WithContext(ctx).Model(&existing).Association("Payloads").Replace(&model.Payloads); err != nil {
+			r.l.Error("更新无人机型号负载关联失败", "id", id, "error", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+// UpdateGimbalModel 更新云台型号
+func (r *ModelDefaultRepo) UpdateGimbalModel(ctx context.Context, id uint, model *po.GimbalModel) error {
+	// 先检查记录是否存在
+	var existing po.GimbalModel
+	if err := r.tx.WithContext(ctx).Where("gimbal_model_id = ?", id).First(&existing).Error; err != nil {
+		r.l.Error("更新云台型号失败，记录不存在", "id", id, "error", err)
+		return err
+	}
+
+	// 更新记录
+	if err := r.tx.WithContext(ctx).Model(&po.GimbalModel{}).Where("gimbal_model_id = ?", id).Updates(map[string]interface{}{
+		"gimbal_model_name":        model.Name,
+		"gimbal_model_description": model.Description,
+		"gimbal_model_product":     model.Product,
+		"gimbal_model_domain":      model.Domain,
+		"gimbal_model_type":        model.Type,
+		"gimbal_model_sub_type":    model.SubType,
+		"gimbalindex":              model.Gimbalindex,
+		"is_thermal_available":     model.IsThermalAvailable,
+	}).Error; err != nil {
+		r.l.Error("更新云台型号失败", "id", id, "error", err)
+		return err
+	}
+
+	return nil
+}
+
+// UpdateGatewayModel 更新网关型号
+func (r *ModelDefaultRepo) UpdateGatewayModel(ctx context.Context, id uint, model *po.GatewayModel) error {
+	// 先检查记录是否存在
+	var existing po.GatewayModel
+	if err := r.tx.WithContext(ctx).Where("gateway_model_id = ?", id).First(&existing).Error; err != nil {
+		r.l.Error("更新网关型号失败，记录不存在", "id", id, "error", err)
+		return err
+	}
+
+	// 更新记录
+	if err := r.tx.WithContext(ctx).Model(&po.GatewayModel{}).Where("gateway_model_id = ?", id).Updates(map[string]interface{}{
+		"gateway_model_name":        model.Name,
+		"gateway_model_description": model.Description,
+		"gateway_model_domain":      model.Domain,
+		"gateway_model_type":        model.Type,
+		"gateway_model_sub_type":    model.SubType,
+	}).Error; err != nil {
+		r.l.Error("更新网关型号失败", "id", id, "error", err)
+		return err
+	}
+
+	return nil
 }
