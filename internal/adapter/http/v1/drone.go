@@ -45,6 +45,7 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 		h.Get("/sn/:sn", r.getBySN)
 		h.Get("/state/sse", r.pushState)
 		h.Get("/models", r.getModels) // 添加获取无人机型号列表的路由
+		h.Delete("/:sn", r.delete)    // 添加删除无人机的路由
 	}
 }
 
@@ -326,4 +327,47 @@ func (r *DroneRouter) create(c *fiber.Ctx) error {
 
 	// 返回创建成功的结果
 	return c.JSON(Success(result))
+}
+
+// delete 删除无人机
+//
+//	@Router			/drone/:sn [delete]
+//	@Summary		删除无人机
+//	@Description	通过将无人机的state设置为-1来软删除无人机
+//	@Tags			drone
+//	@Produce		json
+//	@Param			sn	path		string				true	"无人机SN"
+//	@Success		200	{object}	Response{data=nil}	"成功"
+//	@Failure		400	{object}	Response{data=ErrorBody}	"请求参数错误"
+//	@Failure		500	{object}	Response{data=ErrorBody}	"服务器内部错误"
+func (r *DroneRouter) delete(c *fiber.Ctx) error {
+	// 获取路径参数中的无人机序列号
+	sn := c.Params("sn")
+	if sn == "" {
+		return c.JSON(Fail(ErrorBody{Code: 400, Msg: "无人机序列号(SN)不能为空"}))
+	}
+
+	r.l.Info("尝试删除无人机", slog.String("sn", sn))
+
+	// 检查无人机是否存在
+	ctx := context.Background()
+	_, err := r.svc.Repo().SelectBySN(ctx, sn)
+	if err != nil && err.Error() != "no realtime data" {
+		r.l.Error("删除无人机失败：无人机不存在", slog.String("sn", sn), slog.Any("error", err))
+		return c.JSON(Fail(ErrorBody{Code: 404, Msg: "无人机不存在：" + err.Error()}))
+	}
+
+	// 构造更新字段映射，将state设置为-1表示删除
+	updates := map[string]interface{}{
+		"state": -1, // state = -1 表示软删除
+	}
+
+	// 更新无人机状态为删除状态
+	if err := r.svc.Repo().UpdateDroneInfo(ctx, sn, updates); err != nil {
+		r.l.Error("删除无人机失败", slog.String("sn", sn), slog.Any("error", err))
+		return c.JSON(Fail(ErrorBody{Code: 500, Msg: "删除无人机失败：" + err.Error()}))
+	}
+
+	r.l.Info("成功删除无人机", slog.String("sn", sn))
+	return c.JSON(Success(nil))
 }
