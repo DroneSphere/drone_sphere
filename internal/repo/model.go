@@ -37,12 +37,17 @@ func (r *ModelDefaultRepo) SelectAllDroneVariation(ctx context.Context, query ma
 	return variations, nil
 }
 
-func (r *ModelDefaultRepo) SelectAllDroneModel(ctx context.Context) ([]entity.DroneModel, error) {
+func (r *ModelDefaultRepo) SelectAllDroneModel(ctx context.Context, name string) ([]entity.DroneModel, error) {
 	var drones []po.DroneModel
-	if err := r.tx.WithContext(ctx).Preload("Gimbals").Find(&drones).Error; err != nil {
+	tx := r.tx.WithContext(ctx).Preload("Gimbals").Where("state = 0")
+	if name != "" {
+		tx = tx.Where("drone_model_name LIKE ?", "%"+name+"%")
+	}
+	if err := tx.Find(&drones).Error; err != nil {
 		r.l.Error("select all drone models", "error", err)
 		return nil, err
 	}
+	// 转换为实体模型
 	var res []entity.DroneModel
 	for _, drone := range drones {
 		var gateway po.GatewayModel
@@ -66,21 +71,26 @@ func (r *ModelDefaultRepo) SelectAllGimbals(ctx context.Context) ([]po.GimbalMod
 
 func (r *ModelDefaultRepo) SelectGimbalsByIDs(ctx context.Context, ids []uint) ([]po.GimbalModel, error) {
 	var gimbals []po.GimbalModel
-	if err := r.tx.WithContext(ctx).Where("id IN ?", ids).Find(&gimbals).Error; err != nil {
+	if err := r.tx.WithContext(ctx).Where("gimbal_model_id IN ?", ids).Find(&gimbals).Error; err != nil {
 		r.l.Error("select gimbals by ids", "error", err)
 		return nil, err
 	}
 	return gimbals, nil
 }
 
-func (r *ModelDefaultRepo) SelectAllGatewayModel(ctx context.Context) ([]po.GatewayModel, error) {
+func (r *ModelDefaultRepo) SelectAllGatewayModel(ctx context.Context, name string) ([]po.GatewayModel, error) {
 	var gateways []po.GatewayModel
-	if err := r.tx.WithContext(ctx).Find(&gateways).Error; err != nil {
+	tx := r.tx.WithContext(ctx).Where("state = 0")
+	if name != "" {
+		tx = tx.Where("gateway_model_name LIKE ?", "%"+name+"%")
+	}
+	if err := tx.Find(&gateways).Error; err != nil {
 		r.l.Error("select all gateway models", "error", err)
 		return nil, err
 	}
 	return gateways, nil
 }
+
 func (r *ModelDefaultRepo) SelectAllPayloadModel(ctx context.Context) ([]po.PayloadModel, error) {
 	var payloads []po.PayloadModel
 	if err := r.tx.WithContext(ctx).Find(&payloads).Error; err != nil {
@@ -372,6 +382,25 @@ func (r *ModelDefaultRepo) UpdateDroneModel(ctx context.Context, id uint, model 
 	return nil
 }
 
+// UpdateDroneModelFields 使用字段映射更新无人机型号
+// 接受一个字段映射参数，可以更新指定字段，包括状态（用于软删除）
+func (r *ModelDefaultRepo) UpdateDroneModelFields(ctx context.Context, id uint, updates map[string]interface{}) error {
+	// 先检查记录是否存在
+	var existing po.DroneModel
+	if err := r.tx.WithContext(ctx).Where("drone_model_id = ?", id).First(&existing).Error; err != nil {
+		r.l.Error("更新无人机型号失败，记录不存在", "id", id, "error", err)
+		return err
+	}
+
+	// 更新记录
+	if err := r.tx.WithContext(ctx).Model(&po.DroneModel{}).Where("drone_model_id = ?", id).Updates(updates).Error; err != nil {
+		r.l.Error("更新无人机型号失败", "id", id, "error", err)
+		return err
+	}
+
+	return nil
+}
+
 // UpdateGimbalModel 更新云台型号
 func (r *ModelDefaultRepo) UpdateGimbalModel(ctx context.Context, id uint, model *po.GimbalModel) error {
 	// 先检查记录是否存在
@@ -399,6 +428,25 @@ func (r *ModelDefaultRepo) UpdateGimbalModel(ctx context.Context, id uint, model
 	return nil
 }
 
+// UpdateGimbalModelFields 使用字段映射更新云台型号
+// 接受一个字段映射参数，可以更新指定字段，包括状态（用于软删除）
+func (r *ModelDefaultRepo) UpdateGimbalModelFields(ctx context.Context, id uint, updates map[string]interface{}) error {
+	// 先检查记录是否存在
+	var existing po.GimbalModel
+	if err := r.tx.WithContext(ctx).Where("gimbal_model_id = ?", id).First(&existing).Error; err != nil {
+		r.l.Error("更新云台型号失败，记录不存在", "id", id, "error", err)
+		return err
+	}
+
+	// 更新记录
+	if err := r.tx.WithContext(ctx).Model(&po.GimbalModel{}).Where("gimbal_model_id = ?", id).Updates(updates).Error; err != nil {
+		r.l.Error("更新云台型号失败", "id", id, "error", err)
+		return err
+	}
+
+	return nil
+}
+
 // UpdateGatewayModel 更新网关型号
 func (r *ModelDefaultRepo) UpdateGatewayModel(ctx context.Context, id uint, model *po.GatewayModel) error {
 	// 先检查记录是否存在
@@ -416,6 +464,25 @@ func (r *ModelDefaultRepo) UpdateGatewayModel(ctx context.Context, id uint, mode
 		"gateway_model_type":        model.Type,
 		"gateway_model_sub_type":    model.SubType,
 	}).Error; err != nil {
+		r.l.Error("更新网关型号失败", "id", id, "error", err)
+		return err
+	}
+
+	return nil
+}
+
+// UpdateGatewayModelFields 使用字段映射更新网关型号
+// 接受一个字段映射参数，可以更新指定字段，包括状态（用于软删除）
+func (r *ModelDefaultRepo) UpdateGatewayModelFields(ctx context.Context, id uint, updates map[string]interface{}) error {
+	// 先检查记录是否存在
+	var existing po.GatewayModel
+	if err := r.tx.WithContext(ctx).Where("gateway_model_id = ?", id).First(&existing).Error; err != nil {
+		r.l.Error("更新网关型号失败，记录不存在", "id", id, "error", err)
+		return err
+	}
+
+	// 更新记录
+	if err := r.tx.WithContext(ctx).Model(&po.GatewayModel{}).Where("gateway_model_id = ?", id).Updates(updates).Error; err != nil {
 		r.l.Error("更新网关型号失败", "id", id, "error", err)
 		return err
 	}

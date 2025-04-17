@@ -156,25 +156,25 @@ func GenerateDroneVariations(db *gorm.DB, droneModelID uint) ([]DroneVariation, 
 	}
 
 	// 同时加载该无人机支持的所有负载型号
-	var supportedPayloads []PayloadModel
-	if err := db.Model(&PayloadModel{}).
-		Joins("JOIN payload_drone_support ON payload_models.id = payload_drone_support.payload_model_id").
-		Where("payload_drone_support.drone_model_id = ?", droneModelID).
-		Find(&supportedPayloads).Error; err != nil {
-		return variations, err
-	}
+	// var supportedPayloads []PayloadModel
+	// if err := db.Model(&PayloadModel{}).
+	// 	Joins("JOIN payload_drone_support ON tb_payload_models.id = payload_drone_support.payload_model_id").
+	// 	Where("payload_drone_support.drone_model_id = ?", droneModelID).
+	// 	Find(&supportedPayloads).Error; err != nil {
+	// 	return variations, err
+	// }
 
-	// 合并普通关联的负载和特别支持的负载，去重
-	payloadMap := make(map[uint]PayloadModel)
-	for _, p := range drone.Payloads {
-		payloadMap[p.ID] = p
-	}
-	for _, p := range supportedPayloads {
-		if _, exists := payloadMap[p.ID]; !exists {
-			payloadMap[p.ID] = p
-			drone.Payloads = append(drone.Payloads, p)
-		}
-	}
+	// // 合并普通关联的负载和特别支持的负载，去重
+	// payloadMap := make(map[uint]PayloadModel)
+	// for _, p := range drone.Payloads {
+	// 	payloadMap[p.ID] = p
+	// }
+	// for _, p := range supportedPayloads {
+	// 	if _, exists := payloadMap[p.ID]; !exists {
+	// 		payloadMap[p.ID] = p
+	// 		drone.Payloads = append(drone.Payloads, p)
+	// 	}
+	// }
 
 	// 对云台生成单选组合（包括无云台选项）
 	gimbalCombos := [][]GimbalModel{{}} // 包含"无云台"选项
@@ -362,46 +362,3 @@ func (dv *DroneVariation) GetSummary() string {
 func DeleteDroneVariations(db *gorm.DB, droneModelID uint) error {
 	return db.Where("drone_model_id = ?", droneModelID).Delete(&DroneVariation{}).Error
 }
-
-// // 检查无人机型号是否存在特定云台和负载组合的变体
-// func HasVariation(db *gorm.DB, droneModelID uint, gimbalIDs, payloadIDs []uint) (bool, *DroneVariation, error) {
-// 	// 先查询该无人机型号的所有变体
-// 	variations, err := GetDroneVariations(db, droneModelID)
-// 	if err != nil {
-// 		return false, nil, err
-// 	}
-
-// 	// 检查每个变体是否匹配给定的云台和负载组合
-// 	for _, variation := range variations {
-// 		if matchesIDLists(variation.Gimbals, gimbalIDs) && matchesIDLists(variation.Payloads, payloadIDs) {
-// 			return true, &variation, nil
-// 		}
-// 	}
-
-// 	return false, nil, nil
-// }
-
-// // 辅助函数：检查模型列表是否匹配ID列表
-// func matchesIDLists[T interface{ GetID() uint }](models []T, ids []uint) bool {
-// 	if len(models) != len(ids) {
-// 		return false
-// 	}
-
-// 	// 获取模型ID列表
-// 	var modelIDs []uint
-// 	for _, model := range models {
-// 		modelIDs = append(modelIDs, model.GetID())
-// 	}
-
-// 	// 对两个列表进行排序
-// 	slices.Sort(modelIDs)
-// 	slices.Sort(ids)
-
-// 	// 比较两个列表
-// 	return slices.Equal(modelIDs, ids)
-// }
-
-// // 为BaseModel添加GetID方法，以便上面的泛型函数能够使用
-// func (m *misc.BaseModel) GetID() uint {
-// 	return m.ID
-// }

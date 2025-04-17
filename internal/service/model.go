@@ -22,7 +22,7 @@ type (
 	ModelRepo interface {
 		// 查询相关方法
 		SelectAllDroneVariation(ctx context.Context, query map[string]string) ([]po.DroneVariation, error)
-		SelectAllDroneModel(ctx context.Context) ([]entity.DroneModel, error)
+		SelectAllDroneModel(ctx context.Context, name string) ([]entity.DroneModel, error)
 		SelectDroneModels(ctx context.Context, query map[string]interface{}) ([]entity.DroneModel, error)
 		SelectDroneModelByID(ctx context.Context, id uint) (*entity.DroneModel, error)
 
@@ -31,7 +31,7 @@ type (
 		SelectGimbalModelByID(ctx context.Context, id uint) (*po.GimbalModel, error)
 		SelectGimbalsByIDs(ctx context.Context, ids []uint) ([]po.GimbalModel, error)
 
-		SelectAllGatewayModel(ctx context.Context) ([]po.GatewayModel, error)
+		SelectAllGatewayModel(ctx context.Context, name string) ([]po.GatewayModel, error)
 		SelectGatewayModels(ctx context.Context, query map[string]interface{}) ([]po.GatewayModel, error)
 		SelectGatewayModelByID(ctx context.Context, id uint) (*po.GatewayModel, error)
 
@@ -47,6 +47,11 @@ type (
 		UpdateDroneModel(ctx context.Context, id uint, model *po.DroneModel) error
 		UpdateGimbalModel(ctx context.Context, id uint, model *po.GimbalModel) error
 		UpdateGatewayModel(ctx context.Context, id uint, model *po.GatewayModel) error
+
+		// 通用更新型号方法（可用于软删除）
+		UpdateDroneModelFields(ctx context.Context, id uint, updates map[string]interface{}) error
+		UpdateGimbalModelFields(ctx context.Context, id uint, updates map[string]interface{}) error
+		UpdateGatewayModelFields(ctx context.Context, id uint, updates map[string]interface{}) error
 
 		// 生成无人机变体
 		GenerateDroneVariations(ctx context.Context, droneModelID uint) ([]po.DroneVariation, error)

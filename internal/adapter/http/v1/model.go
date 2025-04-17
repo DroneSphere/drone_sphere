@@ -131,6 +131,11 @@ func NewModelsRouter(handler fiber.Router, svc service.ModelSvc, eb EventBus.Bus
 		h.Put("/gimbal/:id", r.updateGimbalModel)
 		h.Put("/gateway/:id", r.updateGatewayModel)
 
+		// 型号删除接口 (软删除，将状态置为-1)
+		h.Delete("/drone/:id", r.deleteDroneModel)
+		h.Delete("/gimbal/:id", r.deleteGimbalModel)
+		h.Delete("/gateway/:id", r.deleteGatewayModel)
+
 		// 批量创建型号接口
 		h.Post("/batch", r.batchCreateModels)
 
@@ -146,21 +151,10 @@ func (r *ModelRouter) getGatewayModels(c *fiber.Ctx) error {
 	name := c.Query("name", "")
 
 	// 获取所有网关型号
-	models, err := r.svc.Repo().SelectAllGatewayModel(ctx)
+	models, err := r.svc.Repo().SelectAllGatewayModel(ctx, name)
 	if err != nil {
 		r.l.Error("获取网关型号列表失败", "error", err)
 		return c.JSON(Fail(InternalError))
-	}
-
-	// 如果有名称查询参数，则进行过滤
-	if name != "" {
-		var filteredModels []po.GatewayModel
-		for _, model := range models {
-			if strings.Contains(strings.ToLower(model.Name), strings.ToLower(name)) {
-				filteredModels = append(filteredModels, model)
-			}
-		}
-		return c.JSON(Success(filteredModels))
 	}
 
 	return c.JSON(Success(models))
@@ -173,7 +167,7 @@ func (r *ModelRouter) getDroneModels(c *fiber.Ctx) error {
 	name := c.Query("name", "")
 
 	// 获取所有无人机型号
-	models, err := r.svc.Repo().SelectAllDroneModel(ctx)
+	models, err := r.svc.Repo().SelectAllDroneModel(ctx, name)
 	if err != nil {
 		r.l.Error("获取无人机型号列表失败", "error", err)
 		return c.JSON(Fail(InternalError))
@@ -242,7 +236,7 @@ func (r *ModelRouter) getGatewayModelByID(c *fiber.Ctx) error {
 
 	// 获取所有网关型号
 	ctx := context.Background()
-	allModels, err := r.svc.Repo().SelectAllGatewayModel(ctx)
+	allModels, err := r.svc.Repo().SelectAllGatewayModel(ctx, "")
 	if err != nil {
 		r.l.Error("获取网关型号列表失败", "error", err)
 		return c.JSON(Fail(InternalError))
@@ -272,7 +266,7 @@ func (r *ModelRouter) getDroneModelByID(c *fiber.Ctx) error {
 
 	// 获取所有无人机型号
 	ctx := context.Background()
-	allModels, err := r.svc.Repo().SelectAllDroneModel(ctx)
+	allModels, err := r.svc.Repo().SelectAllDroneModel(ctx, "")
 	if err != nil {
 		r.l.Error("获取无人机型号列表失败", "error", err)
 		return c.JSON(Fail(InternalError))
@@ -561,62 +555,84 @@ func (r *ModelRouter) updateDroneModel(c *fiber.Ctx) error {
 		return c.JSON(Fail(InvalidParams))
 	}
 
-	// 获取要更新的无人机型号
+	// 直接构建要更新的字段
 	ctx := context.Background()
-	allModels, err := r.svc.Repo().SelectAllDroneModel(ctx)
-	if err != nil {
-		r.l.Error("获取无人机型号列表失败", "error", err)
+
+	// 准备返回给客户端的对象
+	var targetModel po.DroneModel = po.DroneModel{
+		ID:          uint(id),
+		Name:        req.Name,
+		Description: req.Description,
+		Domain:      req.Domain,
+		Type:        req.Type,
+		SubType:     req.SubType,
+		GatewayID:   req.GatewayID,
+	}
+
+	// 如果请求包含RTK可用性标志，则更新
+	if req.IsRTKAvailable != nil {
+		targetModel.IsRTKAvailable = *req.IsRTKAvailable
+	}
+
+	// 准备更新字段
+	updates := map[string]interface{}{}
+	if req.Name != "" {
+		updates["drone_model_name"] = req.Name
+	}
+	if req.Description != "" {
+		updates["drone_model_description"] = req.Description
+	}
+	if req.Domain != 0 {
+		updates["drone_model_domain"] = req.Domain
+	}
+	if req.Type != 0 {
+		updates["drone_model_type"] = req.Type
+	}
+	if req.SubType != 0 {
+		updates["drone_model_sub_type"] = req.SubType
+	}
+	if req.GatewayID != 0 {
+		updates["gateway_model_id"] = req.GatewayID
+	}
+
+	// 如果请求包含RTK可用性标志，则更新
+	if req.IsRTKAvailable != nil {
+		updates["is_rtk_available"] = *req.IsRTKAvailable
+	}
+
+	// 直接通过ID更新无人机型号
+	if err := r.svc.Repo().UpdateDroneModelFields(ctx, uint(id), updates); err != nil {
+		// 如果是记录不存在的错误，返回NotFound
+		if strings.Contains(err.Error(), "record not found") {
+			r.l.Error("未找到对应ID的无人机型号", "id", id, "error", err)
+			return c.JSON(Fail(NotFound))
+		}
+		r.l.Error("更新无人机型号失败", "id", id, "error", err)
 		return c.JSON(Fail(InternalError))
 	}
 
-	// 查找并更新对应ID的无人机型号
-	var found bool
-	var targetModel po.DroneModel
-	for _, model := range allModels {
-		if model.ID == uint(id) {
-			// 找到对应的型号
-			found = true
-
-			// 构建更新后的无人机型号
-			targetModel = po.DroneModel{
-				ID:          uint(id),
-				Name:        req.Name,
-				Description: req.Description,
-				Domain:      req.Domain,
-				Type:        req.Type,
-				SubType:     req.SubType,
-				GatewayID:   req.GatewayID,
-			}
-
-			// 如果请求包含RTK可用性标志，则更新
-			if req.IsRTKAvailable != nil {
-				targetModel.IsRTKAvailable = *req.IsRTKAvailable
-			}
-
-			// 更新无人机型号
-			if err := r.svc.Repo().CreateDroneModel(ctx, &targetModel); err != nil {
-				r.l.Error("更新无人机型号失败", "id", id, "error", err)
-				return c.JSON(Fail(InternalError))
-			}
-
-			// 如果请求中包含云台ID，则获取云台信息并建立关联
-			if len(req.GimbalIDs) > 0 {
-				gimbals, err := r.svc.Repo().SelectGimbalsByIDs(ctx, req.GimbalIDs)
-				if err != nil {
-					r.l.Error("查询云台型号失败", "error", err)
-					return c.JSON(Fail(InternalError))
-				}
-				targetModel.Gimbals = gimbals
-			}
-
-			break
+	// 如果请求中包含云台ID，则获取云台信息并建立关联
+	if len(req.GimbalIDs) > 0 {
+		gimbals, err := r.svc.Repo().SelectGimbalsByIDs(ctx, req.GimbalIDs)
+		if err != nil {
+			r.l.Error("查询云台型号失败", "error", err)
+			return c.JSON(Fail(InternalError))
 		}
-	}
 
-	if !found {
-		// 未找到对应ID的无人机型号
-		r.l.Error("未找到对应ID的无人机型号", "id", id)
-		return c.JSON(Fail(NotFound))
+		// 添加到返回对象
+		targetModel.Gimbals = gimbals
+
+		// 构建完整模型用于更新关联信息
+		fullModel := po.DroneModel{
+			ID:      uint(id),
+			Gimbals: gimbals,
+		}
+
+		// 更新关联信息
+		if err := r.svc.Repo().UpdateDroneModel(ctx, uint(id), &fullModel); err != nil {
+			r.l.Error("更新无人机型号关联失败", "id", id, "error", err)
+			return c.JSON(Fail(InternalError))
+		}
 	}
 
 	return c.JSON(Success(targetModel))
@@ -639,49 +655,43 @@ func (r *ModelRouter) updateGimbalModel(c *fiber.Ctx) error {
 		return c.JSON(Fail(InvalidParams))
 	}
 
-	// 获取要更新的云台型号
+	// 直接构建要更新的字段
 	ctx := context.Background()
-	allModels, err := r.svc.Repo().SelectAllGimbals(ctx)
-	if err != nil {
-		r.l.Error("获取云台型号列表失败", "error", err)
-		return c.JSON(Fail(InternalError))
+
+	// 准备返回给客户端的对象
+	targetModel := po.GimbalModel{
+		ID:                 uint(id),
+		Name:               req.Name,
+		Description:        req.Description,
+		Product:            req.Product,
+		Domain:             req.Domain,
+		Type:               req.Type,
+		SubType:            req.SubType,
+		Gimbalindex:        req.Gimbalindex,
+		IsThermalAvailable: req.IsThermalAvailable,
 	}
 
-	// 查找并更新对应ID的云台型号
-	var found bool
-	var targetModel po.GimbalModel
-	for _, model := range allModels {
-		if model.ID == uint(id) {
-			// 找到对应的型号
-			found = true
+	// 准备更新字段
+	updates := map[string]interface{}{
+		"gimbal_model_name":        req.Name,
+		"gimbal_model_description": req.Description,
+		"gimbal_model_product":     req.Product,
+		"gimbal_model_domain":      req.Domain,
+		"gimbal_model_type":        req.Type,
+		"gimbal_model_sub_type":    req.SubType,
+		"gimbalindex":              req.Gimbalindex,
+		"is_thermal_available":     req.IsThermalAvailable,
+	}
 
-			// 构建更新后的云台型号
-			targetModel = po.GimbalModel{
-				ID:                 uint(id),
-				Name:               req.Name,
-				Description:        req.Description,
-				Product:            req.Product,
-				Domain:             req.Domain,
-				Type:               req.Type,
-				SubType:            req.SubType,
-				Gimbalindex:        req.Gimbalindex,
-				IsThermalAvailable: req.IsThermalAvailable,
-			}
-
-			// 更新云台型号
-			if err := r.svc.Repo().CreateGimbalModel(ctx, &targetModel); err != nil {
-				r.l.Error("更新云台型号失败", "id", id, "error", err)
-				return c.JSON(Fail(InternalError))
-			}
-
-			break
+	// 直接通过ID更新云台型号
+	if err := r.svc.Repo().UpdateGimbalModelFields(ctx, uint(id), updates); err != nil {
+		// 如果是记录不存在的错误，返回NotFound
+		if strings.Contains(err.Error(), "record not found") {
+			r.l.Error("未找到对应ID的云台型号", "id", id, "error", err)
+			return c.JSON(Fail(NotFound))
 		}
-	}
-
-	if !found {
-		// 未找到对应ID的云台型号
-		r.l.Error("未找到对应ID的云台型号", "id", id)
-		return c.JSON(Fail(NotFound))
+		r.l.Error("更新云台型号失败", "id", id, "error", err)
+		return c.JSON(Fail(InternalError))
 	}
 
 	return c.JSON(Success(targetModel))
@@ -704,47 +714,156 @@ func (r *ModelRouter) updateGatewayModel(c *fiber.Ctx) error {
 		return c.JSON(Fail(InvalidParams))
 	}
 
-	// 获取要更新的网关型号
+	// 直接构建要更新的字段
 	ctx := context.Background()
-	allModels, err := r.svc.Repo().SelectAllGatewayModel(ctx)
-	if err != nil {
-		r.l.Error("获取网关型号列表失败", "error", err)
+
+	// 准备返回给客户端的对象
+	targetModel := po.GatewayModel{
+		ID:          uint(id),
+		Name:        req.Name,
+		Description: req.Description,
+		Domain:      req.Domain,
+		Type:        req.Type,
+		SubType:     req.SubType,
+	}
+
+	// 准备更新字段
+	updates := map[string]interface{}{}
+	if req.Name != "" {
+		updates["gateway_model_name"] = req.Name
+	}
+	if req.Description != "" {
+		updates["gateway_model_description"] = req.Description
+	}
+	if req.Domain != 0 {
+		updates["gateway_model_domain"] = req.Domain
+	}
+	if req.Type != 0 {
+		updates["gateway_model_type"] = req.Type
+	}
+	if req.SubType != 0 {
+		updates["gateway_model_sub_type"] = req.SubType
+	}
+	if len(updates) == 0 {
+		r.l.Error("没有需要更新的字段", "id", id)
+		return c.JSON(Fail(InvalidParams))
+	}
+
+	// 直接通过ID更新网关型号
+	if err := r.svc.Repo().UpdateGatewayModelFields(ctx, uint(id), updates); err != nil {
+		// 如果是记录不存在的错误，返回NotFound
+		if strings.Contains(err.Error(), "record not found") {
+			r.l.Error("未找到对应ID的网关型号", "id", id, "error", err)
+			return c.JSON(Fail(NotFound))
+		}
+		r.l.Error("更新网关型号失败", "id", id, "error", err)
 		return c.JSON(Fail(InternalError))
 	}
 
-	// 查找并更新对应ID的网关型号
-	var found bool
-	var targetModel po.GatewayModel
-	for _, model := range allModels {
-		if model.ID == uint(id) {
-			// 找到对应的型号
-			found = true
-
-			// 构建更新后的网关型号
-			targetModel = po.GatewayModel{
-				ID:          uint(id),
-				Name:        req.Name,
-				Description: req.Description,
-				Domain:      req.Domain,
-				Type:        req.Type,
-				SubType:     req.SubType,
-			}
-
-			// 更新网关型号
-			if err := r.svc.Repo().CreateGatewayModel(ctx, &targetModel); err != nil {
-				r.l.Error("更新网关型号失败", "id", id, "error", err)
-				return c.JSON(Fail(InternalError))
-			}
-
-			break
-		}
-	}
-
-	if !found {
-		// 未找到对应ID的网关型号
-		r.l.Error("未找到对应ID的网关型号", "id", id)
-		return c.JSON(Fail(NotFound))
-	}
-
 	return c.JSON(Success(targetModel))
+}
+
+// 删除无人机型号（软删除，将state置为-1）
+func (r *ModelRouter) deleteDroneModel(c *fiber.Ctx) error {
+	// 获取路径参数
+	idStr := c.Params("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		r.l.Error("解析无人机型号ID失败", "error", err)
+		return c.JSON(Fail(InvalidParams))
+	}
+
+	// 直接通过ID进行软删除
+	ctx := context.Background()
+
+	// 准备软删除更新 (将state置为-1)
+	updates := map[string]interface{}{
+		"state": -1, // 将state置为-1表示软删除
+	}
+
+	// 直接更新无人机型号的状态
+	if err := r.svc.Repo().UpdateDroneModelFields(ctx, uint(id), updates); err != nil {
+		// 如果是记录不存在的错误，返回NotFound
+		if strings.Contains(err.Error(), "record not found") {
+			r.l.Error("未找到对应ID的无人机型号", "id", id, "error", err)
+			return c.JSON(Fail(NotFound))
+		}
+		r.l.Error("删除无人机型号失败", "id", id, "error", err)
+		return c.JSON(Fail(InternalError))
+	}
+
+	return c.JSON(Success(map[string]interface{}{
+		"message": "无人机型号删除成功",
+		"id":      id,
+	}))
+}
+
+// 删除云台型号（软删除，将state置为-1）
+func (r *ModelRouter) deleteGimbalModel(c *fiber.Ctx) error {
+	// 获取路径参数
+	idStr := c.Params("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		r.l.Error("解析云台型号ID失败", "error", err)
+		return c.JSON(Fail(InvalidParams))
+	}
+
+	// 直接通过ID进行软删除
+	ctx := context.Background()
+
+	// 准备软删除更新 (将state置为-1)
+	updates := map[string]interface{}{
+		"state": -1, // 将state置为-1表示软删除
+	}
+
+	// 直接更新云台型号的状态
+	if err := r.svc.Repo().UpdateGimbalModelFields(ctx, uint(id), updates); err != nil {
+		// 如果是记录不存在的错误，返回NotFound
+		if strings.Contains(err.Error(), "record not found") {
+			r.l.Error("未找到对应ID的云台型号", "id", id, "error", err)
+			return c.JSON(Fail(NotFound))
+		}
+		r.l.Error("删除云台型号失败", "id", id, "error", err)
+		return c.JSON(Fail(InternalError))
+	}
+
+	return c.JSON(Success(map[string]interface{}{
+		"message": "云台型号删除成功",
+		"id":      id,
+	}))
+}
+
+// 删除网关型号（软删除，将state置为-1）
+func (r *ModelRouter) deleteGatewayModel(c *fiber.Ctx) error {
+	// 获取路径参数
+	idStr := c.Params("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		r.l.Error("解析网关型号ID失败", "error", err)
+		return c.JSON(Fail(InvalidParams))
+	}
+
+	// 直接通过ID进行软删除
+	ctx := context.Background()
+
+	// 准备软删除更新 (将state置为-1)
+	updates := map[string]interface{}{
+		"state": -1, // 将state置为-1表示软删除
+	}
+
+	// 直接更新网关型号的状态
+	if err := r.svc.Repo().UpdateGatewayModelFields(ctx, uint(id), updates); err != nil {
+		// 如果是记录不存在的错误，返回NotFound
+		if strings.Contains(err.Error(), "record not found") {
+			r.l.Error("未找到对应ID的网关型号", "id", id, "error", err)
+			return c.JSON(Fail(NotFound))
+		}
+		r.l.Error("删除网关型号失败", "id", id, "error", err)
+		return c.JSON(Fail(InternalError))
+	}
+
+	return c.JSON(Success(map[string]interface{}{
+		"message": "网关型号删除成功",
+		"id":      id,
+	}))
 }
