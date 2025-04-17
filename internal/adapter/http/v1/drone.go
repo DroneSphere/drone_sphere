@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/asaskevich/EventBus"
@@ -64,7 +65,24 @@ type droneItemResult struct {
 
 func (r *DroneRouter) list(c *fiber.Ctx) error {
 	ctx := context.Background()
-	drones, err := r.svc.Repo().SelectAll(ctx)
+
+	// 从请求中获取查询参数
+	sn := c.Query("sn")
+	callsign := c.Query("callsign")
+	modelIDStr := c.Query("model_id")
+
+	// 解析 model_id 参数
+	var modelID uint = 0
+	if modelIDStr != "" {
+		id, err := strconv.ParseUint(modelIDStr, 10, 32)
+		if err != nil {
+			return c.JSON(Fail(ErrorBody{Code: 400, Msg: "无效的型号ID参数: " + err.Error()}))
+		}
+		modelID = uint(id)
+	}
+
+	// 调用仓库层方法，传递查询条件
+	drones, err := r.svc.Repo().SelectAll(ctx, sn, callsign, modelID)
 	if err != nil {
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}

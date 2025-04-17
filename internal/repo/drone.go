@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/model/dto"
@@ -37,16 +38,37 @@ func (r *DroneDefaultRepo) GetDB() *gorm.DB {
 }
 
 // SelectAll 列出所有无人机
-func (r *DroneDefaultRepo) SelectAll(ctx context.Context) ([]entity.Drone, error) {
+// 参数说明:
+// sn: 无人机序列号，用于精确匹配，可为空
+// callsign: 无人机呼号，用于精确匹配，可为空
+// modelID: 无人机型号ID，用于精确匹配，可为0
+func (r *DroneDefaultRepo) SelectAll(ctx context.Context, sn string, callsign string, modelID uint) ([]entity.Drone, error) {
 	var ds []entity.Drone
 	var ps []po.Drone
-	if err := r.tx.WithContext(ctx).
+
+	// 构建查询条件
+	query := r.tx.WithContext(ctx).
 		Preload("DroneModel.Gimbals").
 		Preload("DroneModel").
-		Where("state = ?", 0).
-		Find(&ps).Error; err != nil {
-		r.l.Error(err.Error())
-		panic(err)
+		Where("state = ?", 0)
+
+	// 添加可选的筛选条件
+	if sn != "" {
+		// 将输入的 sn 转换为大写
+		// 以便与数据库中的 sn 进行匹配
+		query = query.Where("sn LIKE ?", "%"+strings.ToUpper(sn)+"%")
+	}
+	if callsign != "" {
+		query = query.Where("callsign LIKE ?", "%"+callsign+"%")
+	}
+	if modelID > 0 {
+		query = query.Where("drone_model_id = ?", modelID)
+	}
+
+	// 执行查询
+	if err := query.Find(&ps).Error; err != nil {
+		r.l.Error("查询无人机列表失败", slog.Any("error", err))
+		return ds, err
 	}
 	r.l.Info("获取无人机持久化数据成功", slog.Any("po", ps))
 

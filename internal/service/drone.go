@@ -23,7 +23,7 @@ type (
 	}
 
 	DroneRepo interface {
-		SelectAll(ctx context.Context) ([]entity.Drone, error)
+		SelectAll(ctx context.Context, sn string, callsign string, modelID uint) ([]entity.Drone, error)
 		Save(ctx context.Context, d entity.Drone) error
 		SelectBySN(ctx context.Context, sn string) (entity.Drone, error)
 		FetchStateBySN(ctx context.Context, sn string) (ro.Drone, error)
