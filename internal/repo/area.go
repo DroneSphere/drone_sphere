@@ -55,11 +55,25 @@ func (r *AreaDefaultRepo) SelectByName(ctx context.Context, name string) (*po.Ar
 }
 
 // FetchAll 查询所有区域
-func (r *AreaDefaultRepo) FetchAll(ctx context.Context, name string) ([]*po.Area, error) {
+func (r *AreaDefaultRepo) FetchAll(ctx context.Context, name string, created_at_begin, created_at_end string) ([]*po.Area, error) {
 	var areas []*po.Area
-	tx := r.tx
+	tx := r.tx.WithContext(ctx).Where("state = 0")
 	if name != "" {
-		tx = tx.Where("name LIKE ?", "%"+name+"%")
+		tx = tx.Where("area_name LIKE ?", "%"+name+"%")
+	}
+	if created_at_begin != "" {
+		// 如果只有日期没有时间，默认时间为00:00:00
+		if len(created_at_begin) == 10 {
+			created_at_begin += " 00:00:00"
+		}
+		tx = tx.Where("created_time >= ?", created_at_begin)
+	}
+	if created_at_end != "" {
+		// 如果只有日期没有时间，默认时间为23:59:59
+		if len(created_at_end) == 10 {
+			created_at_end += " 23:59:59"
+		}
+		tx = tx.Where("created_time <= ?", created_at_end)
 	}
 	if err := tx.Find(&areas).Error; err != nil {
 		r.l.Error("查询所有区域失败", slog.Any("name", name), slog.Any("error", err))

@@ -80,7 +80,7 @@ func (j *JobImpl) Repo() JobRepo {
 }
 
 func (j *JobImpl) FetchAvailableAreas(ctx context.Context) ([]*entity.Area, error) {
-	areas, err := j.areaRepo.FetchAll(ctx, "")
+	areas, err := j.areaRepo.FetchAll(ctx, "", "", "")
 	if err != nil {
 		return nil, err
 	}

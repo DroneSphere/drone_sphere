@@ -116,14 +116,17 @@ func (r *SearchAreaRouter) toListResult(area []*entity.Area) []areaItemResult {
 func (r *SearchAreaRouter) getAllAreas(c *fiber.Ctx) error {
 	ctx := context.Background()
 	var params struct {
-		Name string `json:"name"`
+		Name           string `query:"name"`
+		CreatedAtBegin string `query:"created_at_begin"`
+		CreatedAtEnd   string `query:"created_at_end"`
 	}
 	if err := c.QueryParser(&params); err != nil {
 		r.l.Error("getAllAreas Error: ", slog.Any("error", err))
 		return c.Status(fiber.StatusBadRequest).JSON(Fail(InvalidParams))
 	}
 	// 调用服务层获取搜索区域列表
-	areas, err := r.svc.FetchAll(ctx, params.Name)
+	r.l.Info("getAllAreas", slog.Any("params", params))
+	areas, err := r.svc.FetchAll(ctx, params.Name, params.CreatedAtBegin, params.CreatedAtEnd)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Fail(InternalError))
 	}
