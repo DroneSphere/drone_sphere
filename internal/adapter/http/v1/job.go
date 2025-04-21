@@ -273,7 +273,7 @@ func (r *JobRouter) update(c *fiber.Ctx) error {
 	}
 
 	// 解析时间字符串为当天的时间
-	scheduleTime, err := time.Parse("15:04:05", req.ScheduleTime)
+	scheduleTime, err := time.Parse("2006-01-02 15:04", req.ScheduleTime)
 	if err != nil {
 		r.l.Error("无效的时间格式", slog.Any("err", err))
 		return c.JSON(Fail(InvalidParams))
