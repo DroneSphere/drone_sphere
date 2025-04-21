@@ -74,50 +74,90 @@ func (j *JobDefaultRepo) FetchPOByID(ctx context.Context, id uint) (*po.Job, err
 func (j *JobDefaultRepo) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
 	var jsonStr string
 	if err := j.tx.Raw(`
+	SELECT
+	JSON_OBJECT(
+		'id',
+		j.job_id,
+		'name',
+		j.job_name,
+		'description',
+		j.job_description,
+		'schedule_time',
+		DATE_FORMAT(j.schedule_time, '%Y-%m-%dT%H:%i:%sZ'),
+		'area',
+		JSON_OBJECT('id', a.area_id, 'name', a.area_name, 'description', a.area_description, 'points', a.area_points),
+		'drones',
+		(
 			SELECT
-				JSON_OBJECT(
-					'id', j.job_id,
-					'name', j.job_name,
-					'description', j.job_description,
-					'schedule_time', DATE_FORMAT(j.schedule_time, '%Y-%m-%dT%H:%i:%sZ'),
-					'area', JSON_OBJECT('id', a.area_id, 'name', a.area_name, 'description', a.area_description, 'points', a.area_points),
-					'drones', JSON_ARRAYAGG(
-						JSON_OBJECT(
-							'id',  dm.drone_model_id,
-							'key', JSON_EXTRACT(j.drones, '$[0].key'),
-							'name', dm.drone_model_name,
-							'description', dm.drone_model_description,
-											'color', JSON_EXTRACT(j.drones, '$[0].color'),
-							'index', JSON_EXTRACT(j.drones, '$[0].index'),                
-							'variantion', JSON_EXTRACT(j.drones, '$[0].variantion'),
-							'description', JSON_EXTRACT(j.drones, '$[0].description'),
-							'variantion_id', JSON_EXTRACT(j.drones, '$[0].variantion_id')
-						)
-					),
-					'waylines', j.waylines,
-					'mappings', JSON_ARRAYAGG(
-						JSON_OBJECT(
-							'physical_drone_id', d.drone_id,
-							'physical_drone_sn', d.sn,
-							'selected_drone_key', JSON_EXTRACT(j.mappings, '$[0].selected_drone_key'),
-							'physical_drone_callsign', d.callsign,
-							'physical_drone_description', d.drone_description,
-							'physical_drone_model_id',d.drone_model_id
-						)
+				JSON_ARRAYAGG(
+					JSON_OBJECT(
+						'id',
+						d_job.id,
+						'key',
+						d_job.kkey,
+						'name',
+						dm.drone_model_name,
+						'description',
+						dm.drone_model_description,
+						'color',
+						d_job.color,
+						'index',
+						d_job.idx,
+						'variantion',
+						d_job.variantion,
+						'variantion_id',
+						d_job.variantion_id
 					)
 				)
 			FROM
-				tb_jobs j
-			LEFT JOIN
-				tb_areas a ON j.area_id = a.area_id
-			LEFT JOIN
-				tb_drone_models dm ON JSON_EXTRACT(j.drones, '$[0].model_id') = dm.drone_model_id
-			LEFT JOIN
-				tb_drones d ON JSON_EXTRACT(j.mappings, '$[0].physical_drone_sn') = d.sn
-			WHERE
-				j.job_id = ?
-			AND j.state = 0
-			GROUP BY j.job_id`, id).Scan(&jsonStr).Error; err != nil {
+				JSON_TABLE (
+					j.drones,
+					'$[*]' COLUMNS (
+						id INT PATH '$.id',
+						kkey VARCHAR (255) PATH '$.key',
+						color VARCHAR (7) PATH '$.color',
+						idx INT PATH '$.index',
+						model_id INT PATH '$.model_id',
+						variantion JSON PATH '$.variantion',
+						variantion_id INT PATH '$.variantion_id'
+					)
+				) AS d_job
+				LEFT JOIN tb_drone_models dm ON d_job.model_id = dm.drone_model_id
+		),
+		'waylines',
+		j.waylines,
+		'mappings',
+		(
+			SELECT
+				JSON_ARRAYAGG(
+					JSON_OBJECT(
+						'physical_drone_id',
+						d_map.physical_drone_id,
+						'physical_drone_sn',
+						d_phy.sn,
+						'selected_drone_key',
+						d_map.selected_drone_key,
+						'physical_drone_callsign',
+						d_phy.callsign,
+						'physical_drone_description',
+						d_phy.drone_description,
+						'physical_drone_model_id',
+						d_phy.drone_model_id
+					)
+				)
+			FROM
+				JSON_TABLE (j.mappings, '$[*]' COLUMNS (physical_drone_id INT PATH '$.physical_drone_id', -- physical_drone_sn VARCHAR(255) PATH '$.physical_drone_sn',
+						selected_drone_key VARCHAR (255) PATH '$.selected_drone_key')) AS d_map
+				LEFT JOIN tb_drones d_phy ON d_map.physical_drone_id = d_phy.drone_id -- LEFT JOIN tb_drones d_phy ON d_map.physical_drone_sn = d_phy.sn
+		)
+	)
+FROM
+	tb_jobs j
+	LEFT JOIN tb_areas a ON j.area_id = a.area_id
+WHERE
+	j.job_id = ?
+	AND j.state = 0;
+	`, id).Scan(&jsonStr).Error; err != nil {
 		j.l.Error("获取任务失败", slog.Any("err", err))
 		return nil, err
 	}
