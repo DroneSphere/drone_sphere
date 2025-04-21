@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"log/slog"
 	"os"
 	"strconv"
@@ -78,6 +79,7 @@ func (j *JobDefaultRepo) FetchByID(ctx context.Context, id uint) (*entity.Job, e
 					'id', j.job_id,
 					'name', j.job_name,
 					'description', j.job_description,
+					'schedule_time', DATE_FORMAT(j.schedule_time, '%Y-%m-%dT%H:%i:%sZ'),
 					'area', JSON_OBJECT('id', a.area_id, 'name', a.area_name, 'description', a.area_description, 'points', a.area_points),
 					'drones', JSON_ARRAYAGG(
 						JSON_OBJECT(
@@ -121,7 +123,7 @@ func (j *JobDefaultRepo) FetchByID(ctx context.Context, id uint) (*entity.Job, e
 	}
 
 	var job entity.Job
-	if err := sonic.Unmarshal([]byte(jsonStr), &job); err != nil {
+	if err := json.Unmarshal([]byte(jsonStr), &job); err != nil {
 		j.l.Error("解析任务失败", slog.Any("err", err))
 		return nil, err
 	}
@@ -129,31 +131,52 @@ func (j *JobDefaultRepo) FetchByID(ctx context.Context, id uint) (*entity.Job, e
 	return &job, nil
 }
 
-func (j *JobDefaultRepo) SelectAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error) {
-	j.l.Info("查询所有任务", slog.Any("jobName", jobName), slog.Any("areaName", areaName))
+func (j *JobDefaultRepo) SelectAll(ctx context.Context, jobName, areaName string, scheduleTimeStart, scheduleTimeEnd string) ([]*entity.Job, error) {
+	j.l.Info("查询所有任务",
+		slog.Any("jobName", jobName),
+		slog.Any("areaName", areaName),
+		slog.Any("scheduleTimeStart", scheduleTimeStart),
+		slog.Any("scheduleTimeEnd", scheduleTimeEnd))
+
 	var jobs []struct {
 		po.Job
 		AreaName string `json:"area_name"`
 	}
-	if err := j.tx.Raw(`
-		SELECT 
-			j.*,
-			a.area_name, 
-			a.area_description, 
-			a.center_lat, 
-			a.center_lng, 
-			a.area_points
-		FROM 
-			tb_jobs j
-		LEFT JOIN 
-			tb_areas a ON j.area_id = a.area_id
-		WHERE 
-			j.state = 0
-		AND j.job_name LIKE ?
-		AND a.area_name LIKE ?
-		ORDER BY
-			j.job_id DESC
-	`, "%"+jobName+"%", "%"+areaName+"%").Scan(&jobs).Error; err != nil {
+
+	// 基础SQL查询
+	query := `SELECT j.*,a.area_name,a.area_description,a.center_lat,a.center_lng,a.area_points FROM tb_jobs j LEFT JOIN tb_areas a ON j.area_id=a.area_id WHERE j.state=0`
+
+	// 参数列表
+	params := []interface{}{}
+
+	if jobName != "" {
+		query += " AND j.job_name LIKE ?"
+		params = append(params, "%"+jobName+"%")
+	}
+
+	if areaName != "" {
+		query += " AND a.area_name LIKE ?"
+		params = append(params, "%"+areaName+"%")
+	}
+
+	// 添加时间筛选条件
+	if scheduleTimeStart != "" {
+		// 将开始日期补充为当天的00:00
+		query += " AND j.schedule_time >= STR_TO_DATE(?, '%Y-%m-%d')"
+		params = append(params, scheduleTimeStart)
+	}
+
+	if scheduleTimeEnd != "" {
+		// 将结束日期补充为当天的23:59
+		query += " AND j.schedule_time <= STR_TO_DATE(?, '%Y-%m-%d') + INTERVAL 1 DAY"
+		params = append(params, scheduleTimeEnd)
+	}
+
+	// 添加排序
+	query += " ORDER BY j.job_id DESC"
+
+	// 执行查询
+	if err := j.tx.Raw(query, params...).Scan(&jobs).Error; err != nil {
 		j.l.Error("获取所有任务失败", slog.Any("err", err))
 		return nil, err
 	}

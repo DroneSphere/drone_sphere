@@ -54,22 +54,46 @@ func NewJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.Area
 func (r *JobRouter) getJobs(c *fiber.Ctx) error {
 	ctx := context.Background()
 	var params struct {
-		JobName  string `query:"job_name"`
-		AreaName string `query:"area_name"`
+		JobName           string `query:"job_name"`
+		AreaName          string `query:"area_name"`
+		ScheduleTimeStart string `query:"schedule_time_start"`
+		ScheduleTimeEnd   string `query:"schedule_time_end"`
 	}
 	if err := c.QueryParser(&params); err != nil {
 		return c.JSON(Fail(InvalidParams))
 	}
 	r.l.Debug("getJobs", "params", params)
-	jobs, err := r.svc.Repo().SelectAll(ctx, params.JobName, params.AreaName)
+	// 将解析到的时间参数传递给仓储层
+	jobs, err := r.svc.Repo().SelectAll(ctx, params.JobName, params.AreaName, params.ScheduleTimeStart, params.ScheduleTimeEnd)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
-	var result []api.JobItemResult
+	var result []struct {
+		ID           uint     `json:"id"`
+		Name         string   `json:"name"`
+		Description  string   `json:"description"`
+		AreaName     string   `json:"area_name"`
+		ScheduleTime string   `json:"schedule_time"` // 任务计划执行时间
+		Drones       []string `json:"drones"`
+	}
+
 	for _, job := range jobs {
-		var item api.JobItemResult
-		if err := item.FromJobEntity(job); err != nil {
-			return c.JSON(Fail(InternalError))
+		var item struct {
+			ID           uint     `json:"id"`
+			Name         string   `json:"name"`
+			Description  string   `json:"description"`
+			AreaName     string   `json:"area_name"`
+			ScheduleTime string   `json:"schedule_time"` // 任务计划执行时间
+			Drones       []string `json:"drones"`
+		}
+		item.ID = job.ID
+		item.Name = job.Name
+		item.Description = job.Description
+		item.AreaName = job.Area.Name
+		item.ScheduleTime = job.ScheduleTime.Format("2006-01-02 15:04:05")
+
+		for _, m := range job.Mappings {
+			item.Drones = append(item.Drones, m.PhysicalDroneCallsign)
 		}
 		result = append(result, item)
 	}
@@ -205,7 +229,7 @@ func (r *JobRouter) create(c *fiber.Ctx) error {
 	}
 
 	// 解析时间字符串为当天的时间
-	scheduleTime, err := time.Parse("15:04:05", req.ScheduleTime)
+	scheduleTime, err := time.Parse("2006-01-02 15:04", req.ScheduleTime)
 	if err != nil {
 		r.l.Error("无效的时间格式", slog.Any("err", err))
 		return c.JSON(Fail(InvalidParams))

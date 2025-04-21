@@ -27,7 +27,7 @@ type (
 		DeleteByID(ctx context.Context, id uint) error
 		FetchPOByID(ctx context.Context, id uint) (*po.Job, error)
 		FetchByID(ctx context.Context, id uint) (*entity.Job, error)
-		SelectAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error)
+		SelectAll(ctx context.Context, jobName, areaName string, scheduleTimeStart, scheduleTimeEnd string) ([]*entity.Job, error)
 		SelectPhysicalDrones(ctx context.Context) ([]dto.PhysicalDrone, error)
 		CreateWaylineFile(ctx context.Context, name string, drone dto.JobCreationDrone, wayline dto.JobCreationWayline) (string, error)
 	}
@@ -202,7 +202,8 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 }
 
 func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string) ([]*entity.Job, error) {
-	jobs, err := j.jobRepo.SelectAll(ctx, jobName, areaName)
+	// 调用时传递空字符串作为时间参数，表示不按时间筛选
+	jobs, err := j.jobRepo.SelectAll(ctx, jobName, areaName, "", "")
 	if err != nil {
 		return nil, err
 	}

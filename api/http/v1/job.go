@@ -160,7 +160,7 @@ func (r *JobDetailResult) FromJobEntity(j *entity.Job) error {
 	r.ID = j.ID
 	r.Name = j.Name
 	r.Description = j.Description
-	r.ScheduleTime = j.ScheduleTime.Format("15:04:05")
+	r.ScheduleTime = j.ScheduleTime.Format("2006-01-02 15:04:05")
 	r.Area.ID = j.Area.ID
 	r.Area.Name = j.Area.Name
 	r.Area.Description = j.Area.Description
