@@ -1,11 +1,15 @@
 package entity
 
+import "time"
+
 type User struct {
-	ID       uint   `json:"id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Avatar   string `json:"avatar"`
-	Password string `json:"password"`
+	ID          uint      `json:"id"`
+	Username    string    `json:"username"`
+	Email       string    `json:"email"`
+	Avatar      string    `json:"avatar"`
+	Password    string    `json:"password"`
+	CreatedTime time.Time `json:"created_time"`
+	UpdatedTime time.Time `json:"updated_time"`
 }
 
 func NewUser(username, email, avatar, password string) User {

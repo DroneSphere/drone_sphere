@@ -23,11 +23,13 @@ func NewUserGormRepo(db *gorm.DB, l *slog.Logger) *UserGormRepo {
 
 func (r *UserGormRepo) toEntity(user po.User) entity.User {
 	return entity.User{
-		ID:       user.ID,
-		Username: user.Username,
-		Email:    user.Email,
-		Avatar:   user.Avatar,
-		Password: user.Password,
+		ID:          user.ID,
+		Username:    user.Username,
+		Email:       user.Email,
+		Avatar:      user.Avatar,
+		Password:    user.Password,
+		CreatedTime: user.CreatedTime,
+		UpdatedTime: user.UpdatedTime,
 	}
 }
 
@@ -69,6 +71,22 @@ func (r *UserGormRepo) SelectByEmail(email string) (entity.User, error) {
 	return r.toEntity(u), nil
 }
 
+func (r *UserGormRepo) SelectAll() ([]entity.User, int64, error) {
+	var users []po.User
+	if err := r.tx.Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+	var result []entity.User
+	for _, user := range users {
+		result = append(result, r.toEntity(user))
+	}
+	return result, int64(len(users)), nil
+}
+
 func (r *UserGormRepo) UpdatePasswordByUsername(username, password string) error {
 	return r.tx.Model(&po.User{}).Where("username = ?", username).Update("password", password).Error
+}
+
+func (r *UserGormRepo) UpdatePasswordByID(id uint, password string) error {
+	return r.tx.Model(&po.User{}).Where("user_id = ?", id).Update("password", password).Error
 }
