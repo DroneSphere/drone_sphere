@@ -193,9 +193,8 @@ func (r *DroneDefaultRepo) FetchDroneModelOptions(ctx context.Context) ([]dto.Dr
 	var models []dto.DroneModelOption
 	if err := r.tx.WithContext(ctx).Raw(`
 		SELECT DISTINCT dm.drone_model_id as id, dm.drone_model_name as name
-		FROM tb_drones d
-		JOIN tb_drone_models dm ON d.drone_model_id = dm.drone_model_id
-		WHERE d.state = 0
+		FROM tb_drone_models dm 
+		WHERE dm.state = 0
 		ORDER BY dm.drone_model_name
 	`).Scan(&models).Error; err != nil {
 		r.l.Error("获取无人机型号列表失败", slog.Any("error", err))
