@@ -40,16 +40,18 @@ type ResultRepo interface {
 }
 
 type ResultImpl struct {
-	repo    ResultRepo
-	jobRepo JobRepo
-	l       *slog.Logger
+	repo      ResultRepo
+	jobRepo   JobRepo
+	droneRepo DroneRepo
+	l         *slog.Logger
 }
 
-func NewResultImpl(repo ResultRepo, jobRepo JobRepo, l *slog.Logger) ResultSvc {
+func NewResultImpl(repo ResultRepo, jobRepo JobRepo, droneRepo DroneRepo, l *slog.Logger) ResultSvc {
 	return &ResultImpl{
-		repo:    repo,
-		jobRepo: jobRepo,
-		l:       l,
+		repo:      repo,
+		jobRepo:   jobRepo,
+		droneRepo: droneRepo,
+		l:         l,
 	}
 }
 
@@ -91,6 +93,8 @@ func (s *ResultImpl) GetByID(ctx context.Context, id uint) (*dto.ResultDetailDTO
 		return nil, err
 	}
 
+	drone, _ := s.droneRepo.SelectByID(ctx, r.DroneID)
+
 	// 使用从关联的 DetectObjectType 中获取的物体类型信息
 	return &dto.ResultDetailDTO{
 		ID:               r.ID,
@@ -98,6 +102,8 @@ func (s *ResultImpl) GetByID(ctx context.Context, id uint) (*dto.ResultDetailDTO
 		JobName:          job.Name,
 		WaylineID:        r.WaylineID,
 		DroneID:          r.DroneID,
+		DroneCallsign:    drone.Callsign,
+		DroneSN:          drone.SN,
 		ObjectType:       r.DetectObjectType.Type,  // 从关联表中获取物体类型
 		ObjectLabel:      r.DetectObjectType.Label, // 从关联表中获取物体标签
 		ObjectConfidence: r.ObjectConfidence,
@@ -122,6 +128,9 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 			s.l.Error("获取任务信息失败", slog.Any("err", err))
 			continue
 		}
+		// 获取无人机信息
+		drone, _ := s.droneRepo.SelectByID(ctx, r.DroneID)
+
 		// 从 ObjectPosition JSON字段中提取经纬度信息
 		var coordinate struct {
 			Lng float64 `json:"lng"` // 使用float64类型接收数值类型的经度
@@ -133,13 +142,14 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 		}
 
 		items = append(items, dto.ResultItemDTO{
-			ID:          r.ID,
-			JobName:     job.Name,
-			TargetLabel: r.DetectObjectType.Label,         // 从关联的 DetectObjectType 表中获取物体标签
-			Lng:         formatCoordinate(coordinate.Lng), // 从解析后的结构体获取经度并格式化
-			Lat:         formatCoordinate(coordinate.Lat), // 从解析后的结构体获取纬度并格式化
-			ImageUrl:    r.ImageUrl,
-			CreatedAt:   r.CreatedTime.Format("2006-01-02 15:04:05"), // 添加创建时间
+			ID:            r.ID,
+			JobName:       job.Name,
+			DroneCallsign: drone.Callsign,
+			TargetLabel:   r.DetectObjectType.Label,         // 从关联的 DetectObjectType 表中获取物体标签
+			Lng:           formatCoordinate(coordinate.Lng), // 从解析后的结构体获取经度并格式化
+			Lat:           formatCoordinate(coordinate.Lat), // 从解析后的结构体获取纬度并格式化
+			ImageUrl:      r.ImageUrl,
+			CreatedAt:     r.CreatedTime.Format("2006-01-02 15:04:05"), // 添加创建时间
 		})
 	}
 

@@ -119,7 +119,7 @@ func Run(cfg *configs.Config) {
 	jobSvc := service.NewJobImpl(jobRepo, saRepo, droneRepo, logger)
 	modelSvc := service.NewModelImpl(modelRepo, logger)
 	gatewaySvc := service.NewGatewayImpl(gatewayRepo, logger)
-	resultSvc := service.NewResultImpl(resultRepo, jobRepo, logger)
+	resultSvc := service.NewResultImpl(resultRepo, jobRepo, droneRepo, logger)
 
 	// Service Container
 	container := service.NewContainer(

@@ -124,6 +124,22 @@ func (r *DroneDefaultRepo) SelectBySN(ctx context.Context, sn string) (entity.Dr
 	return *entity.NewDrone(&pp, &rr), err
 }
 
+// SelectByID 根据ID获取无人机实体
+func (r *DroneDefaultRepo) SelectByID(ctx context.Context, id uint) (entity.Drone, error) {
+	var pp po.Drone
+	var rr ro.Drone
+	if err := r.tx.WithContext(ctx).
+		Where("drone_id = ?", id).First(&pp).Error; err != nil {
+		r.l.Error("持久化数据获取失败", slog.Any("id", id), slog.Any("err", err))
+		return entity.Drone{}, err
+	}
+	rr, err := r.FetchStateBySN(ctx, pp.SN)
+	if err != nil {
+		r.l.Error("实时数据获取失败", slog.Any("sn", pp.SN), slog.Any("err", err))
+	}
+	return *entity.NewDrone(&pp, &rr), err
+}
+
 const ErrNoRTData = "no realtime data"
 
 // FetchStateBySN 根据SN获取无人机实时状态
