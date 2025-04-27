@@ -54,6 +54,11 @@ func (r *ResultDefaultRepo) List(ctx context.Context, query dto.ResultQuery) ([]
 			Where("j.state = ?", 0) // 确保只筛选有效的任务
 	}
 
+	if query.JobID != 0 {
+		// 如果提供了JobID，直接筛选
+		tx = tx.Where("tb_results.job_id = ?", query.JobID)
+	}
+
 	// 如果提供了ObjectTypeID，通过关联查询筛选
 	if query.ObjectTypeID != 0 {
 		tx = tx.Joins("JOIN list_detect_object_type dot ON tb_results.object_type_id = dot.object_id").

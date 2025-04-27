@@ -7,6 +7,7 @@ import (
 // ResultQuery 查询结果的参数
 type ResultQuery struct {
 	JobName      string `query:"job_name"`       // 任务名称,可选
+	JobID        uint   `query:"job_id"`         // 任务ID,可选
 	ObjectTypeID uint   `query:"object_type_id"` // 物体类型ID,可选
 	Page         int    `query:"page"`           // 页码
 	PageSize     int    `query:"page_size"`      // 每页数量
