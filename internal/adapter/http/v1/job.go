@@ -42,15 +42,6 @@ func NewJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.Area
 	}
 }
 
-// getJobs 获取所有任务
-//
-//	@Router			/job		[get]
-//	@Summary		获取所有任务
-//	@Description	获取所有任务
-//	@Tags			job
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	v1.Response{data=[]v1.JobItemResult}	"成功"
 func (r *JobRouter) getJobs(c *fiber.Ctx) error {
 	ctx := context.Background()
 	var params struct {
@@ -64,7 +55,7 @@ func (r *JobRouter) getJobs(c *fiber.Ctx) error {
 	}
 	r.l.Debug("getJobs", "params", params)
 	// 将解析到的时间参数传递给仓储层
-	jobs, err := r.svc.Repo().SelectAll(ctx, params.JobName, params.AreaName, params.ScheduleTimeStart, params.ScheduleTimeEnd)
+	jobs, err := r.svc.FetchAll(ctx, params.JobName, params.AreaName, params.ScheduleTimeStart, params.ScheduleTimeEnd)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
@@ -91,24 +82,14 @@ func (r *JobRouter) getJobs(c *fiber.Ctx) error {
 		item.Description = job.Description
 		item.AreaName = job.Area.Name
 		item.ScheduleTime = job.ScheduleTime.Format("2006-01-02 15:04:05")
-
-		for _, m := range job.Mappings {
-			item.Drones = append(item.Drones, m.PhysicalDroneCallsign)
+		for _, drone := range job.Drones {
+			item.Drones = append(item.Drones, drone.Key)
 		}
 		result = append(result, item)
 	}
 	return c.JSON(Success(result))
 }
 
-// getJob  获取任务详细信息
-//
-//	@Router			/job/{id}	[get]
-//	@Summary		获取任务详细信息
-//	@Description	获取任务详细信息
-//	@Tags			job
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	v1.Response{data=v1.JobDetailResult}	"成功"
 func (r *JobRouter) getJob(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -118,9 +99,7 @@ func (r *JobRouter) getJob(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
-	var result api.JobDetailResult
-	_ = result.FromJobEntity(job)
-	return c.JSON(Success(result))
+	return c.JSON(Success(job))
 }
 
 // getCreationOptions  创建任务时依赖的选项数据
@@ -214,13 +193,13 @@ func (r *JobRouter) getCreationDrones(c *fiber.Ctx) error {
 
 func (r *JobRouter) create(c *fiber.Ctx) error {
 	type Request struct {
-		Name         string                   `json:"name"`
-		Description  string                   `json:"description"`
-		AreaID       int64                    `json:"area_id"`
-		ScheduleTime string                   `json:"schedule_time"` // 新增：任务计划执行时间
-		Drones       []dto.JobCreationDrone   `json:"drones"`
-		Waylines     []dto.JobCreationWayline `json:"waylines"`
-		Mappings     []dto.JobCreationMapping `json:"mappings"`
+		Name          string                 `json:"name"`
+		Description   string                 `json:"description"`
+		AreaID        int64                  `json:"area_id"`
+		ScheduleTime  string                 `json:"schedule_time"` // 新增：任务计划执行时间
+		Drones        []po.JobDronePO        `json:"drones"`
+		Waylines      []po.JobWaylinePO      `json:"waylines"`
+		CommandDrones []po.JobCommandDronePO `json:"command_drones"`
 	}
 
 	var req Request
@@ -247,7 +226,7 @@ func (r *JobRouter) create(c *fiber.Ctx) error {
 	r.l.Info("create job", "req", req)
 	ctx := context.Background()
 
-	id, err := r.svc.CreateJob(ctx, req.Name, req.Description, uint(req.AreaID), scheduleTime, req.Drones, req.Waylines, req.Mappings)
+	id, err := r.svc.CreateJob(ctx, req.Name, req.Description, uint(req.AreaID), scheduleTime, req.Drones, req.Waylines, req.CommandDrones)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}

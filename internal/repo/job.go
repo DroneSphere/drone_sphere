@@ -3,14 +3,12 @@ package repo
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"log/slog"
 	"os"
 	"strconv"
 
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/model/dto"
-	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/pkg/coordinate"
 	"github.com/dronesphere/pkg/wpml"
@@ -71,248 +69,53 @@ func (j *JobDefaultRepo) FetchPOByID(ctx context.Context, id uint) (*po.Job, err
 	return &job, nil
 }
 
-func (j *JobDefaultRepo) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
-	var jsonStr string
-	if err := j.tx.Raw(`
-	SELECT
-	JSON_OBJECT(
-		'id',
-		j.job_id,
-		'name',
-		j.job_name,
-		'description',
-		j.job_description,
-		'schedule_time',
-		DATE_FORMAT(j.schedule_time, '%Y-%m-%dT%H:%i:%sZ'),
-		'area',
-		JSON_OBJECT('id', a.area_id, 'name', a.area_name, 'description', a.area_description, 'points', a.area_points),
-		'drones',
-		(
-			SELECT
-				JSON_ARRAYAGG(
-					JSON_OBJECT(
-						'id',
-						d_job.id,
-						'key',
-						d_job.kkey,
-						'name',
-						dm.drone_model_name,
-						'description',
-						dm.drone_model_description,
-						'color',
-						d_job.color,
-						'index',
-						d_job.idx,
-						'variantion',
-						d_job.variantion,
-						'variantion_id',
-						d_job.variantion_id
-					)
-				)
-			FROM
-				JSON_TABLE (
-					j.drones,
-					'$[*]' COLUMNS (
-						id INT PATH '$.id',
-						kkey VARCHAR (255) PATH '$.key',
-						color VARCHAR (7) PATH '$.color',
-						idx INT PATH '$.index',
-						model_id INT PATH '$.model_id',
-						variantion JSON PATH '$.variantion',
-						variantion_id INT PATH '$.variantion_id'
-					)
-				) AS d_job
-				LEFT JOIN tb_drone_models dm ON d_job.model_id = dm.drone_model_id
-		),
-		'waylines',
-		j.waylines,
-		'mappings',
-		(
-			SELECT
-				JSON_ARRAYAGG(
-					JSON_OBJECT(
-						'physical_drone_id',
-						d_map.physical_drone_id,
-						'physical_drone_sn',
-						d_phy.sn,
-						'selected_drone_key',
-						d_map.selected_drone_key,
-						'physical_drone_callsign',
-						d_phy.callsign,
-						'physical_drone_description',
-						d_phy.drone_description,
-						'physical_drone_model_id',
-						d_phy.drone_model_id
-					)
-				)
-			FROM
-				JSON_TABLE (j.mappings, '$[*]' COLUMNS (physical_drone_id INT PATH '$.physical_drone_id', -- physical_drone_sn VARCHAR(255) PATH '$.physical_drone_sn',
-						selected_drone_key VARCHAR (255) PATH '$.selected_drone_key')) AS d_map
-				LEFT JOIN tb_drones d_phy ON d_map.physical_drone_id = d_phy.drone_id -- LEFT JOIN tb_drones d_phy ON d_map.physical_drone_sn = d_phy.sn
-		)
-	)
-FROM
-	tb_jobs j
-	LEFT JOIN tb_areas a ON j.area_id = a.area_id
-WHERE
-	j.job_id = ?
-	AND j.state = 0;
-	`, id).Scan(&jsonStr).Error; err != nil {
+func (j *JobDefaultRepo) SelectByID(ctx context.Context, id uint) (*po.Job, error) {
+	var jobPO po.Job
+	if err := j.tx.Where(
+		"job_id = ?",
+		id,
+	).Find(&jobPO).Error; err != nil {
 		j.l.Error("获取任务失败", slog.Any("err", err))
 		return nil, err
 	}
-
-	var job entity.Job
-	if err := json.Unmarshal([]byte(jsonStr), &job); err != nil {
-		j.l.Error("解析任务失败", slog.Any("err", err))
-		return nil, err
-	}
-
-	return &job, nil
+	return &jobPO, nil
 }
 
-func (j *JobDefaultRepo) SelectAll(ctx context.Context, jobName, areaName string, scheduleTimeStart, scheduleTimeEnd string) ([]*entity.Job, error) {
+func (j *JobDefaultRepo) SelectAll(ctx context.Context, jobName, areaName string, scheduleTimeStart, scheduleTimeEnd string) ([]po.Job, error) {
 	j.l.Info("查询所有任务",
 		slog.Any("jobName", jobName),
 		slog.Any("areaName", areaName),
 		slog.Any("scheduleTimeStart", scheduleTimeStart),
 		slog.Any("scheduleTimeEnd", scheduleTimeEnd))
 
-	var jobs []struct {
-		po.Job
-		AreaName string `json:"area_name"`
-	}
-
-	// 基础SQL查询
-	query := `SELECT j.*,a.area_name,a.area_description,a.center_lat,a.center_lng,a.area_points FROM tb_jobs j LEFT JOIN tb_areas a ON j.area_id=a.area_id WHERE j.state=0`
-
-	// 参数列表
-	params := []interface{}{}
+	query := j.tx.WithContext(ctx).Where("state = 0")
 
 	if jobName != "" {
-		query += " AND j.job_name LIKE ?"
-		params = append(params, "%"+jobName+"%")
+		query = query.Where("job_name LIKE ?", "%"+jobName+"%")
 	}
 
 	if areaName != "" {
-		query += " AND a.area_name LIKE ?"
-		params = append(params, "%"+areaName+"%")
+		query = query.Where("area_name LIKE ?", "%"+areaName+"%")
 	}
 
 	// 添加时间筛选条件
 	if scheduleTimeStart != "" {
 		// 将开始日期补充为当天的00:00
-		query += " AND j.schedule_time >= STR_TO_DATE(?, '%Y-%m-%d')"
-		params = append(params, scheduleTimeStart)
+		query = query.Where("schedule_time >= STR_TO_DATE(?, '%Y-%m-%d')", scheduleTimeStart)
 	}
 
 	if scheduleTimeEnd != "" {
 		// 将结束日期补充为当天的23:59
-		query += " AND j.schedule_time <= STR_TO_DATE(?, '%Y-%m-%d') + INTERVAL 1 DAY"
-		params = append(params, scheduleTimeEnd)
+		query = query.Where("schedule_time <= STR_TO_DATE(?, '%Y-%m-%d') + INTERVAL 1 DAY", scheduleTimeEnd)
 	}
 
-	// 添加排序
-	query += " ORDER BY j.job_id DESC"
-
-	// 执行查询
-	if err := j.tx.Raw(query, params...).Scan(&jobs).Error; err != nil {
-		j.l.Error("获取所有任务失败", slog.Any("err", err))
+	var jobs []po.Job
+	if err := query.Find(&jobs).Error; err != nil {
+		j.l.Error("Failed to fetch all jobs", slog.Any("err", err))
 		return nil, err
 	}
-
-	// 创建任务实体列表
-	var jobEntities []*entity.Job
-	for _, job := range jobs {
-		jobEntity := entity.NewJob(&job.Job)
-		jobEntity.Area.Name = job.AreaName
-		jobEntities = append(jobEntities, jobEntity)
-	}
-
-	// 如果有任务，则收集所有物理无人机ID
-	if len(jobEntities) > 0 {
-		// 收集所有mappings中的无人机ID
-		var allDroneIDs []uint
-		droneIDMap := make(map[uint]bool)
-
-		for _, job := range jobEntities {
-			for _, mapping := range job.Mappings {
-				if !droneIDMap[mapping.PhysicalDroneID] {
-					allDroneIDs = append(allDroneIDs, mapping.PhysicalDroneID)
-					droneIDMap[mapping.PhysicalDroneID] = true
-				}
-			}
-		}
-
-		// 如果存在物理无人机ID，则批量查询无人机信息
-		if len(allDroneIDs) > 0 {
-			// 定义无人机信息结构体，确保与后面使用的结构体类型一致
-			type DroneInfo struct {
-				DroneID          uint   `gorm:"column:drone_id"`
-				SN               string `gorm:"column:sn"`
-				Callsign         string `gorm:"column:callsign"`
-				DroneDescription string `gorm:"column:drone_description"`
-				DroneModelID     uint   `gorm:"column:drone_model_id"`
-				DroneModelName   string `gorm:"column:drone_model_name"`
-				ModelDescription string `gorm:"column:drone_model_description"`
-				ModelDomain      int    `gorm:"column:drone_model_domain"`
-				ModelType        int    `gorm:"column:drone_model_type"`
-				ModelSubType     int    `gorm:"column:drone_model_sub_type"`
-				IsRTKAvailable   int    `gorm:"column:is_rtk_available"`
-			}
-
-			var droneInfos []DroneInfo
-
-			if err := j.tx.Raw(
-				`
-				SELECT 
-					d.drone_id, 
-					d.sn, 
-					d.callsign, 
-					d.drone_description,
-					d.drone_model_id,
-					dm.drone_model_name, 
-					dm.drone_model_description, 
-					dm.drone_model_domain, 
-					dm.drone_model_type, 
-					dm.drone_model_sub_type, 
-					dm.is_rtk_available
-				FROM 
-					tb_drones d
-				LEFT JOIN 
-					tb_drone_models dm ON d.drone_model_id = dm.drone_model_id
-				WHERE 
-					d.drone_id IN (?)
-				`, allDroneIDs).Scan(&droneInfos).Error; err != nil {
-				j.l.Error("批量获取无人机详情失败", slog.Any("err", err))
-				j.l.Warn("无法获取无人机详细信息，只返回基本任务数据")
-			} else {
-				// 将查询到的无人机详细信息建立映射关系
-				droneInfoMap := make(map[uint]DroneInfo)
-
-				for _, di := range droneInfos {
-					droneInfoMap[di.DroneID] = di
-				}
-
-				// 遍历所有任务，更新mappings中的信息
-				for jobIdx, job := range jobEntities {
-					for mappingIdx, mapping := range job.Mappings {
-						if info, exists := droneInfoMap[mapping.PhysicalDroneID]; exists {
-							// 更新mappings中的信息
-							jobEntities[jobIdx].Mappings[mappingIdx].PhysicalDroneSN = info.SN
-							jobEntities[jobIdx].Mappings[mappingIdx].PhysicalDroneCallsign = info.Callsign
-						}
-					}
-				}
-
-				j.l.Info("已成功关联所有任务的无人机详细信息",
-					slog.Any("任务数", len(jobEntities)),
-					slog.Any("无人机数", len(droneInfos)))
-			}
-		}
-	}
-
-	return jobEntities, nil
+	j.l.Info("Fetched all jobs", slog.Any("jobs", jobs))
+	return jobs, nil
 }
 
 func (j *JobDefaultRepo) SelectPhysicalDrones(ctx context.Context) ([]dto.PhysicalDrone, error) {
@@ -365,7 +168,7 @@ func (j *JobDefaultRepo) SelectPhysicalDrones(ctx context.Context) ([]dto.Physic
 
 const contentType = "application/zip"
 
-func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, name string, drone dto.JobCreationDrone, wayline dto.JobCreationWayline) (string, error) {
+func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, name string, drone po.JobDronePO, wayline po.JobWaylinePO) (string, error) {
 	//  查询数据库获取无人机信息
 	droneInfo := wpml.DroneInfo{
 		DroneEnumValue:    wpml.DroneM3Series,
@@ -379,7 +182,7 @@ func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, name string, dro
 
 	builder := wpml.NewBuilder().Init("system").SetDefaultMissionConfig(droneInfo, payload)
 	fBuilder := builder.Template.CreateFolder(wpml.TemplateTypeWaypoint, 0)
-	for _, mark := range wayline.Points {
+	for _, mark := range wayline.Waypoints {
 		fBuilder.AppendDefaultPlacemark(coordinate.GCJ02ToWGS84(mark.Lng, mark.Lat))
 	}
 
@@ -439,8 +242,8 @@ func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, name string, dro
 		ActionType:       0,
 		S3Key:            filename,
 		StartWaylinePoint: datatypes.NewJSONType(po.StartWaylinePoint{
-			StartLatitude:  wayline.Points[0].Lat,
-			StartLontitude: wayline.Points[0].Lng,
+			StartLatitude:  drone.TakeoffPoint.Lat,
+			StartLontitude: drone.TakeoffPoint.Lng,
 		}),
 	}
 	j.l.Info("Creating wayline PO", slog.Any("waylinePO", po))

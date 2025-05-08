@@ -20,9 +20,9 @@ func (r *JobItemResult) FromJobEntity(j *entity.Job) error {
 	r.Description = j.Description
 	r.AreaName = j.Area.Name
 	r.ScheduleTime = j.ScheduleTime.Format("15:04:05")
-	for _, m := range j.Mappings {
-		r.Drones = append(r.Drones, m.PhysicalDroneCallsign)
-	}
+	// for _, m := range j.Mappings {
+	// 	r.Drones = append(r.Drones, m.PhysicalDroneCallsign)
+	// }
 	return nil
 }
 
@@ -144,117 +144,117 @@ type JobDetailResult struct {
 }
 
 func (r *JobDetailResult) FromJobEntity(j *entity.Job) error {
-	points := make([]struct {
-		Lat float64 `json:"lat"`
-		Lng float64 `json:"lng"`
-	}, 0)
-	for _, p := range j.Area.Points {
-		points = append(points, struct {
-			Lat float64 `json:"lat"`
-			Lng float64 `json:"lng"`
-		}{
-			Lat: p.Lat,
-			Lng: p.Lng,
-		})
-	}
-	r.ID = j.ID
-	r.Name = j.Name
-	r.Description = j.Description
-	r.ScheduleTime = j.ScheduleTime.Format("2006-01-02 15:04:05")
-	r.Area.ID = j.Area.ID
-	r.Area.Name = j.Area.Name
-	r.Area.Description = j.Area.Description
-	r.Area.Points = points
-	for _, d := range j.Drones {
-		r.Drones = append(r.Drones, struct {
-			ID          uint                `json:"id"`
-			Key         string              `json:"key"`
-			Index       int                 `json:"index"`
-			Callsign    string              `json:"name"`
-			Description string              `json:"description"`
-			SN          string              `json:"sn"`
-			Model       string              `json:"model"`
-			Color       string              `json:"color"`
-			Variantion  dto.DroneVariantion `json:"variantion"`
-		}{
+	// points := make([]struct {
+	// 	Lat float64 `json:"lat"`
+	// 	Lng float64 `json:"lng"`
+	// }, 0)
+	// for _, p := range j.Area.Points {
+	// 	points = append(points, struct {
+	// 		Lat float64 `json:"lat"`
+	// 		Lng float64 `json:"lng"`
+	// 	}{
+	// 		Lat: p.Lat,
+	// 		Lng: p.Lng,
+	// 	})
+	// }
+	// r.ID = j.ID
+	// r.Name = j.Name
+	// r.Description = j.Description
+	// r.ScheduleTime = j.ScheduleTime.Format("2006-01-02 15:04:05")
+	// r.Area.ID = j.Area.ID
+	// r.Area.Name = j.Area.Name
+	// r.Area.Description = j.Area.Description
+	// r.Area.Points = points
+	// for _, d := range j.Drones {
+	// 	r.Drones = append(r.Drones, struct {
+	// 		ID          uint                `json:"id"`
+	// 		Key         string              `json:"key"`
+	// 		Index       int                 `json:"index"`
+	// 		Callsign    string              `json:"name"`
+	// 		Description string              `json:"description"`
+	// 		SN          string              `json:"sn"`
+	// 		Model       string              `json:"model"`
+	// 		Color       string              `json:"color"`
+	// 		Variantion  dto.DroneVariantion `json:"variantion"`
+	// 	}{
 
-			ID:          d.ID,
-			Key:         d.Key,
-			Index:       d.Index,
-			Callsign:    d.Name,
-			Description: d.Description,
-			Model:       "",
-			Color:       d.Color,
-			Variantion:  d.Variantion,
-		})
-	}
-	for _, w := range j.Waylines {
-		// Convert points to the required format
-		points := make([]struct {
-			Index int     `json:"index"`
-			Lat   float64 `json:"lat"`
-			Lng   float64 `json:"lng"`
-		}, len(w.Points))
+	// 		ID:          d.ID,
+	// 		Key:         d.Key,
+	// 		Index:       d.Index,
+	// 		Callsign:    d.Name,
+	// 		Description: d.Description,
+	// 		Model:       "",
+	// 		Color:       d.Color,
+	// 		Variantion:  d.Variantion,
+	// 	})
+	// }
+	// for _, w := range j.Waylines {
+	// 	// Convert points to the required format
+	// 	points := make([]struct {
+	// 		Index int     `json:"index"`
+	// 		Lat   float64 `json:"lat"`
+	// 		Lng   float64 `json:"lng"`
+	// 	}, len(w.Points))
 
-		for i, p := range w.Points {
-			points[i] = struct {
-				Index int     `json:"index"`
-				Lat   float64 `json:"lat"`
-				Lng   float64 `json:"lng"`
-			}{
-				Index: i,
-				Lat:   p.Lat,
-				Lng:   p.Lng,
-			}
-		}
+	// 	for i, p := range w.Points {
+	// 		points[i] = struct {
+	// 			Index int     `json:"index"`
+	// 			Lat   float64 `json:"lat"`
+	// 			Lng   float64 `json:"lng"`
+	// 		}{
+	// 			Index: i,
+	// 			Lat:   p.Lat,
+	// 			Lng:   p.Lng,
+	// 		}
+	// 	}
 
-		path := make([]struct {
-			Lat float64 `json:"lat"`
-			Lng float64 `json:"lng"`
-		}, len(w.Path))
-		for i, p := range w.Path {
-			path[i] = struct {
-				Lat float64 `json:"lat"`
-				Lng float64 `json:"lng"`
-			}{
-				Lat: p.Lat,
-				Lng: p.Lng,
-			}
-		}
+	// 	path := make([]struct {
+	// 		Lat float64 `json:"lat"`
+	// 		Lng float64 `json:"lng"`
+	// 	}, len(w.Path))
+	// 	for i, p := range w.Path {
+	// 		path[i] = struct {
+	// 			Lat float64 `json:"lat"`
+	// 			Lng float64 `json:"lng"`
+	// 		}{
+	// 			Lat: p.Lat,
+	// 			Lng: p.Lng,
+	// 		}
+	// 	}
 
-		r.Waylines = append(r.Waylines, struct {
-			DroneKey string  `json:"drone_key"`
-			Color    string  `json:"color"`
-			Height   float64 `json:"height"`
-			Path     []struct {
-				Lat float64 `json:"lat"`
-				Lng float64 `json:"lng"`
-			} `json:"path"`
-			Points []struct {
-				Index int     `json:"index"`
-				Lat   float64 `json:"lat"`
-				Lng   float64 `json:"lng"`
-			} `json:"points"`
-		}{
-			DroneKey: w.DroneKey,
-			Color:    w.Color,
-			Height:   w.Height,
-			Path:     path,
-			Points:   points,
-		})
-	}
-	for _, m := range j.Mappings {
-		r.Mappings = append(r.Mappings, struct {
-			PhysicalDroneID       uint   `json:"physical_drone_id"`
-			PhysicalDroneSN       string `json:"physical_drone_sn"`
-			SelectedDroneKey      string `json:"selected_drone_key"`
-			PhysicalDroneCallsign string `json:"physical_drone_callsign"`
-		}{
-			PhysicalDroneID:       m.PhysicalDroneID,
-			PhysicalDroneSN:       m.PhysicalDroneSN,
-			SelectedDroneKey:      m.SelectedDroneKey,
-			PhysicalDroneCallsign: m.PhysicalDroneCallsign,
-		})
-	}
+	// 	r.Waylines = append(r.Waylines, struct {
+	// 		DroneKey string  `json:"drone_key"`
+	// 		Color    string  `json:"color"`
+	// 		Height   float64 `json:"height"`
+	// 		Path     []struct {
+	// 			Lat float64 `json:"lat"`
+	// 			Lng float64 `json:"lng"`
+	// 		} `json:"path"`
+	// 		Points []struct {
+	// 			Index int     `json:"index"`
+	// 			Lat   float64 `json:"lat"`
+	// 			Lng   float64 `json:"lng"`
+	// 		} `json:"points"`
+	// 	}{
+	// 		DroneKey: w.DroneKey,
+	// 		Color:    w.Color,
+	// 		Height:   w.Height,
+	// 		Path:     path,
+	// 		Points:   points,
+	// 	})
+	// }
+	// for _, m := range j.Mappings {
+	// 	r.Mappings = append(r.Mappings, struct {
+	// 		PhysicalDroneID       uint   `json:"physical_drone_id"`
+	// 		PhysicalDroneSN       string `json:"physical_drone_sn"`
+	// 		SelectedDroneKey      string `json:"selected_drone_key"`
+	// 		PhysicalDroneCallsign string `json:"physical_drone_callsign"`
+	// 	}{
+	// 		PhysicalDroneID:       m.PhysicalDroneID,
+	// 		PhysicalDroneSN:       m.PhysicalDroneSN,
+	// 		SelectedDroneKey:      m.SelectedDroneKey,
+	// 		PhysicalDroneCallsign: m.PhysicalDroneCallsign,
+	// 	})
+	// }
 	return nil
 }
