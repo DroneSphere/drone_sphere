@@ -171,7 +171,7 @@ func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaI
 			}
 		}
 
-		waylineDoc, err := j.generateWayline(ctx, drone.PhysicalDroneID, variation, w)
+		waylineDoc, err := j.generateWayline(ctx, drone.PhysicalDroneID, variation, drone.TakeoffPoint, w)
 		if err != nil {
 			j.l.Error("Failed to generate wayline", slog.Any("error", err))
 			return 0, err
@@ -269,7 +269,7 @@ func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string, schedu
 	return result, nil
 }
 
-func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariation po.DroneVariation, takeoffPoint vo.GeoPoint, wayline po.JobWaylinePO) (wpml.Document, error) {
+func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariation po.DroneVariation, takeoffPoint po.JobTakeoffPointPO, wayline po.JobWaylinePO) (wpml.Document, error) {
 	droneModel := droneVariation.DroneModel
 	gimbals := droneVariation.Gimbals
 	drone, err := j.droneRepo.SelectByID(ctx, droneID)
