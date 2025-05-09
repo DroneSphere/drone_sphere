@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
 )
 
@@ -51,4 +52,16 @@ func (w *WaylineImpl) GetWaylineURL(ctx context.Context, workspaceID, waylineID 
 
 	w.l.Info("获取航线URL成功", slog.Any("waylineID", waylineID), slog.Any("url", url))
 	return url, nil
+}
+
+func (w *WaylineImpl) FetchWaylineByJobIDAndDroneSN(ctx context.Context, jobID uint, droneSN string) (*entity.Wayline, error) {
+	wayline, err := w.r.SelectByJobIDAndDroneSN(ctx, jobID, droneSN)
+	if err != nil {
+		w.l.Error("获取航线失败", slog.Any("jobID", jobID), slog.Any("droneSN", droneSN), slog.Any("err", err))
+		return nil, err
+	}
+	return &entity.Wayline{
+		Wayline: *wayline,
+		Url:     "https://minio.thuray.xyz/kmz/" + wayline.S3Key,
+	}, nil
 }
