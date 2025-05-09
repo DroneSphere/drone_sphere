@@ -5,11 +5,11 @@ import (
 	"fmt"
 )
 
-func formatCoordinates(lng, lat float64) string {
-	return formatFloat(lng) + "," + formatFloat(lat)
+func FormatCoordinates(lng, lat float64) string {
+	return FormatFloat(lng) + "," + FormatFloat(lat)
 }
 
-func formatFloat(f float64) string {
+func FormatFloat(f float64) string {
 	return fmt.Sprintf("%.13f", f)
 }
 

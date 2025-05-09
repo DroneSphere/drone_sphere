@@ -116,7 +116,7 @@ func Run(cfg *configs.Config) {
 	droneSvc := service.NewDroneImpl(droneRepo, logger, client)
 	saSvc := service.NewAreaImpl(saRepo, logger, client)
 	wlSvc := service.NewWaylineImpl(wlRepo, logger)
-	jobSvc := service.NewJobImpl(jobRepo, saRepo, droneRepo, logger)
+	jobSvc := service.NewJobImpl(jobRepo, saRepo, droneRepo, modelRepo, logger)
 	modelSvc := service.NewModelImpl(modelRepo, logger)
 	gatewaySvc := service.NewGatewayImpl(gatewayRepo, logger)
 	resultSvc := service.NewResultImpl(resultRepo, jobRepo, droneRepo, logger)

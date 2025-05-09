@@ -269,7 +269,7 @@ func DefaultPlacemark(lng, lat float64) Placemark {
 	ellipsoidHeight := 50.0
 	return Placemark{
 		IsRisky:               &falseBool,
-		Point:                 Point{Coordinates: formatCoordinates(lng, lat)},
+		Point:                 Point{Coordinates: FormatCoordinates(lng, lat)},
 		UseGlobalHeight:       &trueBool,
 		Height:                &height,
 		EllipsoidHeight:       &ellipsoidHeight,
