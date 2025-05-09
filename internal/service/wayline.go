@@ -12,6 +12,7 @@ type (
 	WaylineSvc interface {
 		Repo() WaylineRepo
 		GetWaylineURL(ctx context.Context, workspaceID, waylineID string) (string, error)
+		FetchWaylineByJobIDAndDroneSN(ctx context.Context, jobID uint, droneSN string) (*entity.Wayline, error)
 	}
 
 	WaylineRepo interface {

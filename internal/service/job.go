@@ -410,12 +410,19 @@ func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string, schedu
 
 	var result []entity.Job
 	for _, job := range jobs {
-		jobEntity := entity.Job{}
-		if err := copier.Copy(&jobEntity, job); err != nil {
+		entity := entity.Job{}
+		if err := copier.Copy(&entity, job); err != nil {
 			j.l.Error("复制任务数据失败", slog.Any("error", err))
 			return nil, err
 		}
-		result = append(result, jobEntity)
+		for _, po := range job.Drones {
+			d, _ := j.FetchDroneEntity(ctx, job.ID, po)
+			// if err != nil {
+			// 	j.l.Error("Failed")
+			// }
+			entity.Drones = append(entity.Drones, *d)
+		}
+		result = append(result, entity)
 	}
 
 	return result, nil
