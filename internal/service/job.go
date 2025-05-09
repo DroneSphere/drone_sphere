@@ -14,6 +14,7 @@ import (
 	"github.com/dronesphere/pkg/coordinate"
 	"github.com/dronesphere/pkg/wpml"
 	"github.com/jinzhu/copier"
+	"gorm.io/datatypes"
 )
 
 type (
@@ -34,6 +35,7 @@ type (
 		SelectByID(ctx context.Context, id uint) (*po.Job, error)
 		SelectAll(ctx context.Context, jobName, areaName string, scheduleTimeStart, scheduleTimeEnd string) ([]po.Job, error)
 		SelectPhysicalDrones(ctx context.Context) ([]dto.PhysicalDrone, error)
+		SaveWayline(ctx context.Context, wayline po.Wayline, kmzFile string) (*po.Wayline, error)
 	}
 )
 
@@ -203,6 +205,41 @@ func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaI
 			return 0, err
 		}
 		j.l.Info("航线文件已生成", "kmzFileName", kmzFileName)
+
+		physicalDrone, err := j.droneRepo.SelectByID(ctx, drone.PhysicalDroneID)
+		if err != nil {
+			j.l.Error("获取无人机信息失败", slog.Any("error", err))
+			return 0, err
+		}
+		j.l.Info("获取无人机信息", "physicalDrone", physicalDrone)
+
+		// 保存航线文件到数据库
+		droneModelKey := "0-" + strconv.Itoa(physicalDrone.Type) + "-" + strconv.Itoa(physicalDrone.SubType)
+		payloadModelKey := "1-" + strconv.Itoa(variation.Gimbals[0].Type) + "-" + strconv.Itoa(variation.Gimbals[0].SubType)
+		waylinePO := po.Wayline{
+			JobID:       job.ID,
+			JobDroneKey: w.DroneKey,
+			DroneSN:     physicalDrone.SN,
+			WaylineName: job.Name + "-" + w.DroneKey,
+			StartWaylinePoint: datatypes.NewJSONType(po.StartWaylinePoint{
+				StartLatitude:  drone.TakeoffPoint.Lat,
+				StartLongitude: drone.TakeoffPoint.Lng,
+			}),
+			DroneModelKey:    droneModelKey,
+			PayloadModelKeys: []string{payloadModelKey},
+		}
+		defer func() {
+			if err := os.Remove(kmzFileName); err != nil {
+				j.l.Error("删除kmz文件失败", slog.Any("error", err))
+			}
+		}()
+
+		savedWayline, err := j.jobRepo.SaveWayline(ctx, waylinePO, kmzFileName)
+		if err != nil {
+			j.l.Error("保存航线文件到数据库失败", slog.Any("error", err))
+			return 0, err
+		}
+		j.l.Info("航线文件已保存到数据库", "savedWayline", savedWayline)
 	}
 	return job.ID, nil
 }

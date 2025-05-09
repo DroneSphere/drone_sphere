@@ -64,11 +64,11 @@ func (r *WaylineRouter) getWaylines(c *fiber.Ctx) error {
 			return c.JSON(Fail(InternalError))
 		}
 		// 根据原有 ID 生成 UUID 作为返回的 ID
-		e.ID = w.UUID
+		// e.ID = w.UUID
 		e.Username = "admin"
 		e.UpdateTime = w.UpdatedTime.UnixMilli()
 		e.CreateTime = w.CreatedTime.UnixMilli()
-		e.StartWaylinePoint = StartPoint(w.StartWaylinePoint.Data())
+		// e.StartWaylinePoint = StartPoint(w.StartWaylinePoint.Data())
 
 		list = append(list, e)
 	}

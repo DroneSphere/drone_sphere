@@ -7,6 +7,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/po"
+	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -157,108 +158,25 @@ func (j *JobDefaultRepo) SelectPhysicalDrones(ctx context.Context) ([]dto.Physic
 
 const contentType = "application/zip"
 
-// func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, name string, drone po.JobDronePO, wayline po.JobWaylinePO) (string, error) {
-// 	//  查询数据库获取无人机信息
-// 	var droneModel po.DroneModel
-// 	if err := j.tx.WithContext(ctx).
-// 		Where("drone_model_id = ?", drone.ModelID).
-// 		First(&droneModel).Error; err != nil {
-// 		j.l.Error("Failed to fetch drone model", slog.Any("err", err))
-// 		return "", err
-// 	}
-// 	j.l.Info("Fetched drone model", slog.Any("droneModel", droneModel))
+func (j *JobDefaultRepo) SaveWayline(ctx context.Context, wayline po.Wayline, kmzFile string) (*po.Wayline, error) {
+	// 使用uuid生成唯一的 S3Key
+	wayline.S3Key = uuid.New().String() + ".kmz"
+	// 上传到 S3
+	inf, err := j.s3.FPutObject(ctx, "kmz", wayline.S3Key, kmzFile, minio.PutObjectOptions{
+		ContentType: contentType,
+	})
+	if err != nil {
+		j.l.Error("Failed to upload wayline to S3", slog.Any("err", err))
+		return nil, err
+	}
+	j.l.Info("Uploaded wayline to S3", slog.Any("info", inf))
 
-// 	var variationModel po.DroneVariation
-// 	if err := j.tx.WithContext(ctx).
-// 		Where("drone_variation_id = ?", drone.VariationID).
-// 		First(&variationModel).Error; err != nil {
-// 		j.l.Error("Failed to fetch drone variation", slog.Any("err", err))
-// 		return "", err
-// 	}
-// 	j.l.Info("Fetched drone variation", slog.Any("variationModel", variationModel))
-
-// 	droneInfo := wpml.DroneInfo{
-// 		DroneEnumValue:    wpml.DroneEnumValue(droneModel.Type),
-// 		DroneSubEnumValue: wpml.DroneSubEnumValue(droneModel.SubType),
-// 	}
-// 	payload := wpml.PayloadInfo{
-// 		PayloadEnumValue:     wpml.PayloadEnumValue(variationModel.Gimbals[0].Type),
-// 		PayloadSubEnumValue:  wpml.PayloadSubEnumValue(variationModel.Gimbals[0].SubType),
-// 		PayloadPositionIndex: wpml.DefaultPayloadParam().PayloadPositionIndex,
-// 	}
-
-// builder := wpml.NewBuilder().Init("system").SetDefaultMissionConfig(droneInfo, payload)
-// fBuilder := builder.Template.CreateFolder(wpml.TemplateTypeWaypoint, 0)
-// for _, mark := range wayline.Waypoints {
-// 	fBuilder.AppendDefaultPlacemark(coordinate.GCJ02ToWGS84(mark.Lng, mark.Lat))
-// }
-
-// // 生成航线文件
-// templateXML, err := builder.Template.GenerateXML()
-// if err != nil {
-// 	j.l.Error("Failed to generate template XML", slog.Any("err", err))
-// 	return "", err
-// }
-// j.l.Info("Generated template XML", slog.Any("templateXML", templateXML))
-
-// // 生成航线文件
-// builder.GenerateWayline()
-// waylineXML, err := builder.Wayline.GenerateXML()
-// if err != nil {
-// 	j.l.Error("Failed to generate wayline XML", slog.Any("err", err))
-// 	return "", err
-// }
-// j.l.Info("Generated wayline XML", slog.Any("waylineXML", waylineXML))
-
-// // 生成KMZ文件
-// id := uuid.New()
-// uuidBytes, _ := id.MarshalBinary()
-// compressedUUID := make([]byte, 32) // buffer for base64 encoding
-// base64.RawURLEncoding.Encode(compressedUUID, uuidBytes)
-// filename := string(compressedUUID[:22]) + ".kmz"
-// if err := wpml.GenerateKMZ(filename, templateXML, waylineXML); err != nil {
-// 	j.l.Error("Failed to generate KMZ file", slog.Any("err", err))
-// 	return "", err
-// }
-// j.l.Info("Generated KMZ file", slog.Any("filename", filename))
-
-// // 删除本地文件
-// defer func() {
-// 	if err := os.Remove(filename); err != nil {
-// 		j.l.Error("Failed to remove local KMZ file", slog.Any("err", err))
-// 	} else {
-// 		j.l.Info("Removed local KMZ file", slog.Any("filename", filename))
-// 	}
-// }()
-
-// // 保存到 s3
-// info, err := j.s3.FPutObject(ctx, "kmz", filename, filename, minio.PutObjectOptions{ContentType: contentType})
-// if err != nil {
-// 	j.l.Error("Failed to save KMZ file to S3", slog.Any("err", err))
-// 	return "", err
-// }
-// j.l.Info("Saved KMZ file to S3", slog.Any("info", info))
-
-// po := &po.Wayline{
-// 	Name: name,
-// 	// Username:         "admin",
-// 	DroneModelKey:    "0-" + strconv.Itoa(int(droneInfo.DroneEnumValue)) + "-" + strconv.Itoa(int(droneInfo.DroneSubEnumValue)),
-// 	PayloadModelKeys: []string{"0-" + strconv.Itoa(int(payload.PayloadEnumValue)) + "-" + strconv.Itoa(int(payload.PayloadSubEnumValue))},
-// 	Favorited:        false,
-// 	TemplateTypes:    []int{0},
-// 	ActionType:       0,
-// 	S3Key:            filename,
-// 	StartWaylinePoint: datatypes.NewJSONType(po.StartWaylinePoint{
-// 		StartLatitude:  drone.TakeoffPoint.Lat,
-// 		StartLontitude: drone.TakeoffPoint.Lng,
-// 	}),
-// }
-// j.l.Info("Creating wayline PO", slog.Any("waylinePO", po))
-// if err := j.tx.Create(po).Error; err != nil {
-// 	j.l.Error("Failed to save wayline to database", slog.Any("err", err))
-// 	return "", err
-// }
-// j.l.Info("Saved wayline to database", slog.Any("wayline", po))
-
-// return filename, nil
-// }
+	// 将 kmz 文件的 S3Key 保存到数据库
+	j.l.Info("Saving wayline to database", slog.Any("wayline", wayline))
+	if err := j.tx.WithContext(ctx).Save(&wayline).Error; err != nil {
+		j.l.Error("Failed to save wayline to database", slog.Any("err", err))
+		return nil, err
+	}
+	j.l.Info("Saved wayline to database", slog.Any("wayline", wayline))
+	return &wayline, nil
+}
