@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/dronesphere/internal/model/dto"
@@ -40,20 +41,22 @@ type (
 )
 
 type JobImpl struct {
-	jobRepo   JobRepo
-	areaRepo  AreaRepo
-	droneRepo DroneRepo
-	modelRepo ModelRepo
-	l         *slog.Logger
+	jobRepo     JobRepo
+	areaRepo    AreaRepo
+	droneRepo   DroneRepo
+	modelRepo   ModelRepo
+	waylineRepo WaylineRepo
+	l           *slog.Logger
 }
 
-func NewJobImpl(jobRepo JobRepo, areaRepo AreaRepo, droneRepo DroneRepo, modelRepo ModelRepo, l *slog.Logger) *JobImpl {
+func NewJobImpl(jobRepo JobRepo, areaRepo AreaRepo, droneRepo DroneRepo, modelRepo ModelRepo, waylineRepo WaylineRepo, l *slog.Logger) *JobImpl {
 	return &JobImpl{
-		jobRepo:   jobRepo,
-		areaRepo:  areaRepo,
-		droneRepo: droneRepo,
-		modelRepo: modelRepo,
-		l:         l,
+		jobRepo:     jobRepo,
+		areaRepo:    areaRepo,
+		droneRepo:   droneRepo,
+		modelRepo:   modelRepo,
+		waylineRepo: waylineRepo,
+		l:           l,
 	}
 }
 
@@ -130,11 +133,123 @@ func (j *JobImpl) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
 	entity.Name = job.Name
 	entity.Description = job.Description
 	entity.ScheduleTime = job.ScheduleTime
-	entity.Drones = job.Drones
+	for _, dronePO := range job.Drones {
+		droneEntity, err := j.FetchDroneEntity(ctx, job.ID, dronePO)
+		if err != nil {
+			j.l.Error("获取无人机实体失败", slog.Any("error", err))
+			return nil, err
+		}
+		entity.Drones = append(entity.Drones, *droneEntity)
+	}
 	entity.Waylines = job.Waylines
 	entity.CommandDrones = job.CommandDrones
 
 	return &entity, nil
+}
+
+func (j *JobImpl) FetchDroneEntity(ctx context.Context, jobID uint, dronePO po.JobDronePO) (*entity.JobDrone, error) {
+	var wg sync.WaitGroup
+	wg.Add(4) // 4个并发查询任务
+
+	// 创建结果和错误通道
+	physicalDroneCh := make(chan *po.Drone, 1)
+	droneModelCh := make(chan *entity.DroneModel, 1)
+	gimbalModelCh := make(chan *po.GimbalModel, 1)
+	waylineCh := make(chan *po.Wayline, 1)
+	errCh := make(chan error, 4)
+
+	// 1. 查询物理无人机信息
+	go func() {
+		defer wg.Done()
+		physicalDrone, err := j.droneRepo.SelectByIDV2(ctx, dronePO.PhysicalDroneID)
+		if err != nil {
+			j.l.Error("获取无人机信息失败", slog.Any("error", err))
+			errCh <- err
+			return
+		}
+		j.l.Info("获取无人机信息", "physicalDrone", physicalDrone)
+		physicalDroneCh <- physicalDrone
+	}()
+
+	// 2. 查询无人机型号信息
+	go func() {
+		defer wg.Done()
+		droneModel, err := j.modelRepo.SelectDroneModelByID(ctx, dronePO.ModelID)
+		if err != nil {
+			j.l.Error("获取无人机型号信息失败", slog.Any("error", err))
+			errCh <- err
+			return
+		}
+		j.l.Info("获取无人机型号信息", "droneModel", droneModel)
+		droneModelCh <- droneModel
+	}()
+
+	// 3. 查询云台型号信息
+	go func() {
+		defer wg.Done()
+		gimbalModel, err := j.modelRepo.SelectGimbalModelByID(ctx, dronePO.VariationID)
+		if err != nil {
+			j.l.Error("获取云台型号信息失败", slog.Any("error", err))
+			errCh <- err
+			return
+		}
+		j.l.Info("获取云台型号信息", "gimbalModel", gimbalModel)
+		gimbalModelCh <- gimbalModel
+	}()
+
+	// 4. 查询航线信息(需要等待物理无人机查询完成获取SN)
+	go func() {
+		defer wg.Done()
+		// 等待物理无人机查询结果
+		var physicalDrone *po.Drone
+		select {
+		case physicalDrone = <-physicalDroneCh:
+			// 继续处理
+			wayline, err := j.waylineRepo.SelectByJobIDAndDroneSN(ctx, jobID, physicalDrone.SN)
+			if err != nil {
+				j.l.Error("获取航线信息失败", slog.Any("error", err))
+				errCh <- err
+				return
+			}
+			j.l.Info("获取航线信息", "wayline", wayline)
+			waylineCh <- wayline
+			// 将物理无人机放回通道，让主goroutine可以获取
+			physicalDroneCh <- physicalDrone
+		case <-ctx.Done():
+			errCh <- ctx.Err()
+			return
+		}
+	}()
+
+	// 等待所有goroutine完成
+	wg.Wait()
+	close(errCh)
+
+	// 检查是否有错误
+	for err := range errCh {
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 收集结果
+	physicalDrone := <-physicalDroneCh
+	droneModel := <-droneModelCh
+	gimbalModel := <-gimbalModelCh
+	wayline := <-waylineCh
+
+	// 组装结果
+	var drone entity.JobDrone
+	if err := copier.Copy(&drone, dronePO); err != nil {
+		j.l.Error("复制无人机数据失败", slog.Any("error", err))
+		return nil, err
+	}
+	drone.DroneModel = *droneModel
+	drone.GimbalModel = *gimbalModel
+	drone.PhysicalDrone = *physicalDrone
+	drone.Wayline = *wayline
+
+	return &drone, nil
 }
 
 func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaID uint, scheduleTime time.Time, drones []po.JobDronePO, waylines []po.JobWaylinePO, commandDrones []po.JobCommandDronePO) (uint, error) {

@@ -16,6 +16,7 @@ type (
 	WaylineRepo interface {
 		SelectAll(ctx context.Context) ([]po.Wayline, error)
 		SelectByID(ctx context.Context, id string) (*po.Wayline, error)
+		SelectByJobIDAndDroneSN(ctx context.Context, jobID uint, droneSN string) (*po.Wayline, error)
 	}
 )
 

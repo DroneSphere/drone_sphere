@@ -27,6 +27,7 @@ type (
 		Save(ctx context.Context, d entity.Drone) error
 		SelectBySN(ctx context.Context, sn string) (entity.Drone, error)
 		SelectByID(ctx context.Context, id uint) (entity.Drone, error)
+		SelectByIDV2(ctx context.Context, id uint) (*po.Drone, error)
 		FetchStateBySN(ctx context.Context, sn string) (ro.Drone, error)
 		SaveState(ctx context.Context, state ro.Drone) error
 		SelectAllByID(ctx context.Context, ids []uint) ([]entity.Drone, error)

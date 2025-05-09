@@ -46,3 +46,17 @@ func (w *WaylineGormRepo) SelectByID(ctx context.Context, id string) (*po.Waylin
 	}
 	return &wayline, nil
 }
+
+func (w *WaylineGormRepo) SelectByJobIDAndDroneSN(ctx context.Context, jobID uint, droneSN string) (*po.Wayline, error) {
+	var waylines []po.Wayline
+	if err := w.tx.WithContext(ctx).Where("state=0 AND job_id = ? AND drone_sn = ?", jobID, droneSN).Find(&waylines).Error; err != nil {
+		w.l.Error("查询航线失败", slog.Any("job_id", jobID), slog.Any("drone_sn", droneSN), slog.Any("err", err))
+		return nil, err
+	}
+	if len(waylines) == 0 || len(waylines) > 1 {
+		w.l.Error("查询航线失败", slog.Any("job_id", jobID), slog.Any("drone_sn", droneSN), slog.Any("err", "航线数量不正确"))
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	return &waylines[0], nil
+}

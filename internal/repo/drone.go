@@ -140,6 +140,16 @@ func (r *DroneDefaultRepo) SelectByID(ctx context.Context, id uint) (entity.Dron
 	return *entity.NewDrone(&pp, &rr), err
 }
 
+func (r *DroneDefaultRepo) SelectByIDV2(ctx context.Context, id uint) (*po.Drone, error) {
+	var po po.Drone
+	if err := r.tx.WithContext(ctx).
+		Where("drone_id = ?", id).First(&po).Error; err != nil {
+		r.l.Error("无人机数据获取失败", slog.Any("id", id), slog.Any("err", err))
+		return &po, err
+	}
+	return &po, nil
+}
+
 const ErrNoRTData = "no realtime data"
 
 // FetchStateBySN 根据SN获取无人机实时状态
