@@ -170,13 +170,22 @@ const contentType = "application/zip"
 
 func (j *JobDefaultRepo) CreateWaylineFile(ctx context.Context, name string, drone po.JobDronePO, wayline po.JobWaylinePO) (string, error) {
 	//  查询数据库获取无人机信息
+	var droneModel po.DroneModel
+	if err := j.tx.WithContext(ctx).
+		Where("drone_model_id = ?", drone.ModelID).
+		First(&droneModel).Error; err != nil {
+		j.l.Error("Failed to fetch drone model", slog.Any("err", err))
+		return "", err
+	}
+	j.l.Info("Fetched drone model", slog.Any("droneModel", droneModel))
+
 	droneInfo := wpml.DroneInfo{
-		DroneEnumValue:    wpml.DroneM3Series,
-		DroneSubEnumValue: wpml.SubM3E,
+		DroneEnumValue:    wpml.DroneEnumValue(droneModel.Type),
+		DroneSubEnumValue: wpml.DroneSubEnumValue(droneModel.SubType),
 	}
 	payload := wpml.PayloadInfo{
-		PayloadEnumValue:     wpml.PayloadM3E,
-		PayloadSubEnumValue:  wpml.PayloadSubM3E,
+		PayloadEnumValue:     0,
+		PayloadSubEnumValue:  0,
 		PayloadPositionIndex: 0,
 	}
 

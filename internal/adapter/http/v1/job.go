@@ -6,8 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	api "github.com/dronesphere/api/http/v1"
-	"github.com/dronesphere/internal/model/dto"
+	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/model/vo"
 	"github.com/dronesphere/internal/service"
@@ -35,7 +34,6 @@ func NewJobRouter(handler fiber.Router, svc service.JobSvc, areaSvc service.Area
 		h.Get("/:id", r.getJob)
 		h.Get("/creation/options", r.getCreationOptions)
 		h.Get("/creation/drones", r.getCreationDrones)
-		// h.Get("/edition/:id/options", r.getEditionOptions)
 		h.Post("/", r.create)
 		h.Put("/", r.update)
 		h.Delete("/:id", r.delete)
@@ -99,7 +97,16 @@ func (r *JobRouter) getJob(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
-	return c.JSON(Success(job))
+	var result struct {
+		entity.Job
+		ScheduleTime string `json:"schedule_time"` // 任务计划执行时间
+	}
+	if err := copier.Copy(&result, job); err != nil {
+		r.l.Error("复制任务数据失败", slog.Any("error", err))
+		return c.JSON(Fail(InternalError))
+	}
+	result.ScheduleTime = job.ScheduleTime.Format("2006-01-02 15:04:05")
+	return c.JSON(Success(result))
 }
 
 // getCreationOptions  创建任务时依赖的选项数据
@@ -214,15 +221,6 @@ func (r *JobRouter) create(c *fiber.Ctx) error {
 		return c.JSON(Fail(InvalidParams))
 	}
 
-	// 获取当前的日期部分
-	now := time.Now()
-	// 组合当前日期和用户指定的时间
-	scheduleTime = time.Date(
-		now.Year(), now.Month(), now.Day(),
-		scheduleTime.Hour(), scheduleTime.Minute(), scheduleTime.Second(),
-		0, now.Location(),
-	)
-
 	r.l.Info("create job", "req", req)
 	ctx := context.Background()
 
@@ -236,14 +234,14 @@ func (r *JobRouter) create(c *fiber.Ctx) error {
 func (r *JobRouter) update(c *fiber.Ctx) error {
 	// 定义接收参数的结构体，与create方法保持一致
 	type Request struct {
-		ID           uint                     `json:"id"`            // 任务ID
-		Name         string                   `json:"name"`          // 任务名称
-		Description  string                   `json:"description"`   // 任务描述
-		AreaID       int64                    `json:"area_id"`       // 区域ID
-		ScheduleTime string                   `json:"schedule_time"` // 任务计划执行时间
-		Drones       []dto.JobCreationDrone   `json:"drones"`        // 无人机列表
-		Waylines     []dto.JobCreationWayline `json:"waylines"`      // 航线列表
-		Mappings     []dto.JobCreationMapping `json:"mappings"`      // 映射列表
+		ID            uint                   `json:"id"` // 任务ID
+		Name          string                 `json:"name"`
+		Description   string                 `json:"description"`
+		AreaID        int64                  `json:"area_id"`
+		ScheduleTime  string                 `json:"schedule_time"` // 新增：任务计划执行时间
+		Drones        []po.JobDronePO        `json:"drones"`
+		Waylines      []po.JobWaylinePO      `json:"waylines"`
+		CommandDrones []po.JobCommandDronePO `json:"command_drones"`
 	}
 
 	var req Request
@@ -258,25 +256,13 @@ func (r *JobRouter) update(c *fiber.Ctx) error {
 		return c.JSON(Fail(InvalidParams))
 	}
 
-	// 获取当前的日期部分
-	now := time.Now()
-	// 组合当前日期和用户指定的时间
-	scheduleTime = time.Date(
-		now.Year(), now.Month(), now.Day(),
-		scheduleTime.Hour(), scheduleTime.Minute(), scheduleTime.Second(),
-		0, now.Location(),
-	)
-
 	ctx := context.Background()
-	j, err := r.svc.ModifyJob(ctx, req.ID, req.Name, req.Description, scheduleTime, uint(req.AreaID), req.Drones, req.Waylines, req.Mappings)
+	job, err := r.svc.ModifyJob(ctx, req.ID, req.Name, req.Description, uint(req.AreaID), scheduleTime, req.Drones, req.Waylines, req.CommandDrones)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
-	var result api.JobDetailResult
-	if err := result.FromJobEntity(j); err != nil {
-		return c.JSON(Fail(InternalError))
-	}
-	return c.JSON(Success(result))
+
+	return c.JSON(Success(job))
 }
 
 func (r *JobRouter) delete(c *fiber.Ctx) error {

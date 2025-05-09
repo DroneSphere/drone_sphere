@@ -20,7 +20,7 @@ type (
 		FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error)
 		FetchAll(ctx context.Context, jobName, areaName string, scheduleTimeStart, scheduleTimeEnd string) ([]entity.Job, error)
 		CreateJob(ctx context.Context, name, description string, areaID uint, scheduleTime time.Time, drones []po.JobDronePO, waylines []po.JobWaylinePO, command_drones []po.JobCommandDronePO) (uint, error)
-		ModifyJob(ctx context.Context, id uint, name, description string, scheduleTime time.Time, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (*entity.Job, error)
+		ModifyJob(ctx context.Context, id uint, name, description string, areaID uint, scheduleTime time.Time, drones []po.JobDronePO, waylines []po.JobWaylinePO, command_drones []po.JobCommandDronePO) (*entity.Job, error)
 	}
 
 	JobRepo interface {
@@ -163,9 +163,9 @@ func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaI
 	return job.ID, nil
 }
 
-func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description string, scheduleTime time.Time, areaID uint, drones []dto.JobCreationDrone, waylines []dto.JobCreationWayline, mappings []dto.JobCreationMapping) (*entity.Job, error) {
+func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description string, areaID uint, scheduleTime time.Time, drones []po.JobDronePO, waylines []po.JobWaylinePO, command_drones []po.JobCommandDronePO) (*entity.Job, error) {
 	// 获取已存在的任务
-	p, err := j.jobRepo.FetchPOByID(ctx, id)
+	p, err := j.jobRepo.SelectByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -175,9 +175,9 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 	p.Description = description
 	p.AreaID = areaID
 	p.ScheduleTime = scheduleTime
-	// p.Drones = drones
-	// p.Waylines = waylines
-	// p.Mappings = mappings
+	p.Drones = drones
+	p.Waylines = waylines
+	p.CommandDrones = command_drones
 
 	// 保存更新
 	if err := j.jobRepo.Save(ctx, p); err != nil {
