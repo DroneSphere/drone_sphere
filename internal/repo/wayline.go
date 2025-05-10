@@ -63,7 +63,7 @@ func (w *WaylineGormRepo) SelectByJobIDAndDroneSN(ctx context.Context, jobID uin
 
 func (w *WaylineGormRepo) SelectByJobIDAndDroneKey(ctx context.Context, jobID uint, droneKey string) (*po.Wayline, error) {
 	var waylines []po.Wayline
-	if err := w.tx.WithContext(ctx).Where("state = 0 AND job_id = ? AND drone_key = ?", jobID, droneKey).Find(&waylines).Error; err != nil {
+	if err := w.tx.WithContext(ctx).Where("state = 0 AND job_id = ? AND job_drone_key = ?", jobID, droneKey).Find(&waylines).Error; err != nil {
 		w.l.Error("查询航线失败", slog.Any("job_id", jobID), slog.Any("drone_key", droneKey), slog.Any("err", err))
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (w *WaylineGormRepo) DeleteByID(ctx context.Context, id uint) error {
 	var wayline po.Wayline
 	result := w.tx.WithContext(ctx).
 		Model(&po.Wayline{}).
-		Where("id = ? AND state = 0", id).
+		Where("wayline_id = ? AND state = 0", id).
 		First(&wayline).
 		Update("state", -1)
 

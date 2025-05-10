@@ -13,6 +13,7 @@ type (
 		Repo() WaylineRepo
 		GetWaylineURL(ctx context.Context, workspaceID, waylineID string) (string, error)
 		FetchWaylineByJobIDAndDroneSN(ctx context.Context, jobID uint, droneSN string) (*entity.Wayline, error)
+		FetchWaylineByJobIDAndDroneKey(ctx context.Context, jobID uint, droneKey string) (*entity.Wayline, error)
 	}
 
 	WaylineRepo interface {
@@ -61,6 +62,18 @@ func (w *WaylineImpl) FetchWaylineByJobIDAndDroneSN(ctx context.Context, jobID u
 	wayline, err := w.r.SelectByJobIDAndDroneSN(ctx, jobID, droneSN)
 	if err != nil {
 		w.l.Error("获取航线失败", slog.Any("jobID", jobID), slog.Any("droneSN", droneSN), slog.Any("err", err))
+		return nil, err
+	}
+	return &entity.Wayline{
+		Wayline: *wayline,
+		Url:     "https://minio.thuray.xyz/kmz/" + wayline.S3Key,
+	}, nil
+}
+
+func (w *WaylineImpl) FetchWaylineByJobIDAndDroneKey(ctx context.Context, jobID uint, droneKey string) (*entity.Wayline, error) {
+	wayline, err := w.r.SelectByJobIDAndDroneKey(ctx, jobID, droneKey)
+	if err != nil {
+		w.l.Error("获取航线失败", slog.Any("jobID", jobID), slog.Any("droneKey", droneKey), slog.Any("err", err))
 		return nil, err
 	}
 	return &entity.Wayline{
