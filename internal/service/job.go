@@ -199,28 +199,18 @@ func (j *JobImpl) FetchDroneEntity(ctx context.Context, jobID uint, dronePO po.J
 		gimbalModelCh <- gimbalModel
 	}()
 
-	// 4. 查询航线信息(需要等待物理无人机查询完成获取SN)
+	// 4. 查询航线信息
 	go func() {
 		defer wg.Done()
-		// 等待物理无人机查询结果
-		var physicalDrone *po.Drone
-		select {
-		case physicalDrone = <-physicalDroneCh:
-			// 继续处理
-			wayline, err := j.waylineSvc.FetchWaylineByJobIDAndDroneKey(ctx, jobID, dronePO.Key)
-			if err != nil {
-				j.l.Error("获取航线信息失败", slog.Any("error", err))
-				errCh <- err
-				return
-			}
-			j.l.Info("获取航线信息", "wayline", wayline)
-			waylineCh <- wayline
-			// 将物理无人机放回通道，让主goroutine可以获取
-			physicalDroneCh <- physicalDrone
-		case <-ctx.Done():
-			errCh <- ctx.Err()
+		// 不再需要等待物理无人机查询结果
+		wayline, err := j.waylineSvc.FetchWaylineByJobIDAndDroneKey(ctx, jobID, dronePO.Key)
+		if err != nil {
+			j.l.Error("获取航线信息失败", slog.Any("error", err))
+			errCh <- err
 			return
 		}
+		j.l.Info("获取航线信息", "wayline", wayline)
+		waylineCh <- wayline
 	}()
 
 	// 等待所有goroutine完成
