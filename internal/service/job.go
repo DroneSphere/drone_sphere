@@ -189,14 +189,21 @@ func (j *JobImpl) FetchDroneEntity(ctx context.Context, jobID uint, dronePO po.J
 	// 3. 查询云台型号信息
 	go func() {
 		defer wg.Done()
-		gimbalModel, err := j.modelRepo.SelectGimbalModelByID(ctx, dronePO.VariationID)
+		variations, err := j.modelRepo.SelectAllDroneVariation(ctx, nil)
 		if err != nil {
 			j.l.Error("获取云台型号信息失败", slog.Any("error", err))
 			errCh <- err
 			return
 		}
-		j.l.Info("获取云台型号信息", "gimbalModel", gimbalModel)
-		gimbalModelCh <- gimbalModel
+		var variation po.DroneVariation
+		for _, e := range variations {
+			if e.DroneModelID == dronePO.ModelID {
+				variation = e
+				break
+			}
+		}
+		j.l.Info("获取云台型号信息", "gimbalModel", variation.Gimbals[0])
+		gimbalModelCh <- &variation.Gimbals[0]
 	}()
 
 	// 4. 查询航线信息
