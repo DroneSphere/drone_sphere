@@ -268,6 +268,7 @@ func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaI
 	j.l.Info("Job created", "job", job)
 	// 逐个创建航线文件
 	for _, w := range job.Waylines {
+		// 找到对应的无人机
 		var drone po.JobDronePO
 		for _, d := range job.Drones {
 			if d.Key == w.DroneKey {
@@ -275,86 +276,13 @@ func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaI
 				break
 			}
 		}
-		var variation po.DroneVariation
-		variations, err := j.modelRepo.SelectAllDroneVariation(ctx, nil)
-		if err != nil {
-			j.l.Error("获取无人机变体失败", slog.Any("error", err))
-			return 0, err
-		}
-		for _, v := range variations {
-			if v.ID == drone.VariationID {
-				variation = v
-				break
-			}
-		}
 
-		waylineDoc, err := j.generateWayline(ctx, drone.PhysicalDroneID, variation, drone.TakeoffPoint, w)
+		// 调用抽取的方法创建和保存航线文件
+		_, err := j.createWaylineFile(ctx, job.ID, job.Name, drone, w)
 		if err != nil {
-			j.l.Error("Failed to generate wayline", slog.Any("error", err))
+			j.l.Error("创建航线文件失败", slog.Any("error", err))
 			return 0, err
 		}
-		j.l.Info("航线文件已创建", "wayline", waylineDoc)
-		template, err := waylineDoc.GenerateXML()
-		if err != nil {
-			j.l.Error("生成航线文件失败", slog.Any("error", err))
-			return 0, err
-		}
-		j.l.Info("航线文件已生成", "template", template)
-		wayline, err := waylineDoc.GenerateXML()
-		if err != nil {
-			j.l.Error("生成航线文件失败", slog.Any("error", err))
-			return 0, err
-		}
-		j.l.Info("航线文件已生成", "wayline", wayline)
-
-		// 保存航线文件
-		// 创建kmz目录
-		if err := os.MkdirAll("kmz", os.ModePerm); err != nil {
-			j.l.Error("创建kmz目录失败", slog.Any("error", err))
-			return 0, err
-		}
-		kmzFileName := "kmz/" + "job-" + strconv.Itoa(int(job.ID)) + "-" + "drone-key-" + w.DroneKey + "-" + "drone-id-" + strconv.Itoa(int(drone.PhysicalDroneID)) + ".kmz"
-		err = wpml.GenerateKMZ(kmzFileName, template, wayline)
-		if err != nil {
-			j.l.Error("生成航线文件失败", slog.Any("error", err))
-			return 0, err
-		}
-		j.l.Info("航线文件已生成", "kmzFileName", kmzFileName)
-
-		physicalDrone, err := j.droneRepo.SelectByID(ctx, drone.PhysicalDroneID)
-		if err != nil {
-			j.l.Error("获取无人机信息失败", slog.Any("error", err))
-			return 0, err
-		}
-		j.l.Info("获取无人机信息", "physicalDrone", physicalDrone)
-
-		// 保存航线文件到数据库
-		droneModelKey := "0-" + strconv.Itoa(physicalDrone.Type) + "-" + strconv.Itoa(physicalDrone.SubType)
-		payloadModelKey := "1-" + strconv.Itoa(variation.Gimbals[0].Type) + "-" + strconv.Itoa(variation.Gimbals[0].SubType)
-		waylinePO := po.Wayline{
-			JobID:       job.ID,
-			JobDroneKey: w.DroneKey,
-			DroneSN:     physicalDrone.SN,
-			WaylineName: job.Name + "-" + w.DroneKey,
-			StartWaylinePoint: datatypes.NewJSONType(po.StartWaylinePoint{
-				StartLatitude:  drone.TakeoffPoint.Lat,
-				StartLongitude: drone.TakeoffPoint.Lng,
-			}),
-			DroneModelKey:    droneModelKey,
-			PayloadModelKeys: []string{payloadModelKey},
-		}
-		defer func() {
-			if err := os.Remove(kmzFileName); err != nil {
-				j.l.Error("删除kmz文件失败", slog.Any("error", err))
-			}
-		}()
-
-		savedWayline, err := j.jobRepo.SaveWayline(ctx, waylinePO, kmzFileName)
-		if err != nil {
-			j.l.Error("保存航线文件到数据库失败", slog.Any("error", err))
-			return 0, err
-		}
-		j.l.Info("航线文件已保存到数据库", "savedWayline", savedWayline)
 	}
 	return job.ID, nil
 }
@@ -381,21 +309,37 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 	}
 
 	// 更新航线文件
-	// for _, w ÷:= range waylines {
-	// var dr dto.JobCreationDrone
-	// for _, d := range drones {
-	// 	if d.Key == w.DroneKey {
-	// 		dr = d
-	// 		break
-	// 	}
-	// }
-	// waylineKey, err := j.jobRepo.CreateWaylineFile(ctx, p.Name, dr, w)
-	// if err != nil {
-	// 	j.l.Error("更新航线文件失败", slog.Any("error", err))
-	// 	return nil, err
-	// }
-	// j.l.Info("航线文件已更新", "waylineKey", waylineKey)
-	// }
+	for _, w := range waylines {
+		// 通过 JobID 和 DroneKey 查询航线文件
+		existWayline, err := j.waylineRepo.SelectByJobIDAndDroneKey(ctx, id, w.DroneKey)
+		if err != nil {
+			j.l.Error("获取航线文件失败", slog.Any("error", err))
+			return nil, err
+		}
+
+		// 删除已有的航线文件
+		err = j.waylineRepo.DeleteByID(ctx, existWayline.ID)
+		if err != nil {
+			j.l.Error("删除航线文件失败", slog.Any("error", err))
+			return nil, err
+		}
+
+		// 找到对应的无人机
+		var drone po.JobDronePO
+		for _, d := range drones {
+			if d.Key == w.DroneKey {
+				drone = d
+				break
+			}
+		}
+
+		// 调用抽取的方法创建和保存航线文件
+		_, err = j.createWaylineFile(ctx, id, p.Name, drone, w)
+		if err != nil {
+			j.l.Error("创建航线文件失败", slog.Any("error", err))
+			return nil, err
+		}
+	}
 
 	// 返回更新后的任务
 	return j.FetchByID(ctx, id)
@@ -426,6 +370,103 @@ func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string, schedu
 	}
 
 	return result, nil
+}
+
+// createWaylineFile 创建并保存航线文件
+// jobID: 任务ID
+// jobName: 任务名称
+// drone: 无人机信息
+// wayline: 航线信息
+// 返回保存的航线信息和可能的错误
+func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName string, drone po.JobDronePO, wayline po.JobWaylinePO) (*po.Wayline, error) {
+	// 获取无人机变体信息
+	var variation po.DroneVariation
+	variations, err := j.modelRepo.SelectAllDroneVariation(ctx, nil)
+	if err != nil {
+		j.l.Error("获取无人机变体失败", slog.Any("error", err))
+		return nil, err
+	}
+	for _, v := range variations {
+		if v.ID == drone.VariationID {
+			variation = v
+			break
+		}
+	}
+
+	// 生成航线文件
+	waylineDoc, err := j.generateWayline(ctx, drone.PhysicalDroneID, variation, drone.TakeoffPoint, wayline)
+	if err != nil {
+		j.l.Error("生成航线文件失败", slog.Any("error", err))
+		return nil, err
+	}
+	j.l.Info("航线文件已创建", "wayline", waylineDoc)
+
+	// 生成航线模板和具体航线
+	template, err := waylineDoc.GenerateXML()
+	if err != nil {
+		j.l.Error("生成航线模板失败", slog.Any("error", err))
+		return nil, err
+	}
+	waylineXML, err := waylineDoc.GenerateXML()
+	if err != nil {
+		j.l.Error("生成航线文件失败", slog.Any("error", err))
+		return nil, err
+	}
+
+	// 创建kmz目录
+	if err := os.MkdirAll("kmz", os.ModePerm); err != nil {
+		j.l.Error("创建kmz目录失败", slog.Any("error", err))
+		return nil, err
+	}
+
+	// 生成KMZ文件
+	kmzFileName := "kmz/" + "job-" + strconv.Itoa(int(jobID)) + "-" + "drone-key-" + wayline.DroneKey + "-" + "drone-id-" + strconv.Itoa(int(drone.PhysicalDroneID)) + ".kmz"
+	err = wpml.GenerateKMZ(kmzFileName, template, waylineXML)
+	if err != nil {
+		j.l.Error("生成KMZ文件失败", slog.Any("error", err))
+		return nil, err
+	}
+	j.l.Info("KMZ文件已生成", "kmzFileName", kmzFileName)
+
+	// 获取物理无人机信息
+	physicalDrone, err := j.droneRepo.SelectByID(ctx, drone.PhysicalDroneID)
+	if err != nil {
+		j.l.Error("获取无人机信息失败", slog.Any("error", err))
+		return nil, err
+	}
+
+	// 构建航线信息
+	droneModelKey := "0-" + strconv.Itoa(physicalDrone.Type) + "-" + strconv.Itoa(physicalDrone.SubType)
+	payloadModelKey := "1-" + strconv.Itoa(variation.Gimbals[0].Type) + "-" + strconv.Itoa(variation.Gimbals[0].SubType)
+	waylinePO := po.Wayline{
+		JobID:       jobID,
+		JobDroneKey: wayline.DroneKey,
+		DroneSN:     physicalDrone.SN,
+		WaylineName: jobName + "-" + wayline.DroneKey,
+		StartWaylinePoint: datatypes.NewJSONType(po.StartWaylinePoint{
+			StartLatitude:  drone.TakeoffPoint.Lat,
+			StartLongitude: drone.TakeoffPoint.Lng,
+		}),
+		DroneModelKey:    droneModelKey,
+		PayloadModelKeys: []string{payloadModelKey},
+	}
+
+	// 清理临时文件
+	defer func() {
+		if err := os.Remove(kmzFileName); err != nil {
+			j.l.Error("删除kmz临时文件失败", slog.Any("error", err))
+		}
+	}()
+
+	// 保存航线文件到数据库
+	savedWayline, err := j.jobRepo.SaveWayline(ctx, waylinePO, kmzFileName)
+	if err != nil {
+		j.l.Error("保存航线信息到数据库失败", slog.Any("error", err))
+		return nil, err
+	}
+	j.l.Info("航线信息已保存到数据库", "wayline", wayline.DroneKey)
+
+	return savedWayline, nil
 }
 
 func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariation po.DroneVariation, takeoffPoint po.JobTakeoffPointPO, wayline po.JobWaylinePO) (wpml.Document, error) {
