@@ -384,6 +384,7 @@ func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName str
 			break
 		}
 	}
+	j.l.Info("无人机变体", slog.Any("DroneVariation", variation))
 
 	// 生成航线文件
 	waylineDoc, err := j.generateWayline(ctx, drone.PhysicalDroneID, variation, drone.TakeoffPoint, wayline)
@@ -428,7 +429,7 @@ func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName str
 	}
 
 	// 构建航线信息
-	droneModelKey := "0-" + strconv.Itoa(physicalDrone.Type) + "-" + strconv.Itoa(physicalDrone.SubType)
+	droneModelKey := strconv.Itoa(variation.DroneModel.Domain) + "-" + strconv.Itoa(variation.DroneModel.Type) + "-" + strconv.Itoa(variation.DroneModel.SubType)
 	payloadModelKey := "1-" + strconv.Itoa(variation.Gimbals[0].Type) + "-" + strconv.Itoa(variation.Gimbals[0].SubType)
 	waylinePO := po.Wayline{
 		JobID:       jobID,
