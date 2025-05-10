@@ -143,17 +143,6 @@ func (r *DroneRouter) getBySN(c *fiber.Ctx) error {
 	return c.JSON(Success(res))
 }
 
-// update 更新无人机信息
-//
-//	@Router			/drone/:sn [put]
-//	@Summary		更新无人机信息
-//	@Description	更新无人机信息
-//	@Tags			drone
-//	@Accept			json
-//	@Produce		json
-//	@Param			sn		path		string					true	"无人机SN"
-//	@Param			request	body		v1.DroneUpdateRequest	true	"无人机信息"
-//	@Success		200		{object}	v1.Response{data=nil}	"成功"
 func (r *DroneRouter) update(c *fiber.Ctx) error {
 	sn := c.Params("sn")
 	if sn == "" {
@@ -243,14 +232,6 @@ func (r *DroneRouter) pushState(c *fiber.Ctx) error {
 	return nil
 }
 
-// getModels 获取无人机型号列表
-//
-//	@Router			/drone/models [get]
-//	@Summary		获取无人机型号列表
-//	@Description	获取当前系统中已有无人机的型号列表，供前端下拉选择器使用
-//	@Tags			drone
-//	@Produce		json
-//	@Success		200	{object}	v1.Response{data=[]dto.DroneModelOption}	"成功"
 func (r *DroneRouter) getModels(c *fiber.Ctx) error {
 	ctx := context.Background()
 
@@ -265,18 +246,6 @@ func (r *DroneRouter) getModels(c *fiber.Ctx) error {
 	return c.JSON(Success(models))
 }
 
-// create 创建无人机
-//
-//	@Router			/drone [post]
-//	@Summary		创建无人机
-//	@Description	创建一个新的无人机
-//	@Tags			drone
-//	@Accept			json
-//	@Produce		json
-//	@Param			request	body		api.DroneCreateRequest	true	"无人机信息"
-//	@Success		200		{object}	Response{data=droneDetailResult}	"成功"
-//	@Failure		400		{object}	Response{data=ErrorBody}			"请求参数错误"
-//	@Failure		500		{object}	Response{data=ErrorBody}			"服务器内部错误"
 func (r *DroneRouter) create(c *fiber.Ctx) error {
 	// 解析请求体
 	req := new(api.DroneCreateRequest)
