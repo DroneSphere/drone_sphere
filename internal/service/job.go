@@ -422,7 +422,7 @@ func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName str
 
 	// 获取物理无人机信息
 	physicalDrone, err := j.droneRepo.SelectByID(ctx, drone.PhysicalDroneID)
-	if err != nil {
+	if err != nil && err.Error() != "no realtime data" {
 		j.l.Error("获取无人机信息失败", slog.Any("error", err))
 		return nil, err
 	}
@@ -465,7 +465,7 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 	droneModel := droneVariation.DroneModel
 	gimbals := droneVariation.Gimbals
 	drone, err := j.droneRepo.SelectByID(ctx, droneID)
-	if err != nil {
+	if err != nil && err.Error() != "no realtime data" {
 		j.l.Error("获取无人机信息失败", slog.Any("error", err))
 		return wpml.Document{}, err
 	}
