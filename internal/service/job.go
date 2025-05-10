@@ -46,16 +46,18 @@ type JobImpl struct {
 	droneRepo   DroneRepo
 	modelRepo   ModelRepo
 	waylineRepo WaylineRepo
+	waylineSvc  WaylineSvc
 	l           *slog.Logger
 }
 
-func NewJobImpl(jobRepo JobRepo, areaRepo AreaRepo, droneRepo DroneRepo, modelRepo ModelRepo, waylineRepo WaylineRepo, l *slog.Logger) *JobImpl {
+func NewJobImpl(jobRepo JobRepo, areaRepo AreaRepo, droneRepo DroneRepo, modelRepo ModelRepo, waylineRepo WaylineRepo, waylineSvc WaylineSvc, l *slog.Logger) *JobImpl {
 	return &JobImpl{
 		jobRepo:     jobRepo,
 		areaRepo:    areaRepo,
 		droneRepo:   droneRepo,
 		modelRepo:   modelRepo,
 		waylineRepo: waylineRepo,
+		waylineSvc:  waylineSvc,
 		l:           l,
 	}
 }
@@ -155,7 +157,7 @@ func (j *JobImpl) FetchDroneEntity(ctx context.Context, jobID uint, dronePO po.J
 	physicalDroneCh := make(chan *po.Drone, 1)
 	droneModelCh := make(chan *entity.DroneModel, 1)
 	gimbalModelCh := make(chan *po.GimbalModel, 1)
-	waylineCh := make(chan *po.Wayline, 1)
+	waylineCh := make(chan *entity.Wayline, 1)
 	errCh := make(chan error, 4)
 
 	// 1. 查询物理无人机信息
@@ -205,7 +207,7 @@ func (j *JobImpl) FetchDroneEntity(ctx context.Context, jobID uint, dronePO po.J
 		select {
 		case physicalDrone = <-physicalDroneCh:
 			// 继续处理
-			wayline, err := j.waylineRepo.SelectByJobIDAndDroneSN(ctx, jobID, physicalDrone.SN)
+			wayline, err := j.waylineSvc.FetchWaylineByJobIDAndDroneKey(ctx, jobID, dronePO.Key)
 			if err != nil {
 				j.l.Error("获取航线信息失败", slog.Any("error", err))
 				errCh <- err

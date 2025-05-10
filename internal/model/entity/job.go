@@ -22,5 +22,5 @@ type JobDrone struct {
 	DroneModel    DroneModel     `json:"drone_model"`
 	GimbalModel   po.GimbalModel `json:"gimbal_model"`
 	PhysicalDrone po.Drone       `json:"physical_drone"`
-	Wayline       po.Wayline     `json:"wayline"`
+	Wayline       Wayline        `json:"wayline"`
 }
