@@ -7,14 +7,15 @@ import (
 )
 
 type Job struct {
-	ID            uint                   `json:"id"`
-	Name          string                 `json:"name"`
-	Description   string                 `json:"description"`
-	Area          Area                   `json:"area"`
-	ScheduleTime  time.Time              `json:"schedule_time"` // 任务计划执行时间
-	Drones        []JobDrone             `json:"drones"`
-	Waylines      []po.JobWaylinePO      `json:"waylines"`
-	CommandDrones []po.JobCommandDronePO `json:"command_drones"`
+	ID                      uint                          `json:"id"`
+	Name                    string                        `json:"name"`
+	Description             string                        `json:"description"`
+	Area                    Area                          `json:"area"`
+	ScheduleTime            time.Time                     `json:"schedule_time"` // 任务计划执行时间
+	Drones                  []JobDrone                    `json:"drones"`
+	Waylines                []po.JobWaylinePO             `json:"waylines"`
+	CommandDrones           []po.JobCommandDronePO        `json:"command_drones"`
+	WaylineGenerationParams po.JobWaylineGenerationParams `json:"wayline_generation_params"`
 }
 
 type JobDrone struct {

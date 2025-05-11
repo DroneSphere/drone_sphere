@@ -145,6 +145,7 @@ func (j *JobImpl) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
 	}
 	entity.Waylines = job.Waylines
 	entity.CommandDrones = job.CommandDrones
+	entity.WaylineGenerationParams = job.WaylineGenerationParams.Data()
 
 	return &entity, nil
 }
