@@ -28,6 +28,7 @@ func newResultRouter(handler fiber.Router, svc service.ResultSvc, l *slog.Logger
 		h.Get("/object_options", r.getObjectTypeOptions)
 		h.Get("/:id", r.getByID)
 		h.Post("/", r.create)
+		h.Post("/batch", r.createBatch)
 		h.Delete("/:id", r.delete)
 	}
 }
@@ -98,6 +99,20 @@ func (r *ResultRouter) create(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(Success(map[string]uint{"id": id}))
+}
+
+func (r *ResultRouter) createBatch(c *fiber.Ctx) error {
+	var req []dto.CreateResultDTO
+	if err := c.BodyParser(&req); err != nil {
+		return c.JSON(Fail(InvalidParams))
+	}
+
+	ids, err := r.svc.CreateBatch(context.Background(), req)
+	if err != nil {
+		return c.JSON(FailWithMsg(err.Error()))
+	}
+
+	return c.JSON(Success(map[string][]uint{"ids": ids}))
 }
 
 func (r *ResultRouter) delete(c *fiber.Ctx) error {

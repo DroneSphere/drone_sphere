@@ -16,6 +16,8 @@ type ResultSvc interface {
 	Repo() ResultRepo
 	// Create 创建检测结果
 	Create(ctx context.Context, result dto.CreateResultDTO) (uint, error)
+	// CreateBatch 批量创建检测结果
+	CreateBatch(ctx context.Context, results []dto.CreateResultDTO) ([]uint, error)
 	// GetByID 获取单个检测结果
 	GetByID(ctx context.Context, id uint) (*dto.ResultDetailDTO, error)
 	// List 列出检测结果
@@ -100,6 +102,18 @@ func (s *ResultImpl) Create(ctx context.Context, result dto.CreateResultDTO) (ui
 	}
 
 	return r.ID, nil
+}
+
+func (s *ResultImpl) CreateBatch(ctx context.Context, results []dto.CreateResultDTO) ([]uint, error) {
+	var ids []uint
+	for _, result := range results {
+		id, err := s.Create(ctx, result)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func (s *ResultImpl) GetByID(ctx context.Context, id uint) (*dto.ResultDetailDTO, error) {
