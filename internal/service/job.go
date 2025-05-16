@@ -408,6 +408,70 @@ func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName str
 		j.l.Error("生成航线模板失败", slog.Any("error", err))
 		return nil, err
 	}
+
+	waylineDoc.Author = nil
+	waylineDoc.CreateTime = nil
+	waylineDoc.UpdateTime = nil
+	for i := range waylineDoc.Folders {
+		f := &waylineDoc.Folders[i]
+		f.TemplateType = nil
+		f.WaylineID = &i
+		hMode := wpml.ExecuteHeightModeWGS84
+		f.ExecuteHeightMode = &hMode
+		for j := range f.Placemarks {
+			p := &f.Placemarks[j]
+			// 处理高度
+			if *p.UseGlobalHeight {
+				p.ExecuteHeight = f.GlobalHeight
+			} else {
+				p.ExecuteHeight = p.EllipsoidHeight
+			}
+			p.EllipsoidHeight = nil
+			p.Height = nil
+			p.UseGlobalHeight = nil
+			// 处理速度
+			if *p.UseGlobalSpeed {
+				p.WaypointSpeed = f.AutoFlightSpeed
+			}
+			p.UseGlobalSpeed = nil
+			// 处理 GlobalHeadingParam
+			if *p.UseGlobalHeadingParam {
+				p.WaypointHeadingParam = f.GlobalWaypointHeadingParam
+			}
+			p.UseGlobalHeadingParam = nil
+			// 处理 WaypointTurnParam
+			if *p.UseGlobalTurnParam {
+				//p.WaypointTurnParam.WaypointTurnMode = *f.GlobalWaypointTurnMode
+				p.WaypointTurnParam = &wpml.WaypointTurnParam{
+					WaypointTurnMode: *f.GlobalWaypointTurnMode,
+				}
+			}
+			p.UseGlobalTurnParam = nil
+			// 处理 StraightLine
+			if *p.UseStraightLine {
+				p.UseStraightLine = f.GlobalUseStraightLine
+			}
+			p.UseStraightLine = nil
+			// 处理 GimbalPitchMode
+			if *f.GimbalPitchMode == wpml.GimbalPitchModeManual {
+				p.WaypointGimbalHeadingParam = &wpml.WaypointGimbalHeadingParam{
+					WaypointGimbalPitchAngle: 0,
+					WaypointGimbalYawAngle:   0,
+				}
+			}
+			workType := wpml.WaypointWorkTypeNone
+			p.WaypointWorkType = &workType
+		}
+		// 擦除不需要的字段
+		f.TemplateType = nil
+		f.WaylineCoordinateSysParam = nil
+		f.PayloadParam = nil
+		f.GlobalWaypointTurnMode = nil
+		f.GlobalUseStraightLine = nil
+		f.GimbalPitchMode = nil
+		f.GlobalHeight = nil
+		f.GlobalWaypointHeadingParam = nil
+	}
 	waylineXML, err := waylineDoc.GenerateXML()
 	if err != nil {
 		j.l.Error("生成航线文件失败", slog.Any("error", err))
