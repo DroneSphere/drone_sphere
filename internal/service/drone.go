@@ -100,6 +100,7 @@ func (s *DroneImpl) StartLiveBySN(ctx context.Context, sn string) (string, error
 	// 构建直播所需参数
 	cameraIndex := strconv.Itoa(gimbal.Type) + "-" + strconv.Itoa(gimbal.SubType) + "-" + strconv.Itoa(gimbal.Gimbalindex)
 	videoIndex := "normal-0" // 普通视频流索引
+	streamName := fmt.Sprintf("%s-%s", sn, cameraIndex)
 	videoID := fmt.Sprintf("%s/%s/%s", sn, cameraIndex, videoIndex)
 
 	// 设置过期时间为24小时后
@@ -107,8 +108,8 @@ func (s *DroneImpl) StartLiveBySN(ctx context.Context, sn string) (string, error
 	expireTimeHex := strconv.FormatInt(expireTime.Unix(), 16)
 
 	// 构建推流和拉流地址
-	pushRTMPUrl := txlive.BuildRTMPUrl(pushDomain, videoID, pushKey, expireTimeHex)
-	pullRTMPUrl := txlive.BuildRTMPUrl(pullDomain, videoID, pullKey, expireTimeHex)
+	pushRTMPUrl := txlive.BuildRTMPUrl(pushDomain, streamName, pushKey, expireTimeHex)
+	pullRTMPUrl := txlive.BuildRTMPUrl(pullDomain, streamName, pullKey, expireTimeHex)
 
 	s.l.Info("生成直播地址成功",
 		slog.String("sn", sn),
@@ -195,12 +196,16 @@ func (s *DroneImpl) StopLiveBySN(ctx context.Context, sn string) error {
 	gatewaySN, err := s.r.FetchGatewaySNByDroneSN(ctx, sn) // 使用仓库层方法获取
 	if err != nil {
 		// handle
+		s.l.Error("获取无人机关联的GatewaySN失败", slog.String("sn", sn), slog.Any("error", err))
+		return fmt.Errorf("获取无人机关联的GatewaySN失败: %w", err)
 	}
 	// 从无人机实体中获取 GwSN (在 repo.FetchStateBySN 中填充)
 	if gatewaySN == "" {
 		s.l.Error("未能获取无人机关联的GatewaySN", slog.String("sn", sn))
 		// 注意：根据业务需求，这里可能需要返回错误
 		// return fmt.Errorf("未能获取无人机关联的GatewaySN，无法发送MQTT指令")
+		s.l.Info("无人机没有关联的网关，跳过发送MQTT指令", slog.String("sn", sn))
+		return nil
 	}
 
 	if gatewaySN != "" {
