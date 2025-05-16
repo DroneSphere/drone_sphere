@@ -113,7 +113,7 @@ func Run(cfg *configs.Config) {
 
 	// Services
 	userSvc := service.NewUserSvc(userRepo, logger)
-	droneSvc := service.NewDroneImpl(droneRepo, logger, client)
+	droneSvc := service.NewDroneImpl(droneRepo, modelRepo, logger, client)
 	saSvc := service.NewAreaImpl(saRepo, logger, client)
 	wlSvc := service.NewWaylineImpl(wlRepo, logger)
 	jobSvc := service.NewJobImpl(jobRepo, saRepo, droneRepo, modelRepo, wlRepo, wlSvc, logger)

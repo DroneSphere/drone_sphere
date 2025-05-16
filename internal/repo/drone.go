@@ -107,6 +107,16 @@ func (r *DroneDefaultRepo) Save(ctx context.Context, d entity.Drone) error {
 	return nil
 }
 
+// UpdateLiveInfoBySN 更新无人机直播相关信息，包括推拉流地址和当前视频流ID
+func (r *DroneDefaultRepo) UpdateLiveInfoBySN(ctx context.Context, sn, pushRTMPUrl, pullRTMPUrl, videoID string) error {
+	updates := map[string]interface{}{
+		"live_push_rtmp_url":   pushRTMPUrl,
+		"live_pull_webrtc_url": pullRTMPUrl,
+		"current_video_id":     videoID, // 新增 current_video_id 的更新
+	}
+	return r.tx.WithContext(ctx).Model(&po.Drone{}).Where("state = 0 AND sn = ?", sn).Updates(updates).Error
+}
+
 // SelectBySN 根据SN获取无人机实体
 func (r *DroneDefaultRepo) SelectBySN(ctx context.Context, sn string) (entity.Drone, error) {
 	var pp po.Drone
@@ -228,4 +238,21 @@ func (r *DroneDefaultRepo) FetchDroneModelOptions(ctx context.Context) ([]dto.Dr
 	}
 
 	return models, nil
+}
+
+// FetchGatewaySNByDroneSN 从 Redis 获取无人机关联的网关SN
+// 注意：这个实现假设网关SN直接作为字符串存储在Redis中，键为 "gateway_of_drone:{droneSN}"
+// 你需要根据实际情况调整键名和数据解析逻辑
+func (r *DroneDefaultRepo) FetchGatewaySNByDroneSN(ctx context.Context, droneSN string) (string, error) {
+	key := "topology:" + droneSN // 示例键名，请根据实际情况修改
+	gwSN, err := r.rds.Get(ctx, key).Result()
+	if err == redis.Nil {
+		r.l.Warn("Redis中未找到无人机的网关SN", slog.String("drone_sn", droneSN), slog.String("redis_key", key))
+		return "", errors.New("gateway SN not found for drone " + droneSN)
+	} else if err != nil {
+		r.l.Error("从Redis获取网关SN失败", slog.String("drone_sn", droneSN), slog.String("redis_key", key), slog.Any("error", err))
+		return "", err
+	}
+	r.l.Info("从Redis获取网关SN成功", slog.String("drone_sn", droneSN), slog.String("gw_sn", gwSN))
+	return gwSN, nil
 }

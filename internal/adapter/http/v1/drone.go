@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/asaskevich/EventBus"
@@ -45,8 +46,10 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 		h.Post("/", r.create)
 		h.Get("/sn/:sn", r.getBySN)
 		h.Get("/state/sse", r.pushState)
-		h.Get("/models", r.getModels) // 添加获取无人机型号列表的路由
-		h.Delete("/:sn", r.delete)    // 添加删除无人机的路由
+		h.Get("/models", r.getModels)          // 添加获取无人机型号列表的路由
+		h.Delete("/:sn", r.delete)             // 添加删除无人机的路由
+		h.Post("/:sn/live/start", r.startLive) // 添加启动直播的路由
+		h.Post("/:sn/live/stop", r.stopLive)   // 添加停止直播的路由
 	}
 }
 
@@ -356,5 +359,67 @@ func (r *DroneRouter) delete(c *fiber.Ctx) error {
 	}
 
 	r.l.Info("成功删除无人机", slog.String("sn", sn))
+	return c.JSON(Success(nil))
+}
+func (r *DroneRouter) startLive(c *fiber.Ctx) error {
+	sn := c.Params("sn")
+	if sn == "" {
+		return c.JSON(Fail(ErrorBody{Code: fiber.StatusBadRequest, Msg: "无人机序列号(SN)不能为空"}))
+	}
+
+	r.l.Info("尝试启动无人机直播", slog.String("sn", sn))
+
+	// 调用服务层方法启动直播
+	pullURL, err := r.svc.StartLiveBySN(c.Context(), sn)
+	if err != nil {
+		// 根据错误类型返回不同的HTTP状态码
+		if err.Error() == fmt.Sprintf("无人机 %s 没有云台信息", sn) || strings.Contains(err.Error(), "获取无人机信息失败") {
+			r.l.Error("启动无人机直播失败：无人机信息或云台信息错误", slog.String("sn", sn), slog.Any("error", err))
+			return c.JSON(Fail(ErrorBody{Code: fiber.StatusNotFound, Msg: "启动无人机直播失败：" + err.Error()}))
+		}
+		r.l.Error("启动无人机直播失败", slog.String("sn", sn), slog.Any("error", err))
+		return c.JSON(Fail(ErrorBody{Code: fiber.StatusInternalServerError, Msg: "启动无人机直播失败：" + err.Error()}))
+	}
+
+	r.l.Info("成功启动无人机直播", slog.String("sn", sn), slog.String("pull_url", pullURL))
+	return c.JSON(Success(pullURL))
+}
+
+// stopLive 停止无人机直播
+// @Router      /drone/{sn}/live/stop [post]
+// @Summary     停止无人机直播
+// @Description 根据无人机SN停止直播推流
+// @Tags        drone
+// @Produce     json
+// @Param       sn  path        string  true    "无人机SN"
+// @Success     200 {object}    Response{data=nil} "成功"
+// @Failure     400 {object}    Response{data=ErrorBody}    "请求参数错误"
+// @Failure     404 {object}    Response{data=ErrorBody}    "无人机不存在或无直播流"
+// @Failure     500 {object}    Response{data=ErrorBody}    "服务器内部错误"
+func (r *DroneRouter) stopLive(c *fiber.Ctx) error {
+	sn := c.Params("sn")
+	if sn == "" {
+		return c.JSON(Fail(ErrorBody{Code: fiber.StatusBadRequest, Msg: "无人机序列号(SN)不能为空"}))
+	}
+
+	r.l.Info("尝试停止无人机直播", slog.String("sn", sn))
+
+	// 调用服务层方法停止直播
+	if err := r.svc.StopLiveBySN(c.Context(), sn); err != nil {
+		// 根据错误类型返回不同的HTTP状态码
+		// (可以根据 StopLiveBySN 可能返回的特定错误进行更精细的处理)
+		if strings.Contains(err.Error(), "获取无人机信息失败") {
+			r.l.Error("停止无人机直播失败：无人机信息错误", slog.String("sn", sn), slog.Any("error", err))
+			return c.JSON(Fail(ErrorBody{Code: fiber.StatusNotFound, Msg: "停止无人机直播失败：" + err.Error()}))
+		}
+		if strings.Contains(err.Error(), "无人机当前没有正在进行的直播") {
+			r.l.Info("无人机无活跃直播流，无需停止", slog.String("sn", sn))
+			return c.JSON(Success(nil)) // 或者返回特定状态码表示无操作
+		}
+		r.l.Error("停止无人机直播失败", slog.String("sn", sn), slog.Any("error", err))
+		return c.JSON(Fail(ErrorBody{Code: fiber.StatusInternalServerError, Msg: "停止无人机直播失败：" + err.Error()}))
+	}
+
+	r.l.Info("成功停止无人机直播", slog.String("sn", sn))
 	return c.JSON(Success(nil))
 }

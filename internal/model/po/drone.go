@@ -19,6 +19,10 @@ type Drone struct {
 	// 与 DroneModel 的关联（多对一）
 	DroneModelID uint       `json:"drone_model_id" gorm:"index;column:drone_model_id"` // 无人机型号ID
 	DroneModel   DroneModel `json:"drone_model" gorm:"foreignKey:DroneModelID"`        // 无人机型号
+
+	LivePushRTMPUrl   string `json:"live_push_rtmp_url" gorm:"column:live_push_rtmp_url"`
+	LivePullWebRTCUrl string `json:"live_pull_webrtc_url" gorm:"column:live_pull_webrtc_url"`
+	CurrentVideoID    string `json:"current_video_id" gorm:"column:current_video_id"` // 当前直播视频流ID
 }
 
 // TableName 指定 Drone 表名为 tb_drones

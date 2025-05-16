@@ -2,14 +2,20 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
+	"strconv"
+	"time"
 
 	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/model/entity"
 	"github.com/dronesphere/internal/model/po"
 	"github.com/dronesphere/internal/model/ro"
 	"github.com/dronesphere/internal/repo"
+	"github.com/dronesphere/pkg/txlive"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/google/uuid"
 )
 
 type (
@@ -20,6 +26,10 @@ type (
 		UpdateStateBySN(ctx context.Context, sn string, msg dto.DroneMessageProperty) error
 		// 新增：从消息创建无人机实体
 		CreateDroneFromMsg(ctx context.Context, sn string, msg dto.ProductTopo, modelRepo *repo.ModelDefaultRepo) (*entity.Drone, error)
+		// 新增：根据无人机SN启动直播
+		StartLiveBySN(ctx context.Context, sn string) (string, error)
+		// 新增：根据无人机SN停止直播
+		StopLiveBySN(ctx context.Context, sn string) error
 	}
 
 	DroneRepo interface {
@@ -32,26 +42,209 @@ type (
 		SaveState(ctx context.Context, state ro.Drone) error
 		SelectAllByID(ctx context.Context, ids []uint) ([]entity.Drone, error)
 		UpdateDroneInfo(ctx context.Context, sn string, updates map[string]interface{}) error
-		FetchDroneModelOptions(ctx context.Context) ([]dto.DroneModelOption, error) // 获取无人机型号选项列表
+		FetchDroneModelOptions(ctx context.Context) ([]dto.DroneModelOption, error)                 // 获取无人机型号选项列表
+		UpdateLiveInfoBySN(ctx context.Context, sn, pushRTMPUrl, pullRTMPUrl, videoID string) error // 修改签名以包含 videoID
+		FetchGatewaySNByDroneSN(ctx context.Context, droneSN string) (string, error)                // 新增获取网关SN的方法
 	}
 )
 
 type DroneImpl struct {
-	r    DroneRepo
-	l    *slog.Logger
-	mqtt mqtt.Client
+	r         DroneRepo
+	modelRepo ModelRepo
+	l         *slog.Logger
+	mqtt      mqtt.Client
 }
 
-func NewDroneImpl(r DroneRepo, l *slog.Logger, mqtt mqtt.Client) DroneSvc {
+func NewDroneImpl(r DroneRepo, modelRepo ModelRepo, l *slog.Logger, mqtt mqtt.Client) DroneSvc {
 	return &DroneImpl{
-		r:    r,
-		l:    l,
-		mqtt: mqtt,
+		r:         r,
+		modelRepo: modelRepo,
+		l:         l,
+		mqtt:      mqtt,
 	}
 }
 
 func (s *DroneImpl) Repo() DroneRepo {
 	return s.r
+}
+
+const pushDomain = "140433.livepush.myqcloud.com"
+const pullDomain = "lisoft.com.cn"
+const pushKey = "61c3e60eb8cf33bd4b4fb6a504fb51df"
+const pullKey = "drone"
+
+// StartLiveBySN 根据无人机SN启动直播并返回拉流地址
+// 此方法会为指定无人机生成推流和拉流地址，更新到数据库，并发送MQTT指令启动设备推流
+func (s *DroneImpl) StartLiveBySN(ctx context.Context, sn string) (string, error) {
+	// 获取无人机信息
+	drone, err := s.r.SelectBySN(ctx, sn)
+	if err != nil {
+		s.l.Error("获取无人机信息失败", slog.String("sn", sn), slog.Any("error", err))
+		return "", fmt.Errorf("获取无人机信息失败: %w", err)
+	}
+	droneModel, err := s.modelRepo.SelectDroneModelByID(ctx, drone.DroneModelID)
+	if err != nil {
+		s.l.Error("获取无人机信息失败", slog.String("sn", sn), slog.Any("error", err))
+		return "", fmt.Errorf("获取无人机信息失败: %w", err)
+	}
+
+	// 检查无人机是否有云台信息
+	if len(droneModel.Gimbals) == 0 {
+		s.l.Error("无人机没有云台信息", slog.String("sn", sn))
+		return "", fmt.Errorf("无人机 %s 没有云台信息", sn)
+	}
+
+	// 获取第一个云台信息
+	gimbal := droneModel.Gimbals[0]
+
+	// 构建直播所需参数
+	cameraIndex := strconv.Itoa(gimbal.Type) + "-" + strconv.Itoa(gimbal.SubType) + "-" + strconv.Itoa(gimbal.Gimbalindex)
+	videoIndex := "normal-0" // 普通视频流索引
+	videoID := fmt.Sprintf("%s/%s/%s", sn, cameraIndex, videoIndex)
+
+	// 设置过期时间为24小时后
+	expireTime := time.Now().Add(24 * time.Hour)
+	expireTimeHex := strconv.FormatInt(expireTime.Unix(), 16)
+
+	// 构建推流和拉流地址
+	pushRTMPUrl := txlive.BuildRTMPUrl(pushDomain, videoID, pushKey, expireTimeHex)
+	pullRTMPUrl := txlive.BuildRTMPUrl(pullDomain, videoID, pullKey, expireTimeHex)
+
+	s.l.Info("生成直播地址成功",
+		slog.String("sn", sn),
+		slog.String("push_url", pushRTMPUrl),
+		slog.String("pull_url", pullRTMPUrl),
+		slog.String("video_id", videoID),
+		slog.String("expire_time", expireTime.Format(time.RFC3339)),
+	)
+
+	// 更新无人机的直播信息到数据库
+	if err := s.r.UpdateLiveInfoBySN(ctx, sn, pushRTMPUrl, pullRTMPUrl, videoID); err != nil {
+		s.l.Error("更新无人机直播信息到数据库失败", slog.String("sn", sn), slog.Any("error", err))
+		return "", fmt.Errorf("更新无人机直播信息到数据库失败: %w", err)
+	}
+
+	// 获取 GatewaySN
+	gatewaySN, err := s.r.FetchGatewaySNByDroneSN(ctx, sn) // 使用仓库层方法获取
+	// 从无人机实体中获取 GwSN (在 repo.FetchStateBySN 中填充)
+	if gatewaySN == "" || err != nil {
+		s.l.Error("未能获取无人机关联的GatewaySN", slog.String("sn", sn))
+		// 注意：根据业务需求，这里可能需要返回错误，或者允许在没有GatewaySN的情况下继续（例如，仅更新数据库而不发送MQTT）
+		// 当前实现为继续执行，但实际直播可能无法启动
+		return "", fmt.Errorf("未能获取无人机关联的GatewaySN，无法发送MQTT指令")
+	}
+
+	if gatewaySN != "" {
+		// 构造 MQTT 消息
+		liveStartData := dto.LiveStartPushData{
+			URL:          pushRTMPUrl, // 设备端使用推流地址
+			URLType:      1,           // 1 代表 RTMP
+			VideoID:      videoID,
+			VideoQuality: 0, // 0 代表自适应
+		}
+		mqttRequest := dto.LiveStartPushRequest{
+			BID:       uuid.New().String(),
+			Data:      liveStartData,
+			TID:       uuid.New().String(),
+			Timestamp: time.Now().UnixMilli(),
+			Method:    "live_start_push",
+		}
+		payload, marshalErr := json.Marshal(mqttRequest)
+		if marshalErr != nil {
+			s.l.Error("序列化MQTT live_start_push 请求失败", slog.String("sn", sn), slog.Any("error", marshalErr))
+			return "", fmt.Errorf("序列化MQTT live_start_push请求失败: %w", marshalErr)
+		}
+
+		topic := fmt.Sprintf("thing/product/%s/services", gatewaySN)
+		s.l.Info("准备发送MQTT live_start_push 消息", slog.String("topic", topic), slog.String("payload", string(payload)))
+
+		token := s.mqtt.Publish(topic, 1, false, payload)
+		if token.WaitTimeout(5*time.Second) && token.Error() != nil {
+			s.l.Error("发送MQTT live_start_push 消息失败", slog.String("sn", sn), slog.String("topic", topic), slog.Any("error", token.Error()))
+			return "", fmt.Errorf("发送MQTT live_start_push消息失败: %w", token.Error())
+		} else if !token.WaitTimeout(5 * time.Second) {
+			s.l.Error("发送MQTT live_start_push 消息超时", slog.String("sn", sn), slog.String("topic", topic))
+			return "", fmt.Errorf("发送MQTT live_start_push消息超时")
+		}
+		s.l.Info("MQTT live_start_push 消息发送成功", slog.String("sn", sn), slog.String("topic", topic))
+
+		s.l.Info("启动无人机直播流程成功", slog.String("sn", sn))
+		return pullRTMPUrl, nil
+	} else {
+		s.l.Warn("GatewaySN为空，跳过发送MQTT live_start_push消息", slog.String("sn", sn))
+		return "", fmt.Errorf("GatewaySN为空，无法发送MQTT指令")
+	}
+
+}
+
+// StopLiveBySN 根据无人机SN停止直播
+// 此方法会发送MQTT指令停止设备推流，并清空数据库中的直播信息
+func (s *DroneImpl) StopLiveBySN(ctx context.Context, sn string) error {
+	// 获取无人机信息，特别是 CurrentVideoID 和 GatewaySN
+	drone, err := s.r.SelectBySN(ctx, sn)
+	if err != nil {
+		s.l.Error("获取无人机信息失败", slog.String("sn", sn), slog.Any("error", err))
+		return fmt.Errorf("获取无人机信息失败: %w", err)
+	}
+
+	if drone.CurrentVideoID == "" {
+		s.l.Info("无人机当前没有正在进行的直播", slog.String("sn", sn))
+		return nil // 或者根据业务返回特定错误，例如 ErrNoActiveStream
+	}
+
+	gatewaySN, err := s.r.FetchGatewaySNByDroneSN(ctx, sn) // 使用仓库层方法获取
+	if err != nil {
+		// handle
+	}
+	// 从无人机实体中获取 GwSN (在 repo.FetchStateBySN 中填充)
+	if gatewaySN == "" {
+		s.l.Error("未能获取无人机关联的GatewaySN", slog.String("sn", sn))
+		// 注意：根据业务需求，这里可能需要返回错误
+		// return fmt.Errorf("未能获取无人机关联的GatewaySN，无法发送MQTT指令")
+	}
+
+	if gatewaySN != "" {
+		// 构造 MQTT 消息
+		liveStopData := dto.LiveStopPushData{
+			VideoID: drone.CurrentVideoID,
+		}
+		mqttRequest := dto.LiveStopPushRequest{
+			BID:       uuid.New().String(),
+			Data:      liveStopData,
+			TID:       uuid.New().String(),
+			Timestamp: time.Now().UnixMilli(),
+			Method:    "live_stop_push",
+		}
+		payload, marshalErr := json.Marshal(mqttRequest)
+		if marshalErr != nil {
+			s.l.Error("序列化MQTT live_stop_push 请求失败", slog.String("sn", sn), slog.Any("error", marshalErr))
+			return fmt.Errorf("序列化MQTT live_stop_push请求失败: %w", marshalErr)
+		}
+
+		topic := fmt.Sprintf("thing/product/%s/services", gatewaySN)
+		s.l.Info("准备发送MQTT live_stop_push 消息", slog.String("topic", topic), slog.String("payload", string(payload)))
+
+		token := s.mqtt.Publish(topic, 1, false, payload)
+		if token.WaitTimeout(5*time.Second) && token.Error() != nil {
+			s.l.Error("发送MQTT live_stop_push 消息失败", slog.String("sn", sn), slog.String("topic", topic), slog.Any("error", token.Error()))
+			return fmt.Errorf("发送MQTT live_stop_push消息失败: %w", token.Error())
+		} else if !token.WaitTimeout(5 * time.Second) {
+			s.l.Error("发送MQTT live_stop_push 消息超时", slog.String("sn", sn), slog.String("topic", topic))
+			return fmt.Errorf("发送MQTT live_stop_push消息超时")
+		}
+		s.l.Info("MQTT live_stop_push 消息发送成功", slog.String("sn", sn), slog.String("topic", topic))
+	} else {
+		s.l.Warn("GatewaySN为空，跳过发送MQTT live_stop_push消息", slog.String("sn", sn))
+	}
+
+	// 清空数据库中的直播信息
+	if err := s.r.UpdateLiveInfoBySN(ctx, sn, "", "", ""); err != nil {
+		s.l.Error("清空无人机直播信息失败", slog.String("sn", sn), slog.Any("error", err))
+		return fmt.Errorf("清空无人机直播信息失败: %w", err)
+	}
+
+	s.l.Info("停止无人机直播流程成功", slog.String("sn", sn))
+	return nil
 }
 
 func (s *DroneImpl) SaveDroneTopo(ctx context.Context, data dto.UpdateTopoPayload) error {

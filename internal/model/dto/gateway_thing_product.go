@@ -64,3 +64,36 @@ type GatewayOSDData struct {
 	Latitude        float64 `json:"latitude,omitempty"`
 	Longitude       float64 `json:"longitude,omitempty"`
 }
+
+// LiveStartPushRequest 对应MQTT live_start_push方法的请求体
+// Topic: thing/product/*{gateway_sn}*/services
+// Method: live_start_push
+type LiveStartPushData struct {
+	URL          string `json:"url"`           // RTMP推流地址
+	URLType      int    `json:"url_type"`      // 直播协议类型, 1 for RTMP
+	VideoID      string `json:"video_id"`      // 直播视频流的 ID, 格式: {sn}/{camera_index}/{video_index}
+	VideoQuality int    `json:"video_quality"` // 直播质量, 0:自适应, 1:流畅, 2:标清, 3:高清, 4:超清
+}
+
+type LiveStartPushRequest struct {
+	BID       string            `json:"bid"`       // 请求唯一ID
+	Data      LiveStartPushData `json:"data"`      // 具体业务数据
+	TID       string            `json:"tid"`       // 终端唯一ID
+	Timestamp int64             `json:"timestamp"` // 请求时间戳 (ms)
+	Method    string            `json:"method"`    // 固定为 "live_start_push"
+}
+
+// LiveStopPushRequest 对应MQTT live_stop_push方法的请求体
+// Topic: thing/product/*{gateway_sn}*/services
+// Method: live_stop_push
+type LiveStopPushData struct {
+	VideoID string `json:"video_id"` // 直播视频流的 ID
+}
+
+type LiveStopPushRequest struct {
+	BID       string           `json:"bid"`       // 请求唯一ID
+	Data      LiveStopPushData `json:"data"`      // 具体业务数据
+	TID       string           `json:"tid"`       // 终端唯一ID
+	Timestamp int64            `json:"timestamp"` // 请求时间戳 (ms)
+	Method    string           `json:"method"`    // 固定为 "live_stop_push"
+}

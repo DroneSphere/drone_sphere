@@ -17,6 +17,10 @@ type Drone struct {
 	Type        int    `json:"type"`        // 类型（已废弃，保留向后兼容）
 	SubType     int    `json:"sub_type"`    // 子类型（已废弃，保留向后兼容）
 
+	LivePushRTMPUrl   string `json:"live_push_rtmp_url" gorm:"column:live_push_rtmp_url"`
+	LivePullWebRTCUrl string `json:"live_pull_webrtc_url" gorm:"column:live_pull_webrtc_url"`
+	CurrentVideoID    string `json:"current_video_id"` // 当前直播视频流ID
+
 	// 型号信息 - 关联字段
 	DroneModelID uint              `json:"drone_model_id"` // 无人机型号ID
 	DroneModel   po.DroneModel     `json:"drone_model"`    // 无人机型号
@@ -27,6 +31,7 @@ type Drone struct {
 	Status    string `json:"status"` // 在线状态
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	GwSN      string `json:"gw_sn,omitempty"` // 从 ro.Drone 继承或单独设置的网关SN
 	dto.DroneMessageProperty
 }
 
@@ -36,6 +41,10 @@ func NewDrone(po *po.Drone, rt *ro.Drone) *Drone {
 	if err := copier.Copy(d, po); err != nil {
 		panic(err)
 	}
+
+	d.LivePushRTMPUrl = po.LivePushRTMPUrl
+	d.LivePullWebRTCUrl = po.LivePullWebRTCUrl
+	d.CurrentVideoID = po.CurrentVideoID // 从持久化对象复制 CurrentVideoID
 
 	// 实体中添加型号信息
 	d.DroneModelID = po.DroneModelID
