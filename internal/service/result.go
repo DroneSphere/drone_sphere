@@ -37,6 +37,7 @@ type ResultRepo interface {
 	GetObjectTypeOptions(ctx context.Context) ([]dto.ObjectTypeOption, error)
 	// DeleteByID 根据ID删除结果
 	DeleteByID(ctx context.Context, id uint) error
+	GetObjectTypeIDByType(ctx context.Context, objectType string) (uint, error)
 }
 
 type ResultImpl struct {
@@ -62,15 +63,36 @@ func (s *ResultImpl) Repo() ResultRepo {
 
 func (s *ResultImpl) Create(ctx context.Context, result dto.CreateResultDTO) (uint, error) {
 	r := &po.Result{
-		JobID:              result.JobID,
-		WaylineID:          result.WaylineID,
-		DroneID:            result.DroneID,
-		DetectObjectTypeID: result.ObjectTypeID, // 使用物体类型ID关联到物体类型表
-		ObjectConfidence:   result.ObjectConfidence,
-		ObjectPosition:     result.Position,
-		ObjectCoordinate:   result.Coordinate,
-		ImageUrl:           result.ImageUrl,
-		// 不再直接设置 ObjectType 和 ObjectLabel，而是通过关联获取
+		JobID:     result.JobID,
+		WaylineID: result.WaylineID,
+		// DroneID:            result.DroneID,
+		// DetectObjectTypeID: result.ObjectTypeID, // 使用物体类型ID关联到物体类型表
+		ObjectConfidence: result.ObjectConfidence,
+		ObjectPosition:   result.Position,
+		ObjectCoordinate: result.Coordinate,
+		ImageUrl:         result.ImageUrl,
+	}
+
+	if result.DroneID != 0 && result.ObjectTypeID != 0 {
+		// 关联无人机ID和物体类型ID
+		r.DroneID = result.DroneID
+		r.DetectObjectTypeID = result.ObjectTypeID
+	} else if result.DroneSN != "" && result.ObjectType != "" {
+		// 通过无人机序列号和物体类型名称获取ID
+		drone, err := s.droneRepo.SelectBySN(ctx, result.DroneSN)
+		if err != nil {
+			s.l.Error("获取无人机信息失败", slog.Any("err", err))
+			return 0, err
+		}
+		r.DroneID = drone.ID
+		r.DetectObjectTypeID, err = s.repo.GetObjectTypeIDByType(ctx, result.ObjectType)
+		if err != nil {
+			s.l.Error("获取物体类型ID失败", slog.Any("err", err))
+			return 0, err
+		}
+	} else {
+		s.l.Error("缺少必要的参数", slog.Any("result", result))
+		return 0, fmt.Errorf("缺少必要的参数")
 	}
 
 	if err := s.repo.Create(ctx, r); err != nil {

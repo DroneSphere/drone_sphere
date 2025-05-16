@@ -33,7 +33,7 @@ type DetectObjectType struct {
 	CreatedTime    time.Time `json:"created_time" gorm:"autoCreateTime;column:created_time"`
 	UpdatedTime    time.Time `json:"updated_time" gorm:"autoUpdateTime;column:updated_time"`
 	State          int       `json:"state" gorm:"default:0"` // -1: deleted, 0: active
-	Type           int       `json:"type"`                   // 物体类型
+	Type           string    `json:"type"`                   // 物体类型
 	Label          string    `json:"label"`                  // 物体标签
 	AdditionalInfo string    `json:"additional_info"`        // 物体附加信息
 }

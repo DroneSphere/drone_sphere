@@ -94,7 +94,7 @@ func (r *ResultRouter) create(c *fiber.Ctx) error {
 
 	id, err := r.svc.Create(context.Background(), req)
 	if err != nil {
-		return c.JSON(Fail(InternalError))
+		return c.JSON(FailWithMsg(err.Error()))
 	}
 
 	return c.JSON(Success(map[string]uint{"id": id}))

@@ -123,3 +123,17 @@ func (r *ResultDefaultRepo) DeleteByID(ctx context.Context, id uint) error {
 
 	return nil
 }
+
+func (r *ResultDefaultRepo) GetObjectTypeIDByType(ctx context.Context, objectType string) (uint, error) {
+	var objectTypeID uint
+	if err := r.tx.WithContext(ctx).
+		Model(&po.DetectObjectType{}).
+		Where("state = ?", 0).
+		Where("type = ?", objectType).
+		Select("object_id").
+		First(&objectTypeID).Error; err != nil {
+		r.l.Error("获取物体类型ID失败", slog.Any("err", err))
+		return 0, err
+	}
+	return objectTypeID, nil
+}

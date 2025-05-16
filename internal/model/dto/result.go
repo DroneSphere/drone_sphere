@@ -34,7 +34,7 @@ type ResultDetailDTO struct {
 	DroneID          uint           `json:"drone_id"`          // 无人机ID
 	DroneCallsign    string         `json:"drone_callsign"`    // 无人机呼号
 	WaylineID        uint           `json:"wayline_id"`        // 航线ID
-	ObjectType       int            `json:"object_type"`       // 物体类型
+	ObjectType       string         `json:"object_type"`       // 物体类型
 	ObjectLabel      string         `json:"object_label"`      // 物体标签
 	ObjectConfidence float32        `json:"object_confidence"` // 物体置信度
 	Position         datatypes.JSON `json:"position"`          // 位置信息(经纬度)
@@ -48,7 +48,9 @@ type CreateResultDTO struct {
 	JobID            uint           `json:"job_id"`            // 任务ID
 	WaylineID        uint           `json:"wayline_id"`        // 航线ID
 	DroneID          uint           `json:"drone_id"`          // 无人机ID
+	DroneSN          string         `json:"drone_sn"`          // 无人机序列号
 	ObjectTypeID     uint           `json:"object_type_id"`    // 物体类型ID
+	ObjectType       string         `json:"object_type"`       // 物体类型
 	ObjectConfidence float32        `json:"object_confidence"` // 物体置信度
 	Position         datatypes.JSON `json:"position"`          // 位置信息
 	Coordinate       datatypes.JSON `json:"coordinate"`        // 坐标信息
