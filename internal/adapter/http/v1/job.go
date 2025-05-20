@@ -200,13 +200,14 @@ func (r *JobRouter) getCreationDrones(c *fiber.Ctx) error {
 
 func (r *JobRouter) create(c *fiber.Ctx) error {
 	type Request struct {
-		Name          string                 `json:"name"`
-		Description   string                 `json:"description"`
-		AreaID        int64                  `json:"area_id"`
-		ScheduleTime  string                 `json:"schedule_time"` // 新增：任务计划执行时间
-		Drones        []po.JobDronePO        `json:"drones"`
-		Waylines      []po.JobWaylinePO      `json:"waylines"`
-		CommandDrones []po.JobCommandDronePO `json:"command_drones"`
+		Name                    string                        `json:"name"`
+		Description             string                        `json:"description"`
+		AreaID                  int64                         `json:"area_id"`
+		ScheduleTime            string                        `json:"schedule_time"` // 新增：任务计划执行时间
+		Drones                  []po.JobDronePO               `json:"drones"`
+		Waylines                []po.JobWaylinePO             `json:"waylines"`
+		CommandDrones           []po.JobCommandDronePO        `json:"command_drones"`
+		WaylineGenerationParams po.JobWaylineGenerationParams `json:"wayline_generation_params"`
 	}
 
 	var req Request
@@ -224,7 +225,7 @@ func (r *JobRouter) create(c *fiber.Ctx) error {
 	r.l.Info("create job", "req", req)
 	ctx := context.Background()
 
-	id, err := r.svc.CreateJob(ctx, req.Name, req.Description, uint(req.AreaID), scheduleTime, req.Drones, req.Waylines, req.CommandDrones)
+	id, err := r.svc.CreateJob(ctx, req.Name, req.Description, uint(req.AreaID), scheduleTime, req.Drones, req.Waylines, req.CommandDrones, req.WaylineGenerationParams)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
@@ -234,14 +235,15 @@ func (r *JobRouter) create(c *fiber.Ctx) error {
 func (r *JobRouter) update(c *fiber.Ctx) error {
 	// 定义接收参数的结构体，与create方法保持一致
 	type Request struct {
-		ID            uint                   `json:"id"` // 任务ID
-		Name          string                 `json:"name"`
-		Description   string                 `json:"description"`
-		AreaID        int64                  `json:"area_id"`
-		ScheduleTime  string                 `json:"schedule_time"` // 新增：任务计划执行时间
-		Drones        []po.JobDronePO        `json:"drones"`
-		Waylines      []po.JobWaylinePO      `json:"waylines"`
-		CommandDrones []po.JobCommandDronePO `json:"command_drones"`
+		ID                      uint                          `json:"id"` // 任务ID
+		Name                    string                        `json:"name"`
+		Description             string                        `json:"description"`
+		AreaID                  int64                         `json:"area_id"`
+		ScheduleTime            string                        `json:"schedule_time"` // 新增：任务计划执行时间
+		Drones                  []po.JobDronePO               `json:"drones"`
+		Waylines                []po.JobWaylinePO             `json:"waylines"`
+		CommandDrones           []po.JobCommandDronePO        `json:"command_drones"`
+		WaylineGenerationParams po.JobWaylineGenerationParams `json:"wayline_generation_params"`
 	}
 
 	var req Request
@@ -257,7 +259,7 @@ func (r *JobRouter) update(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	job, err := r.svc.ModifyJob(ctx, req.ID, req.Name, req.Description, uint(req.AreaID), scheduleTime, req.Drones, req.Waylines, req.CommandDrones)
+	job, err := r.svc.ModifyJob(ctx, req.ID, req.Name, req.Description, uint(req.AreaID), scheduleTime, req.Drones, req.Waylines, req.CommandDrones, req.WaylineGenerationParams)
 	if err != nil {
 		return c.JSON(Fail(InternalError))
 	}
