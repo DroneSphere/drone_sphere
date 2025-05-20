@@ -313,39 +313,84 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 	}
 
 	// 删除旧的航线文件
-	for _, w := range oldWaylines {
-		// 通过 JobID 和 DroneKey 查询航线文件
-		existWayline, err := j.waylineRepo.SelectByJobIDAndDroneKey(ctx, id, w.DroneKey)
-		if err != nil {
-			j.l.Error("获取航线文件失败", slog.Any("error", err))
-			return nil, err
-		}
+	var deleteWg sync.WaitGroup
+	deleteErrCh := make(chan error, len(oldWaylines))
 
-		// 删除已有的航线文件
-		err = j.waylineRepo.DeleteByID(ctx, existWayline.ID)
-		if err != nil {
-			j.l.Error("删除航线文件失败", slog.Any("error", err))
-			return nil, err
-		}
+	for _, w := range oldWaylines {
+		deleteWg.Add(1)
+		// 使用闭包捕获当前循环变量
+		go func(wayline po.JobWaylinePO) {
+			defer deleteWg.Done()
+
+			// 通过 JobID 和 DroneKey 查询航线文件
+			existWayline, err := j.waylineRepo.SelectByJobIDAndDroneKey(ctx, id, wayline.DroneKey)
+			if err != nil {
+				j.l.Error("获取航线文件失败", slog.Any("error", err), slog.String("droneKey", wayline.DroneKey))
+				deleteErrCh <- err
+				return
+			}
+
+			// 删除已有的航线文件
+			err = j.waylineRepo.DeleteByID(ctx, existWayline.ID)
+			if err != nil {
+				j.l.Error("删除航线文件失败", slog.Any("error", err), slog.Any("waylineID", existWayline.ID))
+				deleteErrCh <- err
+				return
+			}
+			j.l.Info("成功删除航线文件", slog.Any("waylineID", existWayline.ID), slog.String("droneKey", wayline.DroneKey))
+		}(w)
+	}
+
+	// 等待所有删除操作完成
+	deleteWg.Wait()
+	close(deleteErrCh)
+
+	// 检查是否有删除错误
+	if len(deleteErrCh) > 0 {
+		err := <-deleteErrCh
+		j.l.Error("删除航线文件过程中出现错误", slog.Any("error", err))
+		return nil, err
 	}
 
 	// 更新航线文件
-	for _, w := range waylines {
-		// 找到对应的无人机
-		var drone po.JobDronePO
-		for _, d := range drones {
-			if d.Key == w.DroneKey {
-				drone = d
-				break
-			}
-		}
+	var createWg sync.WaitGroup
+	createErrCh := make(chan error, len(waylines))
 
-		// 调用抽取的方法创建和保存航线文件
-		_, err = j.createWaylineFile(ctx, id, p.Name, drone, w)
-		if err != nil {
-			j.l.Error("创建航线文件失败", slog.Any("error", err))
-			return nil, err
-		}
+	for _, w := range waylines {
+		createWg.Add(1)
+		// 使用闭包捕获当前循环变量
+		go func(wayline po.JobWaylinePO) {
+			defer createWg.Done()
+
+			// 找到对应的无人机
+			var drone po.JobDronePO
+			for _, d := range drones {
+				if d.Key == wayline.DroneKey {
+					drone = d
+					break
+				}
+			}
+
+			// 调用抽取的方法创建和保存航线文件
+			_, err := j.createWaylineFile(ctx, id, p.Name, drone, wayline)
+			if err != nil {
+				j.l.Error("创建航线文件失败", slog.Any("error", err), slog.String("droneKey", wayline.DroneKey))
+				createErrCh <- err
+				return
+			}
+			j.l.Info("成功创建航线文件", slog.String("droneKey", wayline.DroneKey))
+		}(w)
+	}
+
+	// 等待所有创建操作完成
+	createWg.Wait()
+	close(createErrCh)
+
+	// 检查是否有创建错误
+	if len(createErrCh) > 0 {
+		err := <-createErrCh
+		j.l.Error("创建航线文件过程中出现错误", slog.Any("error", err))
+		return nil, err
 	}
 
 	// 返回更新后的任务
