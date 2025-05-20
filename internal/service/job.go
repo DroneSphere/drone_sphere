@@ -295,6 +295,7 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 		return nil, err
 	}
 
+	oldWaylines := p.Waylines
 	// 更新任务信息
 	p.Name = name
 	p.Description = description
@@ -311,8 +312,8 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 		return nil, err
 	}
 
-	// 更新航线文件
-	for _, w := range waylines {
+	// 删除旧的航线文件
+	for _, w := range oldWaylines {
 		// 通过 JobID 和 DroneKey 查询航线文件
 		existWayline, err := j.waylineRepo.SelectByJobIDAndDroneKey(ctx, id, w.DroneKey)
 		if err != nil {
@@ -326,7 +327,10 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 			j.l.Error("删除航线文件失败", slog.Any("error", err))
 			return nil, err
 		}
+	}
 
+	// 更新航线文件
+	for _, w := range waylines {
 		// 找到对应的无人机
 		var drone po.JobDronePO
 		for _, d := range drones {
