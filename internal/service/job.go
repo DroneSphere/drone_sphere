@@ -279,7 +279,7 @@ func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaI
 		}
 
 		// 调用抽取的方法创建和保存航线文件
-		_, err := j.createWaylineFile(ctx, job.ID, job.Name, drone, w)
+		_, err := j.createWaylineFile(ctx, job.ID, job.Name, drone, w, waylineGenerationParams)
 		if err != nil {
 			j.l.Error("创建航线文件失败", slog.Any("error", err))
 			return 0, err
@@ -372,7 +372,7 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 			}
 
 			// 调用抽取的方法创建和保存航线文件
-			_, err := j.createWaylineFile(ctx, id, p.Name, drone, wayline)
+			_, err := j.createWaylineFile(ctx, id, p.Name, drone, wayline, waylineGenerationParams)
 			if err != nil {
 				j.l.Error("创建航线文件失败", slog.Any("error", err), slog.String("droneKey", wayline.DroneKey))
 				createErrCh <- err
@@ -429,8 +429,9 @@ func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string, schedu
 // jobName: 任务名称
 // drone: 无人机信息
 // wayline: 航线信息
+// params: 航线生成参数
 // 返回保存的航线信息和可能的错误
-func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName string, drone po.JobDronePO, wayline po.JobWaylinePO) (*po.Wayline, error) {
+func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName string, drone po.JobDronePO, wayline po.JobWaylinePO, params po.JobWaylineGenerationParams) (*po.Wayline, error) {
 	// 获取无人机变体信息
 	var variation po.DroneVariation
 	variations, err := j.modelRepo.SelectAllDroneVariation(ctx, nil)
@@ -447,7 +448,7 @@ func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName str
 	j.l.Info("无人机变体", slog.Any("DroneVariation", variation))
 
 	// 生成航线文件
-	waylineDoc, err := j.generateWayline(ctx, drone.PhysicalDroneID, variation, drone.TakeoffPoint, wayline)
+	waylineDoc, err := j.generateWayline(ctx, drone.PhysicalDroneID, variation, drone.TakeoffPoint, wayline, params)
 	if err != nil {
 		j.l.Error("生成航线文件失败", slog.Any("error", err))
 		return nil, err
@@ -586,7 +587,7 @@ func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName str
 	return savedWayline, nil
 }
 
-func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariation po.DroneVariation, takeoffPoint po.JobTakeoffPointPO, wayline po.JobWaylinePO) (wpml.Document, error) {
+func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariation po.DroneVariation, takeoffPoint po.JobTakeoffPointPO, wayline po.JobWaylinePO, params po.JobWaylineGenerationParams) (wpml.Document, error) {
 	droneModel := droneVariation.DroneModel
 	gimbals := droneVariation.Gimbals
 	drone, err := j.droneRepo.SelectByID(ctx, droneID)
@@ -665,6 +666,56 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 			GimbalPitchAngle:      -90,
 			ActionGroup:           nil,
 		}
+		var actions []wpml.Action
+		trueBool := wpml.BoolAsInt(true)
+		falseBool := wpml.BoolAsInt(false)
+
+		if params.GimbalPitch != 0 {
+			pitchRotateAction := wpml.Action{
+				ActionType: wpml.ActionGimbalRotate,
+				ActionParams: &wpml.GimbalRotateParams{
+					PayloadPositionIndex:    gimbals[0].Gimbalindex,
+					GimbalHeadingYawBase:    "north",
+					GimbalRotateMode:        "absoluteAngle",
+					GimbalPitchRotateEnable: trueBool,
+					GimbalPitchRotateAngle:  float64(params.GimbalPitch),
+					GimbalYawRotateEnable:   falseBool,
+					GimbalYawRotateAngle:    0,
+					GimbalRollRotateEnable:  falseBool,
+					GimbalRollRotateAngle:   0,
+					GimbalRotateTimeEnable:  falseBool,
+					GimbalRotateTime:        0,
+				},
+			}
+			actions = append(actions, pitchRotateAction)
+		}
+		if params.GimbalZoom != 1 {
+			zoomAction := wpml.Action{
+				ActionType: wpml.ActionZoom,
+				ActionParams: &wpml.ZoomParams{
+					PayloadPositionIndex: gimbals[0].Gimbalindex,
+					// TODO: 这里需要根据实际情况设置焦距
+					FocalLength: float64(params.GimbalZoom) * 15,
+				},
+			}
+			actions = append(actions, zoomAction)
+		}
+
+		if len(actions) > 0 {
+			for idx, action := range actions {
+				action.ActionId = idx
+			}
+			actionGroup := &wpml.ActionGroup{
+				ActionGroupId:         0,
+				ActionGroupStartIndex: 0,
+				ActionGroupEndIndex:   0,
+				ActionGroupMode:       wpml.ActionGroupModeSequence,
+				ActionTrigger:         wpml.ActionTrigger{TriggerType: wpml.TriggerReachPoint},
+			}
+			actionGroup.Actions = actions
+			placemark.ActionGroup = actionGroup
+		}
+
 		folder.Placemarks = append(folder.Placemarks, placemark)
 	}
 

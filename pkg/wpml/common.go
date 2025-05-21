@@ -583,3 +583,22 @@ type StartRecordParams struct {
 	PayloadLensIndex          []string  `xml:"wpml:payloadLensIndex"`          // 存储类型列表
 	UseGlobalPayloadLensIndex BoolAsInt `xml:"wpml:useGlobalPayloadLensIndex"` // 是否使用全局设置
 }
+
+type GimbalRotateParams struct {
+	PayloadPositionIndex    int       `xml:"wpml:payloadPositionIndex"`    // 负载挂载位置
+	GimbalHeadingYawBase    string    `xml:"wpml:gimbalHeadingYawBase"`    // 云台偏航角转动坐标系
+	GimbalRotateMode        string    `xml:"wpml:gimbalRotateMode"`        // 云台转动模式
+	GimbalPitchRotateEnable BoolAsInt `xml:"wpml:gimbalPitchRotateEnable"` // 是否使能云台Pitch转动
+	GimbalPitchRotateAngle  float64   `xml:"wpml:gimbalPitchRotateAngle"`  // 云台Pitch转动角度
+	GimbalRollRotateEnable  BoolAsInt `xml:"wpml:gimbalRollRotateEnable"`  // 是否使能云台Roll转动
+	GimbalRollRotateAngle   float64   `xml:"wpml:gimbalRollRotateAngle"`   // 云台Roll转动角度
+	GimbalYawRotateEnable   BoolAsInt `xml:"wpml:gimbalYawRotateEnable"`   // 是否使能云台Yaw转动
+	GimbalYawRotateAngle    float64   `xml:"wpml:gimbalYawRotateAngle"`    // 云台Yaw转动角度
+	GimbalRotateTimeEnable  BoolAsInt `xml:"wpml:gimbalRotateTimeEnable"`  // 是否使能云台转动时间
+	GimbalRotateTime        float64   `xml:"wpml:gimbalRotateTime"`        // 云台完成转动用时
+}
+
+type ZoomParams struct {
+	PayloadPositionIndex int     `xml:"wpml:payloadPositionIndex"` // 负载挂载位置
+	FocalLength          float64 `xml:"wpml:focalLength"`          // 变焦焦距（单位：mm）
+}
