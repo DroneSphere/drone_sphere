@@ -666,54 +666,56 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 			GimbalPitchAngle:      -90,
 			ActionGroup:           nil,
 		}
-		var actions []wpml.Action
-		trueBool := wpml.BoolAsInt(true)
-		falseBool := wpml.BoolAsInt(false)
+		if idx == 0 {
+			var actions []wpml.Action
+			trueBool := wpml.BoolAsInt(true)
+			falseBool := wpml.BoolAsInt(false)
 
-		if params.GimbalPitch != 0 {
-			pitchRotateAction := wpml.Action{
-				ActionType: wpml.ActionGimbalRotate,
-				ActionParams: &wpml.GimbalRotateParams{
-					PayloadPositionIndex:    gimbals[0].Gimbalindex,
-					GimbalHeadingYawBase:    "north",
-					GimbalRotateMode:        "absoluteAngle",
-					GimbalPitchRotateEnable: trueBool,
-					GimbalPitchRotateAngle:  float64(params.GimbalPitch),
-					GimbalYawRotateEnable:   falseBool,
-					GimbalYawRotateAngle:    0,
-					GimbalRollRotateEnable:  falseBool,
-					GimbalRollRotateAngle:   0,
-					GimbalRotateTimeEnable:  falseBool,
-					GimbalRotateTime:        0,
-				},
+			if params.GimbalPitch != 0 {
+				pitchRotateAction := wpml.Action{
+					ActionType: wpml.ActionGimbalRotate,
+					ActionParams: &wpml.GimbalRotateParams{
+						PayloadPositionIndex:    gimbals[0].Gimbalindex,
+						GimbalHeadingYawBase:    "north",
+						GimbalRotateMode:        "absoluteAngle",
+						GimbalPitchRotateEnable: trueBool,
+						GimbalPitchRotateAngle:  float64(params.GimbalPitch),
+						GimbalYawRotateEnable:   falseBool,
+						GimbalYawRotateAngle:    0,
+						GimbalRollRotateEnable:  falseBool,
+						GimbalRollRotateAngle:   0,
+						GimbalRotateTimeEnable:  falseBool,
+						GimbalRotateTime:        0,
+					},
+				}
+				actions = append(actions, pitchRotateAction)
 			}
-			actions = append(actions, pitchRotateAction)
-		}
-		if params.GimbalZoom != 1 {
-			zoomAction := wpml.Action{
-				ActionType: wpml.ActionZoom,
-				ActionParams: &wpml.ZoomParams{
-					PayloadPositionIndex: gimbals[0].Gimbalindex,
-					// TODO: 这里需要根据实际情况设置焦距
-					FocalLength: float64(params.GimbalZoom) * 15,
-				},
+			if params.GimbalZoom != 1 {
+				zoomAction := wpml.Action{
+					ActionType: wpml.ActionZoom,
+					ActionParams: &wpml.ZoomParams{
+						PayloadPositionIndex: gimbals[0].Gimbalindex,
+						// TODO: 这里需要根据实际情况设置焦距
+						FocalLength: float64(params.GimbalZoom) * 15,
+					},
+				}
+				actions = append(actions, zoomAction)
 			}
-			actions = append(actions, zoomAction)
-		}
 
-		if len(actions) > 0 {
-			for idx, action := range actions {
-				action.ActionId = idx
+			if len(actions) > 0 {
+				for idx, action := range actions {
+					action.ActionId = idx
+				}
+				actionGroup := &wpml.ActionGroup{
+					ActionGroupId:         0,
+					ActionGroupStartIndex: 0,
+					ActionGroupEndIndex:   0,
+					ActionGroupMode:       wpml.ActionGroupModeSequence,
+					ActionTrigger:         wpml.ActionTrigger{TriggerType: wpml.TriggerReachPoint},
+				}
+				actionGroup.Actions = actions
+				placemark.ActionGroup = actionGroup
 			}
-			actionGroup := &wpml.ActionGroup{
-				ActionGroupId:         0,
-				ActionGroupStartIndex: 0,
-				ActionGroupEndIndex:   0,
-				ActionGroupMode:       wpml.ActionGroupModeSequence,
-				ActionTrigger:         wpml.ActionTrigger{TriggerType: wpml.TriggerReachPoint},
-			}
-			actionGroup.Actions = actions
-			placemark.ActionGroup = actionGroup
 		}
 
 		folder.Placemarks = append(folder.Placemarks, placemark)
