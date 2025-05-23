@@ -667,11 +667,13 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 		}
 		if idx == 0 {
 			var actions []wpml.Action
+			actionIdx := 0
 			trueBool := wpml.BoolAsInt(true)
 			falseBool := wpml.BoolAsInt(false)
 
 			if params.GimbalPitch != 0 {
 				pitchRotateAction := wpml.Action{
+					ActionId:   actionIdx,
 					ActionType: wpml.ActionGimbalRotate,
 					ActionParams: &wpml.GimbalRotateParams{
 						PayloadPositionIndex:    gimbals[0].Gimbalindex,
@@ -687,10 +689,12 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 						GimbalRotateTime:        0,
 					},
 				}
+				actionIdx++
 				actions = append(actions, pitchRotateAction)
 			}
 			if params.GimbalZoom != 1 {
 				zoomAction := wpml.Action{
+					ActionId:   actionIdx,
 					ActionType: wpml.ActionZoom,
 					ActionParams: &wpml.ZoomParams{
 						PayloadPositionIndex: gimbals[0].Gimbalindex,
@@ -698,6 +702,7 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 						FocalLength: float64(params.GimbalZoom) * 15,
 					},
 				}
+				actionIdx++
 				actions = append(actions, zoomAction)
 			}
 
