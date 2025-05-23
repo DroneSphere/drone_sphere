@@ -623,15 +623,15 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 		},
 	}
 
-	trueBool := wpml.BoolAsInt(true) // 使用变量的地址
-	falseBool := wpml.BoolAsInt(false)
+	trueBool := wpml.BoolAsInt(true)          // 使用变量的地址
 	templateType := wpml.TemplateTypeWaypoint // 先创建一个变量
 	templateID := 0
 	autoFlightSpeed := 1.0
-	GimbalPitchMode := wpml.GimbalPitchModeUsePointSetting
+	GimbalPitchMode := wpml.GimbalPitchModeManual
 	globalWaypointHeadingParam := wpml.WaypointHeadingParam{
 		WaypointHeadingMode: wpml.HeadingFollowWayline, // 航点航线
 	}
+	globalHeight := float64(params.FlyingHeight)
 	globalWaypointTurnMode := wpml.ToPointAndStopWithDiscontinuityCurvature
 	folder := wpml.Folder{
 		TemplateType: &templateType, // 使用变量的地址 // 航点航线
@@ -642,6 +642,7 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 		},
 		AutoFlightSpeed:            autoFlightSpeed,             // 自动飞行速度
 		GimbalPitchMode:            &GimbalPitchMode,            // 使用点设置
+		GlobalHeight:               &globalHeight,               // 全局高度
 		GlobalWaypointHeadingParam: &globalWaypointHeadingParam, // 航点航线
 		GlobalWaypointTurnMode:     &globalWaypointTurnMode,     // 航点转弯模式
 		GlobalUseStraightLine:      &trueBool,                   // 使用直线
@@ -652,10 +653,10 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 		placemark := wpml.Placemark{
 			Point:                 wpml.Point{Coordinates: wpml.FormatCoordinates(float64(lng), float64(lat))},
 			Index:                 idx,
-			UseGlobalHeight:       &falseBool,
-			Height:                &wayline.Altitude,
+			UseGlobalHeight:       &trueBool,
+			Height:                nil,
 			EllipsoidHeight:       nil,
-			ExecuteHeight:         &wayline.Altitude,
+			ExecuteHeight:         nil,
 			UseGlobalSpeed:        &trueBool,
 			UseGlobalHeadingParam: &trueBool,
 			WaypointHeadingParam:  nil,
