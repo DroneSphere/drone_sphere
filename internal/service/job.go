@@ -637,9 +637,8 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 		TemplateType: &templateType, // 使用变量的地址 // 航点航线
 		TemplateID:   &templateID,
 		WaylineCoordinateSysParam: &wpml.WaylineCoordinateSysParam{
-			CoordinateMode:  wpml.CoordinateModeWGS84,            // WGS84坐标系
-			HeightMode:      wpml.HeightModeRelativeToStartPoint, // 高度相对于起点
-			PositioningType: wpml.PositioningTypeRTKBaseStation,  // RTK基站定位
+			CoordinateMode: wpml.CoordinateModeWGS84,            // WGS84坐标系
+			HeightMode:     wpml.HeightModeRelativeToStartPoint, // 高度相对于起点
 		},
 		AutoFlightSpeed:            autoFlightSpeed,             // 自动飞行速度
 		GimbalPitchMode:            &GimbalPitchMode,            // 使用点设置
