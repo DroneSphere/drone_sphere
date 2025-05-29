@@ -479,9 +479,9 @@ func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName str
 			} else {
 				p.ExecuteHeight = p.EllipsoidHeight
 			}
-			p.EllipsoidHeight = nil
-			p.Height = nil
-			p.UseGlobalHeight = nil
+			// p.EllipsoidHeight = nil
+			// p.Height = nil
+			// p.UseGlobalHeight = nil
 			// 处理速度
 			if *p.UseGlobalSpeed {
 				p.WaypointSpeed = f.AutoFlightSpeed
