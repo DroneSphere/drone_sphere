@@ -632,6 +632,7 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 		WaypointHeadingMode: wpml.HeadingFollowWayline, // 航点航线
 	}
 	globalHeight := float64(params.FlyingHeight)
+	executeHeightMode := wpml.ExecuteHeightModeRelativeToStartPoint // 执行高度模式相对于起点
 	globalWaypointTurnMode := wpml.ToPointAndStopWithDiscontinuityCurvature
 	folder := wpml.Folder{
 		TemplateType: &templateType, // 使用变量的地址 // 航点航线
@@ -643,6 +644,7 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 		AutoFlightSpeed:            autoFlightSpeed,             // 自动飞行速度
 		GimbalPitchMode:            &GimbalPitchMode,            // 使用点设置
 		GlobalHeight:               &globalHeight,               // 全局高度
+		ExecuteHeightMode:          &executeHeightMode,          // 执行高度模式
 		GlobalWaypointHeadingParam: &globalWaypointHeadingParam, // 航点航线
 		GlobalWaypointTurnMode:     &globalWaypointTurnMode,     // 航点转弯模式
 		GlobalUseStraightLine:      &trueBool,                   // 使用直线
@@ -650,13 +652,14 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 
 	for idx, waypoint := range wayline.Waypoints {
 		lng, lat := coordinate.GCJ02ToWGS84(waypoint.Lng, waypoint.Lat)
+		height := float64(params.FlyingHeight)
 		placemark := wpml.Placemark{
 			Point:                 wpml.Point{Coordinates: wpml.FormatCoordinates(float64(lng), float64(lat))},
 			Index:                 idx,
 			UseGlobalHeight:       &trueBool,
-			Height:                nil,
+			Height:                &height,
 			EllipsoidHeight:       nil,
-			ExecuteHeight:         nil,
+			ExecuteHeight:         &height,
 			UseGlobalSpeed:        &trueBool,
 			UseGlobalHeadingParam: &trueBool,
 			WaypointHeadingParam:  nil,
