@@ -469,16 +469,16 @@ func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName str
 		f := &waylineDoc.Folders[i]
 		f.TemplateType = nil
 		f.WaylineID = &i
-		hMode := wpml.ExecuteHeightModeWGS84
+		hMode := wpml.ExecuteHeightModeRelativeToStartPoint
 		f.ExecuteHeightMode = &hMode
 		for j := range f.Placemarks {
 			p := &f.Placemarks[j]
 			// 处理高度
-			if *p.UseGlobalHeight {
-				p.ExecuteHeight = f.GlobalHeight
-			} else {
-				p.ExecuteHeight = p.EllipsoidHeight
-			}
+			// if *p.UseGlobalHeight {
+			// 	p.ExecuteHeight = f.GlobalHeight
+			// } else {
+			// 	p.ExecuteHeight = p.EllipsoidHeight
+			// }
 			// p.EllipsoidHeight = nil
 			// p.Height = nil
 			// p.UseGlobalHeight = nil
