@@ -745,7 +745,7 @@ func (j *JobImpl) generateWorkerWayline(ctx context.Context, droneID uint, drone
 					ActionParams: &wpml.ZoomParams{
 						PayloadPositionIndex: gimbals[0].Gimbalindex,
 						// TODO: 这里需要根据实际情况设置焦距
-						FocalLength: float64(params.GimbalZoom) * 15,
+						FocalLength: float64(params.GimbalZoom) * 70,
 					},
 				}
 				actionIdx++
