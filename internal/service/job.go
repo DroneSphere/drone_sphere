@@ -279,12 +279,34 @@ func (j *JobImpl) CreateJob(ctx context.Context, name, description string, areaI
 		}
 
 		// 调用抽取的方法创建和保存航线文件
-		_, err := j.createWaylineFile(ctx, job.ID, job.Name, drone, w, waylineGenerationParams)
+		_, err := j.createWorkerWaylineFile(ctx, job.ID, job.Name, drone, w, waylineGenerationParams)
 		if err != nil {
 			j.l.Error("创建航线文件失败", slog.Any("error", err))
 			return 0, err
 		}
 	}
+
+	// 检查是否有指挥机，创建指挥机的航线文件
+	if len(commandDrones) > 0 {
+		for _, commandDrone := range commandDrones {
+			// 找到对应的无人机
+			var drone po.JobDronePO
+			for _, d := range drones {
+				if d.Key == commandDrone.DroneKey {
+					drone = d
+					break
+				}
+			}
+			// 调用抽取的方法创建和保存指挥机的航线文件
+			_, err := j.createCommandWaylineFile(ctx, job.ID, job.Name, drone, commandDrone)
+			if err != nil {
+				j.l.Error("创建指挥机航线文件失败", slog.Any("error", err), slog.String("droneKey", commandDrone.DroneKey))
+				return 0, err
+			}
+		}
+	}
+	j.l.Info("指挥机航线文件已创建", slog.Any("commandDrones", commandDrones))
+
 	return job.ID, nil
 }
 
@@ -372,7 +394,7 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 			}
 
 			// 调用抽取的方法创建和保存航线文件
-			_, err := j.createWaylineFile(ctx, id, p.Name, drone, wayline, waylineGenerationParams)
+			_, err := j.createWorkerWaylineFile(ctx, id, p.Name, drone, wayline, waylineGenerationParams)
 			if err != nil {
 				j.l.Error("创建航线文件失败", slog.Any("error", err), slog.String("droneKey", wayline.DroneKey))
 				createErrCh <- err
@@ -392,6 +414,27 @@ func (j *JobImpl) ModifyJob(ctx context.Context, id uint, name, description stri
 		j.l.Error("创建航线文件过程中出现错误", slog.Any("error", err))
 		return nil, err
 	}
+
+	// 检查是否有指挥机，创建指挥机的航线文件
+	if len(command_drones) > 0 {
+		for _, commandDrone := range command_drones {
+			// 找到对应的无人机
+			var drone po.JobDronePO
+			for _, d := range drones {
+				if d.Key == commandDrone.DroneKey {
+					drone = d
+					break
+				}
+			}
+			// 调用抽取的方法创建和保存指挥机的航线文件
+			_, err := j.createCommandWaylineFile(ctx, id, p.Name, drone, commandDrone)
+			if err != nil {
+				j.l.Error("创建指挥机航线文件失败", slog.Any("error", err), slog.String("droneKey", commandDrone.DroneKey))
+				return nil, err
+			}
+		}
+	}
+	j.l.Info("指挥机航线文件已创建", slog.Any("commandDrones", command_drones))
 
 	// 返回更新后的任务
 	return j.FetchByID(ctx, id)
@@ -424,14 +467,14 @@ func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string, schedu
 	return result, nil
 }
 
-// createWaylineFile 创建并保存航线文件
+// createWorkerWaylineFile 创建并保存航线文件
 // jobID: 任务ID
 // jobName: 任务名称
 // drone: 无人机信息
 // wayline: 航线信息
 // params: 航线生成参数
 // 返回保存的航线信息和可能的错误
-func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName string, drone po.JobDronePO, wayline po.JobWaylinePO, params po.JobWaylineGenerationParams) (*po.Wayline, error) {
+func (j *JobImpl) createWorkerWaylineFile(ctx context.Context, jobID uint, jobName string, drone po.JobDronePO, wayline po.JobWaylinePO, params po.JobWaylineGenerationParams) (*po.Wayline, error) {
 	// 获取无人机变体信息
 	var variation po.DroneVariation
 	variations, err := j.modelRepo.SelectAllDroneVariation(ctx, nil)
@@ -448,7 +491,7 @@ func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName str
 	j.l.Info("无人机变体", slog.Any("DroneVariation", variation))
 
 	// 生成航线文件
-	waylineDoc, err := j.generateWayline(ctx, drone.PhysicalDroneID, variation, drone.TakeoffPoint, wayline, params)
+	waylineDoc, err := j.generateWorkerWayline(ctx, drone.PhysicalDroneID, variation, drone.TakeoffPoint, wayline, params)
 	if err != nil {
 		j.l.Error("生成航线文件失败", slog.Any("error", err))
 		return nil, err
@@ -587,7 +630,7 @@ func (j *JobImpl) createWaylineFile(ctx context.Context, jobID uint, jobName str
 	return savedWayline, nil
 }
 
-func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariation po.DroneVariation, takeoffPoint po.JobTakeoffPointPO, wayline po.JobWaylinePO, params po.JobWaylineGenerationParams) (wpml.Document, error) {
+func (j *JobImpl) generateWorkerWayline(ctx context.Context, droneID uint, droneVariation po.DroneVariation, takeoffPoint po.JobTakeoffPointPO, wayline po.JobWaylinePO, params po.JobWaylineGenerationParams) (wpml.Document, error) {
 	droneModel := droneVariation.DroneModel
 	gimbals := droneVariation.Gimbals
 	drone, err := j.droneRepo.SelectByID(ctx, droneID)
@@ -698,7 +741,6 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 			}
 			if params.GimbalZoom != 1 {
 				zoomAction := wpml.Action{
-					ActionId:   actionIdx,
 					ActionType: wpml.ActionZoom,
 					ActionParams: &wpml.ZoomParams{
 						PayloadPositionIndex: gimbals[0].Gimbalindex,
@@ -728,6 +770,284 @@ func (j *JobImpl) generateWayline(ctx context.Context, droneID uint, droneVariat
 
 		folder.Placemarks = append(folder.Placemarks, placemark)
 	}
+
+	doc.Folders = append(doc.Folders, folder)
+
+	return doc, nil
+}
+
+func (j *JobImpl) createCommandWaylineFile(ctx context.Context, jobID uint, jobName string, drone po.JobDronePO, commandDrone po.JobCommandDronePO) (*po.Wayline, error) {
+	// 获取无人机变体信息
+	var variation po.DroneVariation
+	variations, err := j.modelRepo.SelectAllDroneVariation(ctx, nil)
+	if err != nil {
+		j.l.Error("获取无人机变体失败", slog.Any("error", err))
+		return nil, err
+	}
+	for _, v := range variations {
+		if v.ID == drone.VariationID {
+			variation = v
+			break
+		}
+	}
+	j.l.Info("无人机变体", slog.Any("DroneVariation", variation))
+
+	// 生成航线文件
+	waylineDoc, err := j.generateCommandWayline(ctx, drone.PhysicalDroneID, variation, drone.TakeoffPoint, commandDrone)
+	if err != nil {
+		j.l.Error("生成航线文件失败", slog.Any("error", err))
+		return nil, err
+	}
+	j.l.Info("航线文件已创建", "wayline", waylineDoc)
+
+	// 生成航线模板和具体航线
+	template, err := waylineDoc.GenerateXML()
+	if err != nil {
+		j.l.Error("生成航线模板失败", slog.Any("error", err))
+		return nil, err
+	}
+
+	waylineDoc.Author = nil
+	waylineDoc.CreateTime = nil
+	waylineDoc.UpdateTime = nil
+	for i := range waylineDoc.Folders {
+		f := &waylineDoc.Folders[i]
+		f.TemplateType = nil
+		f.WaylineID = &i
+		hMode := wpml.ExecuteHeightModeRelativeToStartPoint
+		f.ExecuteHeightMode = &hMode
+		for j := range f.Placemarks {
+			p := &f.Placemarks[j]
+			// 处理高度
+			// if *p.UseGlobalHeight {
+			// 	p.ExecuteHeight = f.GlobalHeight
+			// } else {
+			// 	p.ExecuteHeight = p.EllipsoidHeight
+			// }
+			// p.EllipsoidHeight = nil
+			// p.Height = nil
+			// p.UseGlobalHeight = nil
+			// 处理速度
+			if *p.UseGlobalSpeed {
+				p.WaypointSpeed = f.AutoFlightSpeed
+			}
+			p.UseGlobalSpeed = nil
+			// 处理 GlobalHeadingParam
+			if *p.UseGlobalHeadingParam {
+				p.WaypointHeadingParam = f.GlobalWaypointHeadingParam
+			}
+			p.UseGlobalHeadingParam = nil
+			// 处理 WaypointTurnParam
+			if *p.UseGlobalTurnParam {
+				//p.WaypointTurnParam.WaypointTurnMode = *f.GlobalWaypointTurnMode
+				p.WaypointTurnParam = &wpml.WaypointTurnParam{
+					WaypointTurnMode: *f.GlobalWaypointTurnMode,
+				}
+			}
+			p.UseGlobalTurnParam = nil
+			// 处理 StraightLine
+			if *p.UseStraightLine {
+				p.UseStraightLine = f.GlobalUseStraightLine
+			}
+			p.UseStraightLine = nil
+			// 处理 GimbalPitchMode
+			if *f.GimbalPitchMode == wpml.GimbalPitchModeManual {
+				p.WaypointGimbalHeadingParam = &wpml.WaypointGimbalHeadingParam{
+					WaypointGimbalPitchAngle: 0,
+					WaypointGimbalYawAngle:   0,
+				}
+			}
+			workType := wpml.WaypointWorkTypeNone
+			p.WaypointWorkType = &workType
+		}
+		// 擦除不需要的字段
+		f.TemplateType = nil
+		f.WaylineCoordinateSysParam = nil
+		f.PayloadParam = nil
+		f.GlobalWaypointTurnMode = nil
+		f.GlobalUseStraightLine = nil
+		f.GimbalPitchMode = nil
+		f.GlobalHeight = nil
+		f.GlobalWaypointHeadingParam = nil
+	}
+	waylineXML, err := waylineDoc.GenerateXML()
+	if err != nil {
+		j.l.Error("生成航线文件失败", slog.Any("error", err))
+		return nil, err
+	}
+
+	// 创建kmz目录
+	if err := os.MkdirAll("kmz", os.ModePerm); err != nil {
+		j.l.Error("创建kmz目录失败", slog.Any("error", err))
+		return nil, err
+	}
+
+	// 生成KMZ文件
+	kmzFileName := "kmz/" + "job-" + strconv.Itoa(int(jobID)) + "-" + "drone-key-" + commandDrone.DroneKey + "-" + "drone-id-" + strconv.Itoa(int(drone.PhysicalDroneID)) + ".kmz"
+	err = wpml.GenerateKMZ(kmzFileName, template, waylineXML)
+	if err != nil {
+		j.l.Error("生成KMZ文件失败", slog.Any("error", err))
+		return nil, err
+	}
+	j.l.Info("KMZ文件已生成", "kmzFileName", kmzFileName)
+
+	// 获取物理无人机信息
+	physicalDrone, err := j.droneRepo.SelectByID(ctx, drone.PhysicalDroneID)
+	if err != nil && err.Error() != "no realtime data" {
+		j.l.Error("获取无人机信息失败", slog.Any("error", err))
+		return nil, err
+	}
+
+	// 构建航线信息
+	droneModelKey := strconv.Itoa(variation.DroneModel.Domain) + "-" + strconv.Itoa(variation.DroneModel.Type) + "-" + strconv.Itoa(variation.DroneModel.SubType)
+	payloadModelKey := "1-" + strconv.Itoa(variation.Gimbals[0].Type) + "-" + strconv.Itoa(variation.Gimbals[0].SubType)
+	waylinePO := po.Wayline{
+		JobID:       jobID,
+		JobDroneKey: commandDrone.DroneKey,
+		DroneSN:     physicalDrone.SN,
+		WaylineName: jobName + "-" + commandDrone.DroneKey,
+		StartWaylinePoint: datatypes.NewJSONType(po.StartWaylinePoint{
+			StartLatitude:  drone.TakeoffPoint.Lat,
+			StartLongitude: drone.TakeoffPoint.Lng,
+		}),
+		DroneModelKey:    droneModelKey,
+		PayloadModelKeys: []string{payloadModelKey},
+	}
+
+	// 清理临时文件
+	defer func() {
+		if err := os.Remove(kmzFileName); err != nil {
+			j.l.Error("删除kmz临时文件失败", slog.Any("error", err))
+		}
+	}()
+
+	// 保存航线文件到数据库
+	savedWayline, err := j.jobRepo.SaveWayline(ctx, waylinePO, kmzFileName)
+	if err != nil {
+		j.l.Error("保存航线信息到数据库失败", slog.Any("error", err))
+		return nil, err
+	}
+	j.l.Info("航线信息已保存到数据库", "wayline", commandDrone.DroneKey)
+
+	return savedWayline, nil
+}
+
+func (j *JobImpl) generateCommandWayline(ctx context.Context, droneID uint, droneVariation po.DroneVariation, takeoffPoint po.JobTakeoffPointPO, commandDrone po.JobCommandDronePO) (wpml.Document, error) {
+	droneModel := droneVariation.DroneModel
+	gimbals := droneVariation.Gimbals
+	drone, err := j.droneRepo.SelectByID(ctx, droneID)
+	if err != nil && err.Error() != "no realtime data" {
+		j.l.Error("获取无人机信息失败", slog.Any("error", err))
+		return wpml.Document{}, err
+	}
+	j.l.Info("生成航线", "droneID", droneID, "droneModel", droneModel, "gimbals", gimbals, "drone", drone)
+
+	author := "System" // 先创建一个字符串变量
+	timeNow := time.Now().UnixMilli()
+	doc := wpml.Document{
+		Author:     &author, // 使用该变量的地址
+		CreateTime: &timeNow,
+		UpdateTime: &timeNow,
+		Mission: wpml.MissionConfig{
+			FlyToWaylineMode:        wpml.FlyToWaylineSafely,            // 安全飞行
+			FinishAction:            wpml.FinishActionGoHome,            // 完成后返回
+			ExitOnRCLost:            wpml.ExitOnRCLostExecuteLostAction, // 失去信号后执行失控动作
+			ExecuteRCLostAction:     wpml.RCLostActionGoBack,            // 失去信号后返回
+			TakeOffSecurityHeight:   10,
+			GlobalTransitionalSpeed: 2,
+			DroneInfo: wpml.DroneInfo{
+				DroneEnumValue:    wpml.DroneEnumValue(droneModel.Type),
+				DroneSubEnumValue: wpml.DroneSubEnumValue(droneModel.SubType),
+			},
+			PayloadInfo: wpml.PayloadInfo{
+				PayloadEnumValue:     wpml.PayloadEnumValue(gimbals[0].Type),
+				PayloadSubEnumValue:  wpml.PayloadSubEnumValue(gimbals[0].SubType),
+				PayloadPositionIndex: gimbals[0].Gimbalindex,
+			},
+			AutoRerouteInfo: nil,
+		},
+	}
+
+	trueBool := wpml.BoolAsInt(true)          // 使用变量的地址
+	templateType := wpml.TemplateTypeWaypoint // 先创建一个变量
+	templateID := 0
+	autoFlightSpeed := 1.0
+	GimbalPitchMode := wpml.GimbalPitchModeManual
+	globalWaypointHeadingParam := wpml.WaypointHeadingParam{
+		WaypointHeadingMode: wpml.HeadingFollowWayline, // 航点航线
+	}
+	globalHeight := float64(commandDrone.Position.Altitude)
+	executeHeightMode := wpml.ExecuteHeightModeRelativeToStartPoint // 执行高度模式相对于起点
+	globalWaypointTurnMode := wpml.ToPointAndStopWithDiscontinuityCurvature
+	folder := wpml.Folder{
+		TemplateType: &templateType, // 使用变量的地址 // 航点航线
+		TemplateID:   &templateID,
+		WaylineCoordinateSysParam: &wpml.WaylineCoordinateSysParam{
+			CoordinateMode: wpml.CoordinateModeWGS84,            // WGS84坐标系
+			HeightMode:     wpml.HeightModeRelativeToStartPoint, // 高度相对于起点
+		},
+		AutoFlightSpeed:            autoFlightSpeed,             // 自动飞行速度
+		GimbalPitchMode:            &GimbalPitchMode,            // 使用点设置
+		GlobalHeight:               &globalHeight,               // 全局高度
+		ExecuteHeightMode:          &executeHeightMode,          // 执行高度模式
+		GlobalWaypointHeadingParam: &globalWaypointHeadingParam, // 航点航线
+		GlobalWaypointTurnMode:     &globalWaypointTurnMode,     // 航点转弯模式
+		GlobalUseStraightLine:      &trueBool,                   // 使用直线
+	}
+
+	lng, lat := coordinate.GCJ02ToWGS84(takeoffPoint.Lng, takeoffPoint.Lat)
+	takeOffPlacemark := wpml.Placemark{
+		Point:                 wpml.Point{Coordinates: wpml.FormatCoordinates(float64(lng), float64(lat))},
+		Index:                 0,
+		UseGlobalHeight:       &trueBool,
+		Height:                &takeoffPoint.Altitude,
+		EllipsoidHeight:       nil,
+		ExecuteHeight:         &takeoffPoint.Altitude,
+		UseGlobalSpeed:        &trueBool,
+		UseGlobalHeadingParam: &trueBool,
+		WaypointHeadingParam:  nil,
+		UseGlobalTurnParam:    &trueBool,
+		WaypointTurnParam:     nil,
+		UseStraightLine:       &trueBool,
+		GimbalPitchAngle:      -90,
+		ActionGroup:           nil,
+	}
+	folder.Placemarks = append(folder.Placemarks, takeOffPlacemark)
+
+	lng, lat = coordinate.GCJ02ToWGS84(commandDrone.Position.Lng, commandDrone.Position.Lat)
+	commandPlacemark := wpml.Placemark{
+		Point:                 wpml.Point{Coordinates: wpml.FormatCoordinates(float64(lng), float64(lat))},
+		Index:                 0,
+		UseGlobalHeight:       &trueBool,
+		Height:                &commandDrone.Position.Altitude,
+		EllipsoidHeight:       nil,
+		ExecuteHeight:         &commandDrone.Position.Altitude,
+		UseGlobalSpeed:        &trueBool,
+		UseGlobalHeadingParam: &trueBool,
+		WaypointHeadingParam:  nil,
+		UseGlobalTurnParam:    &trueBool,
+		WaypointTurnParam:     nil,
+		UseStraightLine:       &trueBool,
+		GimbalPitchAngle:      -90,
+		ActionGroup:           nil,
+	}
+	hoverAction := wpml.Action{
+		ActionType: wpml.ActionHover,
+		ActionParams: &wpml.HoverParams{
+			HoverTime: 3 * 60,
+		},
+	}
+	actions := []wpml.Action{hoverAction}
+	ag := &wpml.ActionGroup{
+		ActionGroupId:         0,
+		ActionGroupStartIndex: 0,
+		ActionGroupEndIndex:   0,
+		ActionGroupMode:       wpml.ActionGroupModeSequence,
+		ActionTrigger:         wpml.ActionTrigger{TriggerType: wpml.TriggerReachPoint},
+		Actions:               actions,
+	}
+	commandPlacemark.ActionGroup = ag
+	folder.Placemarks = append(folder.Placemarks, commandPlacemark)
 
 	doc.Folders = append(doc.Folders, folder)
 

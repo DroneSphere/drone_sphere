@@ -602,3 +602,7 @@ type ZoomParams struct {
 	PayloadPositionIndex int     `xml:"wpml:payloadPositionIndex"` // 负载挂载位置
 	FocalLength          float64 `xml:"wpml:focalLength"`          // 变焦焦距（单位：mm）
 }
+
+type HoverParams struct {
+	HoverTime int `xml:"wpml:hoverTime"` // 悬停等待时间（单位：秒）
+}
