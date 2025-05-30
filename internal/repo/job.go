@@ -138,7 +138,9 @@ func (j *JobDefaultRepo) SelectPhysicalDrones(ctx context.Context) ([]dto.Physic
 						LEFT JOIN drone.tb_gimbal_models gm ON dg.gimbal_model_id = gm.gimbal_model_id
 					GROUP BY
 						dg.drone_model_id
-				) dg ON d.drone_model_id = dg.drone_model_id;
+				) dg ON d.drone_model_id = dg.drone_model_id
+			WHERE
+				d.state = 0;
 		`).Scan(&jsonStr).Error; err != nil {
 		j.l.Error("Failed to fetch physical drones", slog.Any("err", err))
 		return nil, err
