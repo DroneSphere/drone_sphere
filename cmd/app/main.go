@@ -3,9 +3,13 @@ package main
 import (
 	"github.com/dronesphere/configs"
 	"github.com/dronesphere/internal/app"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		panic("Error loading .env file")
+	}
 	cfg, err := configs.LoadConfig()
 	if err != nil {
 		panic(err)
