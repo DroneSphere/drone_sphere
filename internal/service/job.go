@@ -152,13 +152,13 @@ func (j *JobImpl) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
 
 func (j *JobImpl) FetchDroneEntity(ctx context.Context, jobID uint, dronePO po.JobDronePO) (*entity.JobDrone, error) {
 	var wg sync.WaitGroup
-	wg.Add(4) // 4个并发查询任务
+	wg.Add(3) // 3个并发查询任务
 
 	// 创建结果和错误通道
 	physicalDroneCh := make(chan *po.Drone, 1)
 	droneModelCh := make(chan *entity.DroneModel, 1)
 	gimbalModelCh := make(chan *po.GimbalModel, 1)
-	waylineCh := make(chan *entity.Wayline, 1)
+	// waylineCh := make(chan *entity.Wayline, 1)
 	errCh := make(chan error, 4)
 
 	// 1. 查询物理无人机信息
@@ -208,18 +208,18 @@ func (j *JobImpl) FetchDroneEntity(ctx context.Context, jobID uint, dronePO po.J
 	}()
 
 	// 4. 查询航线信息
-	go func() {
-		defer wg.Done()
-		// 不再需要等待物理无人机查询结果
-		wayline, err := j.waylineSvc.FetchWaylineByJobIDAndDroneKey(ctx, jobID, dronePO.Key)
-		if err != nil {
-			j.l.Error("获取航线信息失败", slog.Any("error", err))
-			errCh <- err
-			return
-		}
-		j.l.Info("获取航线信息", "wayline", wayline)
-		waylineCh <- wayline
-	}()
+	// go func() {
+	// 	defer wg.Done()
+	// 	// 不再需要等待物理无人机查询结果
+	// 	wayline, err := j.waylineSvc.FetchWaylineByJobIDAndDroneKey(ctx, jobID, dronePO.Key)
+	// 	if err != nil {
+	// 		j.l.Error("获取航线信息失败", slog.Any("error", err))
+	// 		errCh <- err
+	// 		return
+	// 	}
+	// 	j.l.Info("获取航线信息", "wayline", wayline)
+	// 	waylineCh <- wayline
+	// }()
 
 	// 等待所有goroutine完成
 	wg.Wait()
@@ -236,7 +236,7 @@ func (j *JobImpl) FetchDroneEntity(ctx context.Context, jobID uint, dronePO po.J
 	physicalDrone := <-physicalDroneCh
 	droneModel := <-droneModelCh
 	gimbalModel := <-gimbalModelCh
-	wayline := <-waylineCh
+	// wayline := <-waylineCh
 
 	// 组装结果
 	var drone entity.JobDrone
@@ -247,7 +247,7 @@ func (j *JobImpl) FetchDroneEntity(ctx context.Context, jobID uint, dronePO po.J
 	drone.DroneModel = *droneModel
 	drone.GimbalModel = *gimbalModel
 	drone.PhysicalDrone = *physicalDrone
-	drone.Wayline = *wayline
+	// drone.Wayline = *wayline
 
 	return &drone, nil
 }
