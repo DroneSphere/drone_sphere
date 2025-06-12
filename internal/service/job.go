@@ -135,14 +135,47 @@ func (j *JobImpl) FetchByID(ctx context.Context, id uint) (*entity.Job, error) {
 	entity.Name = job.Name
 	entity.Description = job.Description
 	entity.ScheduleTime = job.ScheduleTime
-	for _, dronePO := range job.Drones {
-		droneEntity, err := j.FetchDroneEntity(ctx, job.ID, dronePO)
-		if err != nil {
-			j.l.Error("获取无人机实体失败", slog.Any("error", err))
-			return nil, err
-		}
-		entity.Drones = append(entity.Drones, *droneEntity)
+	var (
+		wg      sync.WaitGroup
+		mu      sync.Mutex
+		errChan chan error
+	)
+	errChan = make(chan error, len(job.Drones))
+	for i, dronePO := range job.Drones {
+		wg.Add(1)
+		go func(index int, dronePO *po.JobDronePO) {
+			defer wg.Done()
+			droneEntity, err := j.FetchDroneEntity(ctx, job.ID, *dronePO)
+			if err != nil {
+				j.l.Error("获取无人机实体失败", slog.Any("error", err))
+				select {
+				case errChan <- err:
+				default:
+					// 如果通道已满，说明其他 Goroutine 已经发生了错误，当前错误可以忽略
+					// 或者更严格地，可以在这里加入日志或者计数器来记录被忽略的错误
+				}
+				return
+			}
+			mu.Lock()
+			entity.Drones = append(entity.Drones, *droneEntity)
+			mu.Unlock()
+		}(i, &dronePO)
 	}
+	wg.Wait()
+	close(errChan) // 关闭错误通道，表示没有更多的错误会写入
+	for err := range errChan {
+		if err != nil {
+			return nil, err // 返回第一个遇到的错误
+		}
+	}
+	// for _, dronePO := range job.Drones {
+	// 	droneEntity, err := j.FetchDroneEntity(ctx, job.ID, dronePO)
+	// 	if err != nil {
+	// 		j.l.Error("获取无人机实体失败", slog.Any("error", err))
+	// 		return nil, err
+	// 	}
+	// 	entity.Drones = append(entity.Drones, *droneEntity)
+	// }
 	entity.Waylines = job.Waylines
 	entity.CommandDrones = job.CommandDrones
 	entity.WaylineGenerationParams = job.WaylineGenerationParams.Data()
