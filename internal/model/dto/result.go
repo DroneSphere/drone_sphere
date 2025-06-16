@@ -60,7 +60,7 @@ type CreateResultDTO struct {
 // ObjectTypeOption 物体类型选项
 type ObjectTypeOption struct {
 	ID    uint   `json:"id"`    // 类型值
-	Type  int    `json:"type"`  // 类型ID
+	Type  string `json:"type"`  // 类型ID
 	Label string `json:"label"` // 类型标签
 }
 
