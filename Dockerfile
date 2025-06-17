@@ -25,6 +25,17 @@ WORKDIR /app
 # 从构建阶段复制可执行文件
 COPY --from=builder /app/bin/app ./bin/app
 
+# 设置 TZ 环境变量为东八区
+ENV TZ=Asia/Shanghai
+
+# 安装 tzdata 包，它包含了 /usr/share/zoneinfo 下的所有时区数据
+# 并创建 /etc/localtime 软链接，写入 /etc/timezone 文件
+RUN apk update && \
+    apk add --no-cache tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    echo $TZ > /etc/timezone && \
+    rm -rf /var/cache/apk/*
+
 # 暴露端口（根据项目需求调整）
 EXPOSE 10086
 
