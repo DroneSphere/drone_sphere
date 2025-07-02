@@ -140,6 +140,7 @@ func (d *DroneEventHandler) parseHeartBeat(m mqtt.Message) (dto.DroneMessageProp
 		Data dto.DroneMessageProperty `json:"data"`
 	}
 	if err := sonic.Unmarshal(m.Payload(), &p); err != nil {
+		d.l.Error("解析无人机心跳消息失败", slog.Any("topic", m.Topic()), slog.Any("error", err))
 		return dto.DroneMessageProperty{}, false
 	}
 
@@ -156,9 +157,11 @@ func (d *DroneEventHandler) HandleDroneOSD(ctx context.Context) error {
 	topic := fmt.Sprintf(template, droneSN)
 	d.l.Info("识别无人机上线", slog.Any("topic", topic), slog.Any("droneSN", droneSN), slog.Any("gatewaySN", gatewaySN))
 
-	token := d.mqtt.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
+	token := d.mqtt.Subscribe(topic, 0, func(c mqtt.Client, m mqtt.Message) {
+		d.l.Info("接收无人机 OSD 消息", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
 		p, ok := d.parseHeartBeat(m)
 		if !ok {
+
 			return
 		}
 		d.l.Info("接收无人机 OSD 消息", slog.Any("topic", m.Topic()), slog.Any("payload", p))

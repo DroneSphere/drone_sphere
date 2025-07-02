@@ -79,9 +79,9 @@ type DroneMessageProperty struct {
 	Storage                           Storage                 `json:"storage" redis:"storage"`
 	Battery                           Battery                 `json:"battery" redis:"battery"`
 	TotalFlightDistance               float64                 `json:"total_flight_distance" redis:"total_flight_distance"`
-	TotalFlightTime                   int                     `json:"total_flight_time" redis:"total_flight_time"`
-	SeriousLowBatteryWarningThreshold int                     `json:"serious_low_battery_warning_threshold" redis:"serious_low_battery_warning_threshold"`
-	LowBatteryWarningThreshold        int                     `json:"low_battery_warning_threshold" redis:"low_battery_warning_threshold"`
+	TotalFlightTime                   float64                 `json:"total_flight_time" redis:"total_flight_time"`
+	SeriousLowBatteryWarningThreshold float64                 `json:"serious_low_battery_warning_threshold" redis:"serious_low_battery_warning_threshold"`
+	LowBatteryWarningThreshold        float64                 `json:"low_battery_warning_threshold" redis:"low_battery_warning_threshold"`
 	ControlSource                     string                  `json:"control_source" redis:"control_source"`
 	WindDirection                     int                     `json:"wind_direction" redis:"wind_direction"`
 	WindSpeed                         float64                 `json:"wind_speed" redis:"wind_speed"`
