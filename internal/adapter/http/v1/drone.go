@@ -17,6 +17,7 @@ import (
 	"github.com/dronesphere/internal/repo"
 	"github.com/dronesphere/internal/service"
 	"github.com/dronesphere/pkg/coordinate"
+	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
 )
@@ -50,6 +51,41 @@ func newDroneRouter(handler fiber.Router, svc service.DroneSvc, eb EventBus.Bus,
 		h.Delete("/:sn", r.delete)             // 添加删除无人机的路由
 		h.Post("/:sn/live/start", r.startLive) // 添加启动直播的路由
 		h.Post("/:sn/live/stop", r.stopLive)   // 添加停止直播的路由
+	}
+	h.Use("/:sn/control", func(c *fiber.Ctx) error {
+		if websocket.IsWebSocketUpgrade(c) {
+			c.Locals("allowed", true)
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+	h.Get("/:sn/control", websocket.New(r.handleDroneControl))
+}
+
+// handleDroneControl 处理无人机控制的 WebSocket 连接
+func (r *DroneRouter) handleDroneControl(c *websocket.Conn) {
+	// 获取无人机序列号
+	sn := c.Params("sn")
+	if sn == "" {
+		r.l.Error("无人机序列号(SN)不能为空")
+		c.Close()
+		return
+	}
+
+	r.l.Info("无人机控制连接已建立", slog.String("sn", sn))
+	ctx := context.Background()
+	r.svc.CheckControlConnection(ctx, c, sn)
+	// 处理 WebSocket 消息循环
+	for {
+		// 读取客户端消息
+		mt, msg, err := c.ReadMessage()
+		if err != nil {
+			r.l.Info("无人机控制连接已关闭", slog.String("sn", sn))
+			break
+		}
+		r.l.Info("收到无人机控制消息", slog.String("sn", sn), slog.String("message", string(msg)))
+
+		r.svc.HandleControlSession(ctx, c, sn, mt, string(msg))
 	}
 }
 

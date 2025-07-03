@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/dronesphere/internal/model/dto"
@@ -15,8 +17,15 @@ import (
 	"github.com/dronesphere/internal/repo"
 	"github.com/dronesphere/pkg/txlive"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/gofiber/contrib/websocket"
 	"github.com/google/uuid"
 )
+
+func init() {
+	// 初始化连接存储
+	connections = make(map[string][]*websocket.Conn)
+	mutex = sync.RWMutex{}
+}
 
 type (
 	DroneSvc interface {
@@ -30,6 +39,8 @@ type (
 		StartLiveBySN(ctx context.Context, sn string) (string, error)
 		// 新增：根据无人机SN停止直播
 		StopLiveBySN(ctx context.Context, sn string) error
+		CheckControlConnection(ctx context.Context, conn *websocket.Conn, sn string) error
+		HandleControlSession(ctx context.Context, conn *websocket.Conn, sn string, mt int, msg string) error
 	}
 
 	DroneRepo interface {
@@ -394,4 +405,206 @@ func findDroneModelByDomainTypeSubType(ctx context.Context, modelRepo *repo.Mode
 // findDefaultDroneVariation 是内部辅助方法，查询指定型号的默认变体
 func findDefaultDroneVariation(ctx context.Context, modelRepo *repo.ModelDefaultRepo, droneModelID uint) (*po.DroneVariation, error) {
 	return modelRepo.FindDefaultDroneVariation(ctx, droneModelID)
+}
+
+// connections 存储 SN 对应的多个连接
+var connections map[string][]*websocket.Conn
+
+// mutex 保护并发访问
+var mutex sync.RWMutex
+
+// AddConnection 为指定SN添加连接
+func (dcm *DroneImpl) AddConnection(sn string, conn *websocket.Conn) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	connections[sn] = append(connections[sn], conn)
+}
+
+// RemoveConnection 移除指定SN的连接
+func (dcm *DroneImpl) RemoveConnection(sn string, conn *websocket.Conn) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	conns := connections[sn]
+	for i, c := range conns {
+		if c == conn {
+			// 从切片中移除该连接
+			conns[i] = conns[len(conns)-1] // 将最后一个元素移到当前位置
+			conns = conns[:len(conns)-1]   // 缩短切片长度
+			break
+		}
+	}
+
+	// 如果该SN没有连接了，删除该键
+	if len(conns) == 0 {
+		delete(connections, sn)
+	}
+}
+
+func (dcm *DroneImpl) IsConnectionExists(sn string, conn *websocket.Conn) bool {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	conns, exists := connections[sn]
+	if !exists {
+		return false
+	}
+
+	return slices.Contains(conns, conn)
+}
+
+// GetConnections 获取指定SN的所有连接
+func (dcm *DroneImpl) GetConnections(sn string) []*websocket.Conn {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	conns := connections[sn]
+	// 返回副本避免并发问题
+	result := make([]*websocket.Conn, len(conns))
+	copy(result, conns)
+	return result
+}
+
+// BroadcastToSN 向指定SN的所有连接广播消息
+func (dcm *DroneImpl) BroadcastToSN(sn string, messageType int, data string) {
+	conns := dcm.GetConnections(sn)
+
+	for _, conn := range conns {
+		if err := conn.WriteMessage(messageType, []byte(data)); err != nil {
+			// 发送失败，移除该连接
+			dcm.RemoveConnection(sn, conn)
+		}
+	}
+}
+
+func (dcm *DroneImpl) ReplyToConn(sn string, conn *websocket.Conn, msg string) {
+	if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+		dcm.l.Error("回应消息发送失败", slog.String("sn", sn), slog.Any("error", err))
+		// 发送失败，移除该连接
+		dcm.RemoveConnection(sn, conn)
+	} else {
+		dcm.l.Info("回应消息发送成功", slog.String("sn", sn))
+	}
+}
+
+// GetAllSNs 获取所有有连接的SN列表
+func (dcm *DroneImpl) GetAllSNs() []string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	sns := make([]string, 0, len(connections))
+	for sn := range connections {
+		sns = append(sns, sn)
+	}
+	return sns
+}
+
+// GetConnectionCount 获取指定SN的连接数量
+func (dcm *DroneImpl) GetConnectionCount(sn string) int {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	return len(connections[sn])
+}
+
+func (s *DroneImpl) CheckControlConnection(ctx context.Context, conn *websocket.Conn, sn string) error {
+	if s.IsConnectionExists(sn, conn) {
+		s.l.Info("连接已存在，继续处理", slog.String("sn", sn))
+	} else {
+		s.l.Info("连接不存在，添加连接", slog.String("sn", sn))
+		// 添加连接到 SN 的连接列表
+		s.AddConnection(sn, conn)
+	}
+	return nil
+}
+
+func (s *DroneImpl) HandleControlSession(ctx context.Context, conn *websocket.Conn, sn string, mt int, msgStr string) error {
+	// 反序列化消息
+	var msg dto.WSbaseModel
+	if err := json.Unmarshal([]byte(msgStr), &msg); err != nil {
+		s.l.Error("反序列化无人机控制消息失败", slog.String("sn", sn), slog.String("message", msgStr), slog.Any("error", err))
+		return fmt.Errorf("反序列化无人机控制消息失败: %w", err)
+	}
+	s.l.Info("处理无人机控制消息", slog.String("sn", sn), slog.Any("message", msg))
+
+	// 根据 Method 调用不同的处理逻辑
+	switch msg.Method {
+	case "set_gimbal_angle":
+		// 处理云台角度控制
+		dataBytes, err := json.Marshal(msg.Data)
+		if err != nil {
+			s.l.Error("序列化缩放控制数据失败", slog.String("sn", sn), slog.Any("data", msg.Data), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化缩放控制数据失败: %w", err)
+		}
+
+		var GimbalAngleData struct {
+			Pitch float64 `json:"pitch"` // 云台俯仰角度
+			Roll  float64 `json:"roll"`  // 云台横滚角度
+			Yaw   float64 `json:"yaw"`   // 云台偏航角度
+		}
+		if err := json.Unmarshal(dataBytes, &GimbalAngleData); err != nil {
+			s.l.Error("反序列化云台角度控制数据失败", slog.String("sn", sn), slog.String("data", string(dataBytes)), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("反序列化云台角度控制数据失败: %w", err)
+		}
+		s.l.Info("处理云台角度控制", slog.String("sn", sn), slog.Float64("pitch", GimbalAngleData.Pitch), slog.Float64("roll", GimbalAngleData.Roll), slog.Float64("yaw", GimbalAngleData.Yaw))
+		msg.Timestamp = time.Now().Unix() // 更新时间戳
+		resJson, err := json.Marshal(msg)
+		if err != nil {
+			s.l.Error("序列化云台角度控制响应失败", slog.String("sn", sn), slog.Any("message", msg), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化云台角度控制响应失败: %w", err)
+		}
+		s.BroadcastToSN(sn, websocket.TextMessage, string(resJson))
+		return nil
+	case "zoom":
+		// 处理缩放控制
+		// 首先将 msg.Data 转换为 JSON 字节数组进行二次反序列化
+		dataBytes, err := json.Marshal(msg.Data)
+		if err != nil {
+			s.l.Error("序列化缩放控制数据失败", slog.String("sn", sn), slog.Any("data", msg.Data), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化缩放控制数据失败: %w", err)
+		}
+
+		var zoomData struct {
+			Factor float64 `json:"factor"` // 缩放因子
+		}
+		if err := json.Unmarshal(dataBytes, &zoomData); err != nil {
+			s.l.Error("反序列化缩放控制数据失败", slog.String("sn", sn), slog.String("data", string(dataBytes)), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("反序列化缩放控制数据失败: %w", err)
+		}
+
+		s.l.Info("处理缩放控制", slog.String("sn", sn), slog.Float64("factor", zoomData.Factor))
+
+		msg.Timestamp = time.Now().Unix() // 更新时间戳
+		resJson, err := json.Marshal(msg)
+		if err != nil {
+			s.l.Error("序列化缩放控制响应失败", slog.String("sn", sn), slog.Any("message", msg), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化缩放控制响应失败: %w", err)
+		}
+		s.BroadcastToSN(sn, websocket.TextMessage, string(resJson))
+		return nil
+	case "go_home":
+		// 处理返航控制
+		s.l.Info("处理返航控制", slog.String("sn", sn))
+		msg.Timestamp = time.Now().Unix() // 更新时间戳
+		resJson, err := json.Marshal(msg)
+		if err != nil {
+			s.l.Error("序列化返航控制响应失败", slog.String("sn", sn), slog.Any("message", msg), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化返航控制响应失败: %w", err)
+		}
+		s.BroadcastToSN(sn, websocket.TextMessage, string(resJson))
+		return nil
+	default:
+		s.l.Warn("未知的无人机控制方法", slog.String("sn", sn), slog.String("method", msg.Method))
+		msg.Timestamp = time.Now().Unix() // 更新时间戳
+		s.ReplyToConn(sn, conn, "error")  // 这里可以根据实际情况选择是否回应连接
+		return fmt.Errorf("未知的无人机控制方法: %s", msg.Method)
+	}
 }
