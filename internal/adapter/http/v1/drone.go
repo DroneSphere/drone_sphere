@@ -132,7 +132,7 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 	}
 
 	// 调用仓库层方法，传递查询条件
-	drones, err := r.svc.Repo().SelectAll(ctx, sn, callsign, modelID, page, pageSize)
+	drones, total, err := r.svc.Repo().SelectAll(ctx, sn, callsign, modelID, page, pageSize)
 	if err != nil {
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}
@@ -156,7 +156,10 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 		res = append(res, e)
 	}
 
-	return c.JSON(Success(res))
+	return c.JSON(Success(fiber.Map{
+		"total": total,
+		"items": res,
+	}))
 }
 
 type droneDetailResult struct {

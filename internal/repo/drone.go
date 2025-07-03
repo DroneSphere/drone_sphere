@@ -43,7 +43,7 @@ func (r *DroneDefaultRepo) GetDB() *gorm.DB {
 // sn: 无人机序列号，用于精确匹配，可为空
 // callsign: 无人机呼号，用于精确匹配，可为空
 // modelID: 无人机型号ID，用于精确匹配，可为0
-func (r *DroneDefaultRepo) SelectAll(ctx context.Context, sn string, callsign string, modelID uint, page, pageSize int) ([]entity.Drone, error) {
+func (r *DroneDefaultRepo) SelectAll(ctx context.Context, sn string, callsign string, modelID uint, page, pageSize int) ([]entity.Drone, int64, error) {
 	var ds []entity.Drone
 	var ps []po.Drone
 
@@ -53,13 +53,6 @@ func (r *DroneDefaultRepo) SelectAll(ctx context.Context, sn string, callsign st
 		Preload("DroneModel").
 		Where("state = ?", 0).
 		Order("created_time DESC")
-
-	// 添加分页条件
-	if page > 0 && pageSize > 0 {
-		offset := (page - 1) * pageSize
-		query = query.Offset(offset).Limit(pageSize)
-	}
-
 	// 添加可选的筛选条件
 	if sn != "" {
 		// 将输入的 sn 转换为大写
@@ -73,10 +66,28 @@ func (r *DroneDefaultRepo) SelectAll(ctx context.Context, sn string, callsign st
 		query = query.Where("drone_model_id = ?", modelID)
 	}
 
+	// 查询总数
+	var total int64
+	if err := query.Model(&po.Drone{}).Count(&total).Error; err != nil {
+		r.l.Error("查询无人机总数失败", slog.Any("error", err))
+		return nil, 0, err
+	}
+	r.l.Info("查询无人机总数成功", slog.Int64("total", total))
+	if total == 0 {
+		r.l.Info("无人机列表为空")
+		return ds, 0, nil
+	}
+
+	// 添加分页条件
+	if page > 0 && pageSize > 0 {
+		offset := (page - 1) * pageSize
+		query = query.Offset(offset).Limit(pageSize)
+	}
+
 	// 执行查询
 	if err := query.Find(&ps).Error; err != nil {
 		r.l.Error("查询无人机列表失败", slog.Any("error", err))
-		return ds, err
+		return ds, 0, err
 	}
 	r.l.Info("获取无人机持久化数据成功", slog.Any("po", ps))
 
@@ -111,7 +122,7 @@ func (r *DroneDefaultRepo) SelectAll(ctx context.Context, sn string, callsign st
 	// 等待所有 goroutine 完成
 	wg.Wait()
 	r.l.Info("获取无人机列表成功", slog.Any("entity", ds))
-	return ds, nil
+	return ds, total, nil
 }
 
 // Save 保存无人机信息
