@@ -481,20 +481,81 @@ func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string, schedu
 	}
 
 	var result []entity.Job
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	errChan := make(chan error, len(jobs))
+
+	// 为每个job启动goroutine
 	for _, job := range jobs {
-		entity := entity.Job{}
-		if err := copier.Copy(&entity, job); err != nil {
-			j.l.Error("复制任务数据失败", slog.Any("error", err))
+		wg.Add(1)
+		go func(jobPO po.Job) {
+			defer wg.Done()
+
+			// 创建job实体
+			jobEntity := entity.Job{}
+			if err := copier.Copy(&jobEntity, jobPO); err != nil {
+				j.l.Error("复制任务数据失败", slog.Any("error", err))
+				errChan <- err
+				return
+			}
+
+			// 为当前job的所有drone启动并发查询
+			var droneWg sync.WaitGroup
+			var droneMu sync.Mutex
+			droneErrChan := make(chan error, len(jobPO.Drones))
+
+			for _, dronePO := range jobPO.Drones {
+				droneWg.Add(1)
+				go func(po po.JobDronePO) {
+					defer droneWg.Done()
+
+					// 获取无人机实体
+					droneEntity, err := j.FetchDroneEntity(ctx, jobPO.ID, po)
+					if err != nil {
+						j.l.Error("获取无人机实体失败", slog.Any("error", err))
+						select {
+						case droneErrChan <- err:
+						default:
+							// 通道已满，忽略重复错误
+						}
+						return
+					}
+
+					// 线程安全地添加到结果中
+					droneMu.Lock()
+					jobEntity.Drones = append(jobEntity.Drones, *droneEntity)
+					droneMu.Unlock()
+				}(dronePO)
+			}
+
+			// 等待当前job的所有drone查询完成
+			droneWg.Wait()
+			close(droneErrChan)
+
+			// 检查drone查询是否有错误
+			for err := range droneErrChan {
+				if err != nil {
+					errChan <- err
+					return
+				}
+			}
+
+			// 线程安全地添加到最终结果中
+			mu.Lock()
+			result = append(result, jobEntity)
+			mu.Unlock()
+		}(job)
+	}
+
+	// 等待所有job处理完成
+	wg.Wait()
+	close(errChan)
+
+	// 检查是否有错误
+	for err := range errChan {
+		if err != nil {
 			return nil, err
 		}
-		for _, po := range job.Drones {
-			d, _ := j.FetchDroneEntity(ctx, job.ID, po)
-			// if err != nil {
-			// 	j.l.Error("Failed")
-			// }
-			entity.Drones = append(entity.Drones, *d)
-		}
-		result = append(result, entity)
 	}
 
 	return result, nil
