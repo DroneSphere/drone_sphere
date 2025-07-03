@@ -44,7 +44,7 @@ type (
 	}
 
 	DroneRepo interface {
-		SelectAll(ctx context.Context, sn string, callsign string, modelID uint) ([]entity.Drone, error)
+		SelectAll(ctx context.Context, sn string, callsign string, modelID uint, page, pageSize int) ([]entity.Drone, error)
 		Save(ctx context.Context, d entity.Drone) error
 		SelectBySN(ctx context.Context, sn string) (entity.Drone, error)
 		SelectByID(ctx context.Context, id uint) (entity.Drone, error)

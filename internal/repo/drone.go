@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"sync"
 
 	"github.com/bytedance/sonic"
 	"github.com/dronesphere/internal/model/dto"
@@ -42,7 +43,7 @@ func (r *DroneDefaultRepo) GetDB() *gorm.DB {
 // sn: 无人机序列号，用于精确匹配，可为空
 // callsign: 无人机呼号，用于精确匹配，可为空
 // modelID: 无人机型号ID，用于精确匹配，可为0
-func (r *DroneDefaultRepo) SelectAll(ctx context.Context, sn string, callsign string, modelID uint) ([]entity.Drone, error) {
+func (r *DroneDefaultRepo) SelectAll(ctx context.Context, sn string, callsign string, modelID uint, page, pageSize int) ([]entity.Drone, error) {
 	var ds []entity.Drone
 	var ps []po.Drone
 
@@ -50,7 +51,14 @@ func (r *DroneDefaultRepo) SelectAll(ctx context.Context, sn string, callsign st
 	query := r.tx.WithContext(ctx).
 		Preload("DroneModel.Gimbals").
 		Preload("DroneModel").
-		Where("state = ?", 0)
+		Where("state = ?", 0).
+		Order("created_time DESC")
+
+	// 添加分页条件
+	if page > 0 && pageSize > 0 {
+		offset := (page - 1) * pageSize
+		query = query.Offset(offset).Limit(pageSize)
+	}
 
 	// 添加可选的筛选条件
 	if sn != "" {
@@ -72,19 +80,36 @@ func (r *DroneDefaultRepo) SelectAll(ctx context.Context, sn string, callsign st
 	}
 	r.l.Info("获取无人机持久化数据成功", slog.Any("po", ps))
 
+	// 使用 goroutine 并行处理无人机数据
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
 	for _, p := range ps {
-		// 获取无人机实时状态
-		var rt ro.Drone
-		rt, err := r.FetchStateBySN(ctx, p.SN)
-		if err != nil {
-			r.l.Info("实时数据获取失败", slog.Any("sn", p.SN), slog.Any("err", err))
-		} else {
-			r.l.Info("实时状态获取成功", slog.Any("sn", p.SN), slog.Any("rt", rt))
-		}
-		// 装配无人机实体
-		e := entity.NewDrone(&p, &rt)
-		ds = append(ds, *e)
+		wg.Add(1)
+		go func(drone po.Drone) {
+			defer wg.Done()
+
+			// 获取无人机实时状态
+			var rt ro.Drone
+			rt, err := r.FetchStateBySN(ctx, drone.SN)
+			if err != nil {
+				r.l.Info("实时数据获取失败", slog.Any("sn", drone.SN), slog.Any("err", err))
+			} else {
+				r.l.Info("实时状态获取成功", slog.Any("sn", drone.SN), slog.Any("rt", rt))
+			}
+
+			// 装配无人机实体
+			e := entity.NewDrone(&drone, &rt)
+
+			// 使用 mutex 保护共享资源
+			mu.Lock()
+			ds = append(ds, *e)
+			mu.Unlock()
+		}(p)
 	}
+
+	// 等待所有 goroutine 完成
+	wg.Wait()
 	r.l.Info("获取无人机列表成功", slog.Any("entity", ds))
 	return ds, nil
 }

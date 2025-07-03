@@ -109,6 +109,8 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 	sn := c.Query("sn")
 	callsign := c.Query("callsign")
 	modelIDStr := c.Query("model_id")
+	pageStr := c.Query("page", "1")           // 默认页码为1
+	pageSizeStr := c.Query("page_size", "10") // 默认每页10条数据
 
 	// 解析 model_id 参数
 	var modelID uint = 0
@@ -119,9 +121,18 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 		}
 		modelID = uint(id)
 	}
+	// 解析页码和每页大小
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		return c.JSON(Fail(ErrorBody{Code: 400, Msg: "无效的页码参数"}))
+	}
+	pageSize, err := strconv.Atoi(pageSizeStr)
+	if err != nil {
+		return c.JSON(Fail(ErrorBody{Code: 400, Msg: "无效的每页大小参数"}))
+	}
 
 	// 调用仓库层方法，传递查询条件
-	drones, err := r.svc.Repo().SelectAll(ctx, sn, callsign, modelID)
+	drones, err := r.svc.Repo().SelectAll(ctx, sn, callsign, modelID, page, pageSize)
 	if err != nil {
 		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
 	}

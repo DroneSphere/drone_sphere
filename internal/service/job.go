@@ -112,7 +112,7 @@ func (j *JobImpl) FetchAvailableAreas(ctx context.Context) ([]*entity.Area, erro
 
 func (j *JobImpl) FetchAvailableDrones(ctx context.Context) ([]entity.Drone, error) {
 	// 调用时传递空参数，表示不进行过滤
-	drones, err := j.droneRepo.SelectAll(ctx, "", "", 0)
+	drones, err := j.droneRepo.SelectAll(ctx, "", "", 0, 0, 0)
 	if err != nil {
 		return nil, err
 	}
