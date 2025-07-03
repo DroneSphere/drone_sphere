@@ -21,7 +21,7 @@ type (
 			ID   uint   `json:"id"`
 			Name string `json:"name"`
 		}) (*entity.Area, error)
-		FetchAll(ctx context.Context, name string, created_at_begin, created_at_end string) ([]*entity.Area, error)
+		FetchAll(ctx context.Context, name string, created_at_begin, created_at_end string, page, pageSize int) ([]*entity.Area, int64, error)
 	}
 
 	// 修改 AreaRepo 接口，返回 po 对象而不是 entity 对象
@@ -29,7 +29,7 @@ type (
 		Save(ctx context.Context, area *po.Area) error
 		SelectByID(ctx context.Context, id uint) (*po.Area, error)
 		SelectByName(ctx context.Context, name string) (*po.Area, error)
-		FetchAll(ctx context.Context, name string, created_at_begin, created_at_end string) ([]*po.Area, error)
+		SelectAll(ctx context.Context, name string, created_at_begin, created_at_end string, page, pageSize int) ([]*po.Area, int64, error)
 		DeleteByID(ctx context.Context, id uint) error
 	}
 )
@@ -195,11 +195,11 @@ func (s *AreaImpl) FetchArea(ctx context.Context, params struct {
 }
 
 // FetchAll 获取所有区域列表
-func (s *AreaImpl) FetchAll(ctx context.Context, name string, created_at_begin, created_at_end string) ([]*entity.Area, error) {
+func (s *AreaImpl) FetchAll(ctx context.Context, name string, created_at_begin, created_at_end string, page, pageSize int) ([]*entity.Area, int64, error) {
 	// 从仓库层获取 po 对象列表
-	areas, err := s.r.FetchAll(ctx, name, created_at_begin, created_at_end)
+	areas, total, err := s.r.SelectAll(ctx, name, created_at_begin, created_at_end, page, pageSize)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// 将 po 对象列表转换为 entity 对象列表
@@ -211,5 +211,5 @@ func (s *AreaImpl) FetchAll(ctx context.Context, name string, created_at_begin, 
 		}
 	}
 
-	return result, nil
+	return result, total, nil
 }

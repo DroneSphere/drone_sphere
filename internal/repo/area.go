@@ -55,31 +55,47 @@ func (r *AreaDefaultRepo) SelectByName(ctx context.Context, name string) (*po.Ar
 }
 
 // FetchAll 查询所有区域
-func (r *AreaDefaultRepo) FetchAll(ctx context.Context, name string, created_at_begin, created_at_end string) ([]*po.Area, error) {
+func (r *AreaDefaultRepo) SelectAll(ctx context.Context, name string, created_at_begin, created_at_end string, page, pageSize int) ([]*po.Area, int64, error) {
 	var areas []*po.Area
-	tx := r.tx.WithContext(ctx).Where("state = 0")
+	query := r.tx.WithContext(ctx).Where("state = 0")
 	if name != "" {
-		tx = tx.Where("area_name LIKE ?", "%"+name+"%")
+		query = query.Where("area_name LIKE ?", "%"+name+"%")
 	}
 	if created_at_begin != "" {
 		// 如果只有日期没有时间，默认时间为00:00:00
 		if len(created_at_begin) == 10 {
 			created_at_begin += " 00:00:00"
 		}
-		tx = tx.Where("created_time >= ?", created_at_begin)
+		query = query.Where("created_time >= ?", created_at_begin)
 	}
 	if created_at_end != "" {
 		// 如果只有日期没有时间，默认时间为23:59:59
 		if len(created_at_end) == 10 {
 			created_at_end += " 23:59:59"
 		}
-		tx = tx.Where("created_time <= ?", created_at_end)
+		query = query.Where("created_time <= ?", created_at_end)
 	}
-	if err := tx.Find(&areas).Error; err != nil {
+
+	var total int64
+	err := query.Model(&po.Area{}).Count(&total).Error
+	if err != nil {
+		r.l.Error("查询区域总数失败", slog.Any("name", name), slog.Any("error", err))
+		return nil, 0, err
+	}
+	r.l.Info("查询区域总数", slog.Any("name", name), slog.Any("total", total))
+	if total == 0 {
+		return nil, 0, nil // 如果没有数据，直接返回空切片
+	}
+
+	if page > 0 && pageSize > 0 {
+		query = query.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	if err := query.Find(&areas).Error; err != nil {
 		r.l.Error("查询所有区域失败", slog.Any("name", name), slog.Any("error", err))
-		return nil, err
+		return nil, 0, err
 	}
-	return areas, nil
+
+	return areas, total, nil
 }
 
 // DeleteByID 根据ID删除区域

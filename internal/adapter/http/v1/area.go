@@ -119,6 +119,8 @@ func (r *SearchAreaRouter) getAllAreas(c *fiber.Ctx) error {
 		Name           string `query:"name"`
 		CreatedAtBegin string `query:"created_at_begin"`
 		CreatedAtEnd   string `query:"created_at_end"`
+		Page           int    `query:"page"`
+		PageSize       int    `query:"page_size"`
 	}
 	if err := c.QueryParser(&params); err != nil {
 		r.l.Error("getAllAreas Error: ", slog.Any("error", err))
@@ -126,11 +128,14 @@ func (r *SearchAreaRouter) getAllAreas(c *fiber.Ctx) error {
 	}
 	// 调用服务层获取搜索区域列表
 	r.l.Info("getAllAreas", slog.Any("params", params))
-	areas, err := r.svc.FetchAll(ctx, params.Name, params.CreatedAtBegin, params.CreatedAtEnd)
+	areas, total, err := r.svc.FetchAll(ctx, params.Name, params.CreatedAtBegin, params.CreatedAtEnd, params.Page, params.PageSize)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Fail(InternalError))
 	}
-	return c.JSON(Success(r.toListResult(areas)))
+	return c.JSON(Success(fiber.Map{
+		"total": total,
+		"items": r.toListResult(areas),
+	}))
 }
 
 // getArea 获取搜索区域

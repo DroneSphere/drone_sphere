@@ -112,7 +112,7 @@ func (r *JobRouter) getJob(c *fiber.Ctx) error {
 // getCreationOptions  创建任务时依赖的选项数据
 func (r *JobRouter) getCreationOptions(c *fiber.Ctx) error {
 	ctx := context.Background()
-	areas, err := r.areaSvc.FetchAll(ctx, "", "", "")
+	areas, _, err := r.areaSvc.FetchAll(ctx, "", "", "", 0, 0)
 	if err != nil {
 		return c.JSON(FailWithMsg(err.Error()))
 	}

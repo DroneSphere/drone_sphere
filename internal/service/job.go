@@ -93,7 +93,7 @@ func (j *JobImpl) Repo() JobRepo {
 }
 
 func (j *JobImpl) FetchAvailableAreas(ctx context.Context) ([]*entity.Area, error) {
-	areas, err := j.areaRepo.FetchAll(ctx, "", "", "")
+	areas, _, err := j.areaRepo.SelectAll(ctx, "", "", "", 0, 0)
 	if err != nil {
 		return nil, err
 	}
