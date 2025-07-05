@@ -51,7 +51,7 @@ func (w *WaylineImpl) GetWaylineURL(ctx context.Context, workspaceID, waylineID 
 	}
 
 	// 拼接URL
-	baseURL := "https://minio.thuray.xyz/kmz"
+	baseURL := "http://47.245.40.222:9000/kmz"
 	url := baseURL + "/" + wayline.S3Key
 
 	w.l.Info("获取航线URL成功", slog.Any("waylineID", waylineID), slog.Any("url", url))
@@ -66,7 +66,7 @@ func (w *WaylineImpl) FetchWaylineByJobIDAndDroneSN(ctx context.Context, jobID u
 	}
 	return &entity.Wayline{
 		Wayline: *wayline,
-		Url:     "https://minio.thuray.xyz/kmz/" + wayline.S3Key,
+		Url:     "http://47.245.40.222:9000/kmz/" + wayline.S3Key,
 	}, nil
 }
 
@@ -78,6 +78,6 @@ func (w *WaylineImpl) FetchWaylineByJobIDAndDroneKey(ctx context.Context, jobID 
 	}
 	return &entity.Wayline{
 		Wayline: *wayline,
-		Url:     "https://minio.thuray.xyz/kmz/" + wayline.S3Key,
+		Url:     "http://47.245.40.222:9000/kmz/" + wayline.S3Key,
 	}, nil
 }

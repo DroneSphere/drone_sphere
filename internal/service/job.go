@@ -833,13 +833,14 @@ func (j *JobImpl) generateWorkerWayline(ctx context.Context, droneID uint, drone
 				actionIdx++
 				actions = append(actions, pitchRotateAction)
 			}
-			if params.GimbalZoom != 1 {
+			if params.GimbalZoom != 0 {
 				zoomAction := wpml.Action{
+					ActionId:   actionIdx,
 					ActionType: wpml.ActionZoom,
 					ActionParams: &wpml.ZoomParams{
 						PayloadPositionIndex: gimbals[0].Gimbalindex,
 						// TODO: 这里需要根据实际情况设置焦距
-						FocalLength: float64(params.GimbalZoom) * 70,
+						FocalLength: float64(params.GimbalZoom) * 24,
 					},
 				}
 				actionIdx++
@@ -847,9 +848,6 @@ func (j *JobImpl) generateWorkerWayline(ctx context.Context, droneID uint, drone
 			}
 
 			if len(actions) > 0 {
-				for idx, action := range actions {
-					action.ActionId = idx
-				}
 				actionGroup := &wpml.ActionGroup{
 					ActionGroupId:         0,
 					ActionGroupStartIndex: 0,
