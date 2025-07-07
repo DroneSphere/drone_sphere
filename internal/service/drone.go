@@ -530,6 +530,63 @@ func (s *DroneImpl) HandleControlSession(ctx context.Context, conn *websocket.Co
 
 	// 根据 Method 调用不同的处理逻辑
 	switch msg.Method {
+	case "init":
+		dataBytes, err := json.Marshal(msg.Data)
+		if err != nil {
+			s.l.Error("序列化初始化控制数据失败", slog.String("sn", sn), slog.Any("data", msg.Data), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化初始化控制数据失败: %w", err)
+		}
+
+		var InitData struct {
+			Pitch         float64 `json:"pitch"`          // 云台俯仰角度
+			Roll          float64 `json:"roll"`           // 云台横滚角度
+			Yaw           float64 `json:"yaw"`            // 云台偏航角度
+			CurrentCamera string  `json:"current_camera"` // 当前相机类型 (wide/zoom)
+			Factor        float64 `json:"factor"`         // 缩放因子
+		}
+		if err := json.Unmarshal(dataBytes, &InitData); err != nil {
+			s.l.Error("反序列化初始化控制数据失败", slog.String("sn", sn), slog.String("data", string(dataBytes)), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("反序列化初始化控制数据失败: %w", err)
+		}
+		s.l.Info("处理初始化控制数据", slog.String("sn", sn), slog.Any("data", InitData))
+		msg.Timestamp = time.Now().Unix() // 更新时间戳
+		resJson, err := json.Marshal(msg)
+		if err != nil {
+			s.l.Error("序列化初始化控制响应失败", slog.String("sn", sn), slog.Any("message", msg), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化初始化控制响应失败: %w", err)
+		}
+		s.BroadcastToSN(sn, websocket.TextMessage, string(resJson))
+		return nil
+	case "switch_camera":
+		// 处理相机切换控制
+		dataBytes, err := json.Marshal(msg.Data)
+		if err != nil {
+			s.l.Error("序列化相机切换控制数据失败", slog.String("sn", sn), slog.Any("data", msg.Data), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化相机切换控制数据失败: %w", err)
+		}
+
+		var switchCameraData struct {
+			Camera string `json:"camera"` // 相机类型 (wide/zoom)
+		}
+		if err := json.Unmarshal(dataBytes, &switchCameraData); err != nil {
+			s.l.Error("反序列化相机切换控制数据失败", slog.String("sn", sn), slog.String("data", string(dataBytes)), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("反序列化相机切换控制数据失败: %w", err)
+		}
+		s.l.Info("处理相机切换控制", slog.String("sn", sn), slog.String("camera", switchCameraData.Camera))
+		msg.Timestamp = time.Now().Unix() // 更新时间戳
+		resJson, err := json.Marshal(msg)
+		if err != nil {
+			s.l.Error("序列化相机切换控制响应失败", slog.String("sn", sn), slog.Any("message", msg), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化相机切换控制响应失败: %w", err)
+		}
+		s.BroadcastToSN(sn, websocket.TextMessage, string(resJson))
+		return nil
 	case "set_gimbal_angle":
 		// 处理云台角度控制
 		dataBytes, err := json.Marshal(msg.Data)
