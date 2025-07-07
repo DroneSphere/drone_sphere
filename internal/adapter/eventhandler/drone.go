@@ -134,7 +134,7 @@ func (d *DroneEventHandler) HandleDroneConnected(ctx context.Context) error {
 	return nil
 }
 
-func (d *DroneEventHandler) parseHeartBeat(m mqtt.Message) (dto.DroneMessageProperty, bool) {
+func (d *DroneEventHandler) ParseHeartBeat(m mqtt.Message) (dto.DroneMessageProperty, bool) {
 	var p struct {
 		dto.MessageCommon
 		Data dto.DroneMessageProperty `json:"data"`
@@ -159,7 +159,7 @@ func (d *DroneEventHandler) HandleDroneOSD(ctx context.Context) error {
 
 	token := d.mqtt.Subscribe(topic, 0, func(c mqtt.Client, m mqtt.Message) {
 		d.l.Info("接收无人机 OSD 消息", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
-		p, ok := d.parseHeartBeat(m)
+		p, ok := d.ParseHeartBeat(m)
 		if !ok {
 
 			return
@@ -192,7 +192,7 @@ func (d *DroneEventHandler) HandleDroneState(ctx context.Context) error {
 	token := d.mqtt.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
 		d.l.Info("Received message", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
 		// 解析消息
-		p, ok := d.parseHeartBeat(m)
+		p, ok := d.ParseHeartBeat(m)
 		if !ok {
 			d.l.Error("Parse heartbeat failed")
 			return

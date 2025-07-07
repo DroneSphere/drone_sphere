@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/dronesphere/internal/adapter/http/dji"
 	v1 "github.com/dronesphere/internal/adapter/http/v1"
 	"github.com/dronesphere/internal/adapter/ws"
+	"github.com/dronesphere/internal/model/dto"
 	"github.com/dronesphere/internal/service"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gofiber/fiber/v2"
@@ -146,6 +148,42 @@ func Run(cfg *configs.Config) {
 
 	wss := fiber.New()
 	ws.NewRouter(wss, eb, logger, userSvc, droneSvc)
+
+	ctx := context.Background()
+	drones, _, err := droneRepo.SelectAll(ctx, "", "", 0, 0, 0)
+	if err != nil {
+		logger.Error("查询无人机列表失败", slog.Any("err", err))
+		return
+	}
+	for _, drone := range drones {
+		topic := fmt.Sprintf("thing/product/%s/osd", drone.SN)
+
+		token := client.Subscribe(topic, 0, func(c mqtt.Client, m mqtt.Message) {
+			logger.Info("接收无人机 OSD 消息", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
+			var p struct {
+				dto.MessageCommon
+				Data dto.DroneMessageProperty `json:"data"`
+			}
+			if err := json.Unmarshal(m.Payload(), &p); err != nil {
+				logger.Error("解析无人机心跳消息失败", slog.Any("topic", m.Topic()), slog.Any("error", err))
+				return
+			}
+
+			logger.Info("接收无人机 OSD 消息", slog.Any("topic", m.Topic()), slog.Any("payload", p))
+
+			if err := droneSvc.UpdateStateBySN(ctx, drone.SN, p.Data); err != nil {
+				logger.Error("更新无人机实时数据失败", slog.Any("err", err))
+				return
+			}
+			logger.Info("更新无人机实时数据成功", slog.Any("droneSN", drone.SN))
+		})
+		if token.Wait() && token.Error() != nil {
+			logger.Error("无人机 OSD 订阅失败", slog.Any("topic", topic), slog.Any("err", token.Error()))
+			return
+		} else {
+			logger.Info("无人机 OSD 订阅成功", slog.Any("topic", topic))
+		}
+	}
 
 	var wg sync.WaitGroup
 	// 启动所有服务器
