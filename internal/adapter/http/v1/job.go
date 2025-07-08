@@ -106,7 +106,8 @@ func (r *JobRouter) getJob(c *fiber.Ctx) error {
 		return c.JSON(Fail(InternalError))
 	}
 	result.ScheduleTime = job.ScheduleTime.Format("2006-01-02 15:04:05")
-	return c.JSON(Success(result))
+	// return c.JSON(Success(result))
+	return c.JSON(result)
 }
 
 // getCreationOptions  创建任务时依赖的选项数据

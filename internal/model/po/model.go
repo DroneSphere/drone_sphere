@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -75,6 +76,8 @@ type GimbalModel struct {
 	SubType int `json:"gimbal_model_sub_type" gorm:"column:gimbal_model_sub_type"`
 	// 相机位置索引
 	Gimbalindex int `json:"gimbalindex" gorm:"column:gimbalindex"`
+	// 相机信息
+	Cameras datatypes.JSONSlice[CameraModel] `json:"cameras,omitempty" gorm:"column:cameras"`
 	// 对应的无人机
 	Drones             []DroneModel `json:"drones,omitempty" gorm:"many2many:tb_drone_gimbal;"`
 	IsThermalAvailable bool         `json:"is_thermal_available" gorm:"default:false"`
@@ -83,6 +86,41 @@ type GimbalModel struct {
 // TableName 指定 GimbalModel 表名为 tb_gimbal_models
 func (gm GimbalModel) TableName() string {
 	return "tb_gimbal_models"
+}
+
+// CameraType 相机类型枚举
+type CameraType string
+
+const (
+	CameraTypeWide    CameraType = "wide"    // 广角相机
+	CameraTypeZoom    CameraType = "zoom"    // 变焦相机
+	CameraTypeThermal CameraType = "thermal" // 热成像相机
+)
+
+// CameraModel 相机型号结构体
+type CameraModel struct {
+	// 相机类型
+	Type CameraType `json:"type" gorm:"column:camera_type"`
+	// 相机标签/名称
+	Label string `json:"label" gorm:"column:camera_label"`
+	// 焦距 (mm)
+	FocalLength float64 `json:"focal_length" gorm:"column:focal_length"`
+	// 最小焦距 (mm)
+	MinFocalLength float64 `json:"min_focal_length" gorm:"column:min_focal_length"`
+	// 最大焦距 (mm)
+	MaxFocalLength float64 `json:"max_focal_length" gorm:"column:max_focal_length"`
+	// 等效焦距 (mm, 35mm全画幅等效)
+	EquivalentFocalLength float64 `json:"equivalent_focal_length" gorm:"column:equivalent_focal_length"`
+	// 最小等效焦距 (mm)
+	MinEquivalentFocalLength float64 `json:"min_equivalent_focal_length" gorm:"column:min_equivalent_focal_length"`
+	// 最大等效焦距 (mm)
+	MaxEquivalentFocalLength float64 `json:"max_equivalent_focal_length" gorm:"column:max_equivalent_focal_length"`
+	// 是否支持变焦
+	IsZoomable bool `json:"is_zoomable" gorm:"column:is_zoomable"`
+	// 最小变焦倍数
+	MinZoomFactor float64 `json:"min_zoom_factor" gorm:"column:min_zoom_factor"`
+	// 最大变焦倍数
+	MaxZoomFactor float64 `json:"max_zoom_factor" gorm:"column:max_zoom_factor"`
 }
 
 type PayloadModel struct {
