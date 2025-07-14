@@ -1109,7 +1109,7 @@ func (j *JobImpl) generateCommandWayline(ctx context.Context, droneID uint, dron
 	lng, lat = coordinate.GCJ02ToWGS84(commandDrone.Position.Lng, commandDrone.Position.Lat)
 	commandPlacemark := wpml.Placemark{
 		Point:                 wpml.Point{Coordinates: wpml.FormatCoordinates(float64(lng), float64(lat))},
-		Index:                 0,
+		Index:                 1,
 		UseGlobalHeight:       &trueBool,
 		Height:                &commandDrone.Position.Altitude,
 		EllipsoidHeight:       nil,
