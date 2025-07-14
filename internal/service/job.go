@@ -540,6 +540,22 @@ func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string, schedu
 				}
 			}
 
+			// 获取区域信息
+			area, err := j.areaRepo.SelectByID(ctx, jobPO.AreaID)
+			if err != nil {
+				j.l.Error("获取区域信息失败", slog.Any("error", err))
+				errChan <- err
+				return
+			}
+			// 转换区域数据
+			areaEntity := j.toAreaEntity(area)
+			if areaEntity == nil {
+				j.l.Error("转换区域数据失败", slog.Any("area", area))
+				errChan <- err
+				return
+			}
+			jobEntity.Area = *areaEntity
+
 			// 线程安全地添加到最终结果中
 			mu.Lock()
 			result = append(result, jobEntity)
@@ -558,6 +574,17 @@ func (j *JobImpl) FetchAll(ctx context.Context, jobName, areaName string, schedu
 		}
 	}
 
+	// 按照 ID 结果
+	for i := 0; i < len(result)-1; i++ {
+		for j := i + 1; j < len(result); j++ {
+			if result[i].ID < result[j].ID {
+				result[i], result[j] = result[j], result[i]
+			}
+		}
+	}
+	j.l.Info("成功获取所有任务", slog.Int("count", len(result)))
+
+	// 返回结果
 	return result, nil
 }
 
