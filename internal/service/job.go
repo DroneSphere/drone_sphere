@@ -1126,7 +1126,7 @@ func (j *JobImpl) generateCommandWayline(ctx context.Context, droneID uint, dron
 	hoverAction := wpml.Action{
 		ActionType: wpml.ActionHover,
 		ActionParams: &wpml.HoverParams{
-			HoverTime: 3 * 60,
+			HoverTime: 6 * 60,
 		},
 	}
 	actions := []wpml.Action{hoverAction}
