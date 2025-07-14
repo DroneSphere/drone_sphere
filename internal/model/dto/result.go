@@ -15,14 +15,15 @@ type ResultQuery struct {
 
 // ResultItemDTO 结果列表项
 type ResultItemDTO struct {
-	ID            uint   `json:"id"`             // 结果ID
-	JobName       string `json:"job_name"`       // 任务名称
-	DroneCallsign string `json:"drone_callsign"` // 无人机呼号
-	TargetLabel   string `json:"target_label"`   // 检测目标分类
-	Lng           string `json:"lng"`            // 经度
-	Lat           string `json:"lat"`            // 纬度
-	CreatedAt     string `json:"created_at"`     // 检测时间
-	ImageUrl      string `json:"image_url"`      // 图片URL
+	ID            uint    `json:"id"`             // 结果ID
+	JobName       string  `json:"job_name"`       // 任务名称
+	DroneCallsign string  `json:"drone_callsign"` // 无人机呼号
+	TargetLabel   string  `json:"target_label"`   // 检测目标分类
+	Lng           float64 `json:"lng"`            // 经度
+	Lat           float64 `json:"lat"`            // 纬度
+	CreatedAt     string  `json:"created_at"`     // 检测时间
+	ImageUrl      string  `json:"image_url"`      // 图片URL
+	Count         int64   `json:"count"`          // 结果数量
 }
 
 // ResultDetailDTO 结果详情
