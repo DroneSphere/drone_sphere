@@ -1132,8 +1132,8 @@ func (j *JobImpl) generateCommandWayline(ctx context.Context, droneID uint, dron
 	actions := []wpml.Action{hoverAction}
 	ag := &wpml.ActionGroup{
 		ActionGroupId:         0,
-		ActionGroupStartIndex: 0,
-		ActionGroupEndIndex:   0,
+		ActionGroupStartIndex: 1,
+		ActionGroupEndIndex:   1,
 		ActionGroupMode:       wpml.ActionGroupModeSequence,
 		ActionTrigger:         wpml.ActionTrigger{TriggerType: wpml.TriggerReachPoint},
 		Actions:               actions,
