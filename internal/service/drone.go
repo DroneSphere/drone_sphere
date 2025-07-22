@@ -560,6 +560,38 @@ func (s *DroneImpl) HandleControlSession(ctx context.Context, conn *websocket.Co
 		}
 		s.BroadcastToSN(sn, websocket.TextMessage, string(resJson))
 		return nil
+	case "auto_mode":
+		// 处理相机切换控制
+		dataBytes, err := json.Marshal(msg.Data)
+		if err != nil {
+			s.l.Error("序列化自动模式控制数据失败", slog.String("sn", sn), slog.Any("data", msg.Data), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化自动模式控制数据失败: %w", err)
+		}
+
+		var switchCameraData struct {
+			Action string `json:"action"` // 切换动作 (start/stop)
+		}
+		if err := json.Unmarshal(dataBytes, &switchCameraData); err != nil {
+			s.l.Error("反序列化自动模式控制数据失败", slog.String("sn", sn), slog.String("data", string(dataBytes)), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("反序列化自动模式控制数据失败: %w", err)
+		}
+		s.l.Info("处理自动模式控制", slog.String("sn", sn), slog.String("action", switchCameraData.Action))
+		if switchCameraData.Action != "start" && switchCameraData.Action != "stop" {
+			s.l.Error("无效的自动模式控制动作", slog.String("sn", sn), slog.String("action", switchCameraData.Action))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("无效的自动模式控制动作: %s", switchCameraData.Action)
+		}
+		msg.Timestamp = time.Now().Unix() // 更新时间戳
+		resJson, err := json.Marshal(msg)
+		if err != nil {
+			s.l.Error("序列化自动模式控制响应失败", slog.String("sn", sn), slog.Any("message", msg), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化自动模式控制响应失败: %w", err)
+		}
+		s.BroadcastToSN(sn, websocket.TextMessage, string(resJson))
+		return nil
 	case "switch_camera":
 		// 处理相机切换控制
 		dataBytes, err := json.Marshal(msg.Data)
