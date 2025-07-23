@@ -259,6 +259,9 @@ func (r *DroneRouter) pushState(c *fiber.Ctx) error {
 					Speed:   drone.HorizontalSpeed,
 					Battery: drone.Battery.CapacityPercent,
 					Heading: drone.AttitudeHead,
+					Pitch:   drone.AttitudePitch, // 飞行器俯仰角
+					Yaw:     drone.AttitudeHead,  // 飞行器偏航角
+					Roll:    drone.AttitudeRoll,  // 飞行器横滚角
 				}
 				json, err := sonic.Marshal(res)
 				if err != nil {

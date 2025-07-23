@@ -43,6 +43,9 @@ type DroneState struct {
 	Heading float64 `json:"heading"`
 	Speed   float64 `json:"speed"`
 	Battery int     `json:"battery"`
+	Pitch   float64 `json:"pitch"` // 飞行器俯仰角
+	Yaw     float64 `json:"yaw"`   // 飞行器偏航角
+	Roll    float64 `json:"roll"`  // 飞行器横滚角
 }
 
 // JobCreationOptionsResult 创建任务时依赖的选项数据
