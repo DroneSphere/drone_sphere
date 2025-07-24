@@ -191,7 +191,7 @@ func (s *ResultImpl) clusterResults(items []dto.ResultItemDTO, clusterRadius flo
 			if distance <= clusterRadius {
 				clusterRepresentative.Count++ // 增加计数
 				// 比较创建时间，选择最新的
-				if otherItem.CreatedAt > clusterRepresentative.CreatedAt {
+				if otherItem.Confidence >= clusterRepresentative.Confidence {
 					clusterRepresentative.ID = otherItem.ID // 更新为最新的原始ID
 					clusterRepresentative.JobName = otherItem.JobName
 					clusterRepresentative.DroneCallsign = otherItem.DroneCallsign
@@ -200,6 +200,7 @@ func (s *ResultImpl) clusterResults(items []dto.ResultItemDTO, clusterRadius flo
 					clusterRepresentative.Lat = otherItem.Lat
 					clusterRepresentative.ImageUrl = otherItem.ImageUrl
 					clusterRepresentative.CreatedAt = otherItem.CreatedAt
+					clusterRepresentative.Confidence = otherItem.Confidence
 				}
 
 				isClustered[otherItem.ID] = true // 标记 otherItem 已被处理
@@ -245,6 +246,7 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 			JobName:       job.Name,
 			DroneCallsign: drone.Callsign,
 			TargetLabel:   r.DetectObjectType.Label, // 从关联的 DetectObjectType 表中获取物体标签
+			Confidence:    r.ObjectConfidence,       // 从结果中获取置信度
 			Lng:           coordinate.Lng,           // 从解析后的结构体获取经度并格式化
 			Lat:           coordinate.Lat,           // 从解析后的结构体获取纬度并格式化
 			ImageUrl:      r.ImageUrl,

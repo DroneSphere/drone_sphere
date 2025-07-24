@@ -19,6 +19,7 @@ type ResultItemDTO struct {
 	JobName       string  `json:"job_name"`       // 任务名称
 	DroneCallsign string  `json:"drone_callsign"` // 无人机呼号
 	TargetLabel   string  `json:"target_label"`   // 检测目标分类
+	Confidence    float32 `json:"confidence"`     // 置信度
 	Lng           float64 `json:"lng"`            // 经度
 	Lat           float64 `json:"lat"`            // 纬度
 	CreatedAt     string  `json:"created_at"`     // 检测时间
