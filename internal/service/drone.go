@@ -570,7 +570,8 @@ func (s *DroneImpl) HandleControlSession(ctx context.Context, conn *websocket.Co
 		}
 
 		var switchCameraData struct {
-			Action string `json:"action"` // 切换动作 (start/stop)
+			Action   string `json:"action"`   // 切换动作 (start/stop)
+			Duration int    `json:"duration"` // 持续时间（秒）
 		}
 		if err := json.Unmarshal(dataBytes, &switchCameraData); err != nil {
 			s.l.Error("反序列化自动模式控制数据失败", slog.String("sn", sn), slog.String("data", string(dataBytes)), slog.Any("error", err))
