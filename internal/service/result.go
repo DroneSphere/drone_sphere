@@ -215,6 +215,8 @@ func (s *ResultImpl) clusterResults(items []dto.ResultItemDTO, clusterRadius flo
 	return clustered
 }
 func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.ResultItemDTO, int64, error) {
+	query.PageSize = 10000
+	query.Page = 1
 	results, _, err := s.repo.List(ctx, query)
 	if err != nil {
 		return nil, 0, err
@@ -256,7 +258,7 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 	}
 	s.l.Info("结果项数", slog.Int("count", len(items)))
 	// 进行空间聚类
-	clusteredItems := s.clusterResults(items, 1.0) // 5米半径
+	clusteredItems := s.clusterResults(items, 5.0) // 5米半径
 	s.l.Info("聚类后结果项数", slog.Int("count", len(clusteredItems)))
 
 	return clusteredItems, int64(len(clusteredItems)), nil
