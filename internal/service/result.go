@@ -219,6 +219,7 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 	if err != nil {
 		return nil, 0, err
 	}
+	s.l.Info("查询结果数", slog.Int("count", len(results)))
 
 	var items []dto.ResultItemDTO
 	for _, r := range results {
@@ -253,8 +254,10 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 			CreatedAt:     r.CreatedTime.Format("2006-01-02 15:04:05"), // 添加创建时间
 		})
 	}
+	s.l.Info("结果项数", slog.Int("count", len(items)))
 	// 进行空间聚类
-	clusteredItems := s.clusterResults(items, 5.0) // 5米半径
+	clusteredItems := s.clusterResults(items, 1.0) // 5米半径
+	s.l.Info("聚类后结果项数", slog.Int("count", len(clusteredItems)))
 
 	return clusteredItems, int64(len(clusteredItems)), nil
 }

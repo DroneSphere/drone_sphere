@@ -81,6 +81,7 @@ func (r *ResultDefaultRepo) List(ctx context.Context, query dto.ResultQuery) ([]
 		r.l.Error("获取检测结果列表失败", slog.Any("err", err))
 		return nil, 0, err
 	}
+	r.l.Info("结果数量：", slog.Any("count", len(results)))
 
 	return results, total, nil
 }
