@@ -259,9 +259,34 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 	s.l.Info("结果项数", slog.Int("count", len(items)))
 	// 进行空间聚类
 	clusteredItems := s.clusterResults(items, 5.0) // 5米半径
-	s.l.Info("聚类后结果项数", slog.Int("count", len(clusteredItems)))
+	var filteredItems []dto.ResultItemDTO
+	// 遍历，手工剔除不符合要求（地理坐标以外、类型不符的）的项
+	for i := range clusteredItems {
+		s.l.Debug("聚类后结果项", slog.Any("item", clusteredItems[i]))
+		//if clusteredItems[i].Lng < -180 || clusteredItems[i].Lng > 180 ||
+		//	clusteredItems[i].Lat < -90 || clusteredItems[i].Lat > 90 {
+		//	s.l.Warn("剔除坐标异常的结果项", slog.Any("item", clusteredItems[i]))
+		//	clusteredItems = append(clusteredItems[:i], clusteredItems[i+1:]...)
+		//	i--
+		//	continue
+		//}
+		validTargetLabels := map[string]bool{
+			"黄色坦克": true,
+			"绿色坦克": true,
+			"红色卡车": true,
+		}
+		if validTargetLabels[clusteredItems[i].TargetLabel] {
+			s.l.Warn("符合要求的结果项", slog.Any("item", clusteredItems[i]))
+			filteredItems = append(filteredItems, clusteredItems[i])
+			continue
+		}
+	}
+	if len(filteredItems) == 0 {
+		return []dto.ResultItemDTO{}, 0, nil
+	}
+	s.l.Info("聚类后结果项数", slog.Int("count", len(filteredItems)))
 
-	return clusteredItems, int64(len(clusteredItems)), nil
+	return filteredItems, int64(len(filteredItems)), nil
 }
 
 func (s *ResultImpl) GetJobOptions(ctx context.Context) ([]dto.JobOption, error) {
