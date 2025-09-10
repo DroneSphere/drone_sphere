@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -155,6 +156,9 @@ func (r *DroneRouter) list(c *fiber.Ctx) error {
 		}
 		res = append(res, e)
 	}
+	sort.Slice(res, func(i, j int) bool {
+		return res[i].ID < res[j].ID
+	})
 
 	return c.JSON(Success(fiber.Map{
 		"total": total,
