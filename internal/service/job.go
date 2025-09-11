@@ -37,6 +37,7 @@ type (
 		SelectAll(ctx context.Context, jobName, areaName string, scheduleTimeStart, scheduleTimeEnd string) ([]po.Job, error)
 		SelectPhysicalDrones(ctx context.Context) ([]dto.PhysicalDrone, error)
 		SaveWayline(ctx context.Context, wayline po.Wayline, kmzFile string) (*po.Wayline, error)
+		SaveWaylineAndKmzKey(ctx context.Context, wayline po.Wayline, kmzKey string) (*po.Wayline, error)
 	}
 )
 
@@ -911,105 +912,6 @@ func (j *JobImpl) createCommandWaylineFile(ctx context.Context, jobID uint, jobN
 	}
 	j.l.Info("无人机变体", slog.Any("DroneVariation", variation))
 
-	// 生成航线文件
-	waylineDoc, err := j.generateCommandWayline(ctx, drone.PhysicalDroneID, variation, drone.TakeoffPoint, commandDrone)
-	if err != nil {
-		j.l.Error("生成航线文件失败", slog.Any("error", err))
-		return nil, err
-	}
-	j.l.Info("航线文件已创建", "wayline", waylineDoc)
-
-	// 生成航线模板和具体航线
-	template, err := waylineDoc.GenerateXML()
-	if err != nil {
-		j.l.Error("生成航线模板失败", slog.Any("error", err))
-		return nil, err
-	}
-
-	waylineDoc.Author = nil
-	waylineDoc.CreateTime = nil
-	waylineDoc.UpdateTime = nil
-	for i := range waylineDoc.Folders {
-		f := &waylineDoc.Folders[i]
-		f.TemplateType = nil
-		f.WaylineID = &i
-		hMode := wpml.ExecuteHeightModeRelativeToStartPoint
-		f.ExecuteHeightMode = &hMode
-		for j := range f.Placemarks {
-			p := &f.Placemarks[j]
-			// 处理高度
-			// if *p.UseGlobalHeight {
-			// 	p.ExecuteHeight = f.GlobalHeight
-			// } else {
-			// 	p.ExecuteHeight = p.EllipsoidHeight
-			// }
-			// p.EllipsoidHeight = nil
-			// p.Height = nil
-			// p.UseGlobalHeight = nil
-			// 处理速度
-			if *p.UseGlobalSpeed {
-				p.WaypointSpeed = f.AutoFlightSpeed
-			}
-			p.UseGlobalSpeed = nil
-			// 处理 GlobalHeadingParam
-			if *p.UseGlobalHeadingParam {
-				p.WaypointHeadingParam = f.GlobalWaypointHeadingParam
-			}
-			p.UseGlobalHeadingParam = nil
-			// 处理 WaypointTurnParam
-			if *p.UseGlobalTurnParam {
-				//p.WaypointTurnParam.WaypointTurnMode = *f.GlobalWaypointTurnMode
-				p.WaypointTurnParam = &wpml.WaypointTurnParam{
-					WaypointTurnMode: *f.GlobalWaypointTurnMode,
-				}
-			}
-			p.UseGlobalTurnParam = nil
-			// 处理 StraightLine
-			if *p.UseStraightLine {
-				p.UseStraightLine = f.GlobalUseStraightLine
-			}
-			p.UseStraightLine = nil
-			// 处理 GimbalPitchMode
-			if *f.GimbalPitchMode == wpml.GimbalPitchModeManual {
-				p.WaypointGimbalHeadingParam = &wpml.WaypointGimbalHeadingParam{
-					WaypointGimbalPitchAngle: 0,
-					WaypointGimbalYawAngle:   0,
-				}
-			}
-			workType := wpml.WaypointWorkTypeNone
-			p.WaypointWorkType = &workType
-		}
-		// 擦除不需要的字段
-		f.TemplateType = nil
-		f.WaylineCoordinateSysParam = nil
-		f.PayloadParam = nil
-		f.GlobalWaypointTurnMode = nil
-		f.GlobalUseStraightLine = nil
-		f.GimbalPitchMode = nil
-		f.GlobalHeight = nil
-		f.GlobalWaypointHeadingParam = nil
-	}
-	waylineXML, err := waylineDoc.GenerateXML()
-	if err != nil {
-		j.l.Error("生成航线文件失败", slog.Any("error", err))
-		return nil, err
-	}
-
-	// 创建kmz目录
-	if err := os.MkdirAll("kmz", os.ModePerm); err != nil {
-		j.l.Error("创建kmz目录失败", slog.Any("error", err))
-		return nil, err
-	}
-
-	// 生成KMZ文件
-	kmzFileName := "kmz/" + "job-" + strconv.Itoa(int(jobID)) + "-" + "drone-key-" + commandDrone.DroneKey + "-" + "drone-id-" + strconv.Itoa(int(drone.PhysicalDroneID)) + ".kmz"
-	err = wpml.GenerateKMZ(kmzFileName, template, waylineXML)
-	if err != nil {
-		j.l.Error("生成KMZ文件失败", slog.Any("error", err))
-		return nil, err
-	}
-	j.l.Info("KMZ文件已生成", "kmzFileName", kmzFileName)
-
 	// 获取物理无人机信息
 	physicalDrone, err := j.droneRepo.SelectByID(ctx, drone.PhysicalDroneID)
 	if err != nil && err.Error() != "no realtime data" {
@@ -1033,15 +935,8 @@ func (j *JobImpl) createCommandWaylineFile(ctx context.Context, jobID uint, jobN
 		PayloadModelKeys: []string{payloadModelKey},
 	}
 
-	// 清理临时文件
-	defer func() {
-		if err := os.Remove(kmzFileName); err != nil {
-			j.l.Error("删除kmz临时文件失败", slog.Any("error", err))
-		}
-	}()
-
 	// 保存航线文件到数据库
-	savedWayline, err := j.jobRepo.SaveWayline(ctx, waylinePO, kmzFileName)
+	savedWayline, err := j.jobRepo.SaveWaylineAndKmzKey(ctx, waylinePO, "command.kmz")
 	if err != nil {
 		j.l.Error("保存航线信息到数据库失败", slog.Any("error", err))
 		return nil, err

@@ -182,3 +182,16 @@ func (j *JobDefaultRepo) SaveWayline(ctx context.Context, wayline po.Wayline, km
 	j.l.Info("Saved wayline to database", slog.Any("wayline", wayline))
 	return &wayline, nil
 }
+
+func (j *JobDefaultRepo) SaveWaylineAndKmzKey(ctx context.Context, wayline po.Wayline, kmzKey string) (*po.Wayline, error) {
+	wayline.S3Key = kmzKey
+
+	// 将 kmz 文件的 S3Key 保存到数据库
+	j.l.Info("Saving wayline to database", slog.Any("wayline", wayline))
+	if err := j.tx.WithContext(ctx).Save(&wayline).Error; err != nil {
+		j.l.Error("Failed to save wayline to database", slog.Any("err", err))
+		return nil, err
+	}
+	j.l.Info("Saved wayline to database", slog.Any("wayline", wayline))
+	return &wayline, nil
+}
