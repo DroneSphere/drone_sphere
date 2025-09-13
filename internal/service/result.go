@@ -258,7 +258,7 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 	}
 	s.l.Info("结果项数", slog.Int("count", len(items)))
 	// 进行空间聚类
-	clusteredItems := s.clusterResults(items, 5.0) // 5米半径
+	clusteredItems := s.clusterResults(items, 8.0) // 5米半径
 	var filteredItems []dto.ResultItemDTO
 	// 遍历，手工剔除不符合要求（地理坐标以外、类型不符的）的项
 	for i := range clusteredItems {
