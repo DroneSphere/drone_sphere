@@ -691,6 +691,87 @@ func (s *DroneImpl) HandleControlSession(ctx context.Context, conn *websocket.Co
 		}
 		s.BroadcastToSN(sn, websocket.TextMessage, string(resJson))
 		return nil
+	case "wayline":
+		// 处理航线控制
+		dataBytes, err := json.Marshal(msg.Data)
+		if err != nil {
+			s.l.Error("序列化航线控制数据失败", slog.String("sn", sn), slog.Any("data", msg.Data), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化航线控制数据失败: %w", err)
+		}
+
+		var waylineData struct {
+			Action string `json:"action"` // 航线动作 (takeoff/pause/resume/finish)
+		}
+		if err := json.Unmarshal(dataBytes, &waylineData); err != nil {
+			s.l.Error("反序列化航线控制数据失败", slog.String("sn", sn), slog.String("data", string(dataBytes)), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("反序列化航线控制数据失败: %w", err)
+		}
+
+		// 验证action参数
+		validActions := []string{"takeoff", "pause", "resume", "finish"}
+		if !slices.Contains(validActions, waylineData.Action) {
+			s.l.Error("无效的航线控制动作", slog.String("sn", sn), slog.String("action", waylineData.Action))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("无效的航线控制动作: %s", waylineData.Action)
+		}
+
+		s.l.Info("处理航线控制", slog.String("sn", sn), slog.String("action", waylineData.Action))
+		msg.Timestamp = time.Now().Unix() // 更新时间戳
+		resJson, err := json.Marshal(msg)
+		if err != nil {
+			s.l.Error("序列化航线控制响应失败", slog.String("sn", sn), slog.Any("message", msg), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化航线控制响应失败: %w", err)
+		}
+		s.BroadcastToSN(sn, websocket.TextMessage, string(resJson))
+		return nil
+	case "detect":
+		// 处理检测控制
+		dataBytes, err := json.Marshal(msg.Data)
+		if err != nil {
+			s.l.Error("序列化检测控制数据失败", slog.String("sn", sn), slog.Any("data", msg.Data), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化检测控制数据失败: %w", err)
+		}
+
+		var detectData struct {
+			Mode   string `json:"mode"`   // 检测模式 (manual/auto)
+			Action string `json:"action"` // 检测动作 (start/end)
+		}
+		if err := json.Unmarshal(dataBytes, &detectData); err != nil {
+			s.l.Error("反序列化检测控制数据失败", slog.String("sn", sn), slog.String("data", string(dataBytes)), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("反序列化检测控制数据失败: %w", err)
+		}
+
+		// 验证mode参数
+		validModes := []string{"manual", "auto"}
+		if !slices.Contains(validModes, detectData.Mode) {
+			s.l.Error("无效的检测模式", slog.String("sn", sn), slog.String("mode", detectData.Mode))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("无效的检测模式: %s", detectData.Mode)
+		}
+
+		// 验证action参数
+		validActions := []string{"start", "finish"}
+		if !slices.Contains(validActions, detectData.Action) {
+			s.l.Error("无效的检测动作", slog.String("sn", sn), slog.String("action", detectData.Action))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("无效的检测动作: %s", detectData.Action)
+		}
+
+		s.l.Info("处理检测控制", slog.String("sn", sn), slog.String("mode", detectData.Mode), slog.String("action", detectData.Action))
+		msg.Timestamp = time.Now().Unix() // 更新时间戳
+		resJson, err := json.Marshal(msg)
+		if err != nil {
+			s.l.Error("序列化检测控制响应失败", slog.String("sn", sn), slog.Any("message", msg), slog.Any("error", err))
+			s.ReplyToConn(sn, conn, "error")
+			return fmt.Errorf("序列化检测控制响应失败: %w", err)
+		}
+		s.BroadcastToSN(sn, websocket.TextMessage, string(resJson))
+		return nil
 	default:
 		s.l.Warn("未知的无人机控制方法", slog.String("sn", sn), slog.String("method", msg.Method))
 		msg.Timestamp = time.Now().Unix() // 更新时间戳
