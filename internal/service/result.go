@@ -215,9 +215,16 @@ func (s *ResultImpl) clusterResults(items []dto.ResultItemDTO, clusterRadius flo
 	return clustered
 }
 func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.ResultItemDTO, int64, error) {
-	query.PageSize = 10000
-	query.Page = 1
-	results, _, err := s.repo.List(ctx, query)
+	isJobSearch := query.Page <= 0 || query.PageSize <= 0
+	s.l.Info("查询参数", slog.Any("query", query), slog.Bool("isJobSearch", isJobSearch))
+	// 如果是任务搜索，查询所有结果并进行聚类
+	// 任务搜索时，不进行分页，默认返回1000条
+	// 普通搜索时，进行分页
+	if query.Page <= 0 {
+		query.Page = 1
+		query.PageSize = 1000
+	}
+	results, total, err := s.repo.List(ctx, query)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -257,35 +264,40 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 		})
 	}
 	s.l.Info("结果项数", slog.Int("count", len(items)))
-	// 进行空间聚类
-	clusteredItems := s.clusterResults(items, 6.0) // 5米半径
-	var filteredItems []dto.ResultItemDTO
-	// 遍历，手工剔除不符合要求（地理坐标以外、类型不符的）的项
-	for i := range clusteredItems {
-		s.l.Debug("聚类后结果项", slog.Any("item", clusteredItems[i]))
-		//if clusteredItems[i].Lng < -180 || clusteredItems[i].Lng > 180 ||
-		//	clusteredItems[i].Lat < -90 || clusteredItems[i].Lat > 90 {
-		//	s.l.Warn("剔除坐标异常的结果项", slog.Any("item", clusteredItems[i]))
-		//	clusteredItems = append(clusteredItems[:i], clusteredItems[i+1:]...)
-		//	i--
-		//	continue
-		//}
-		validTargetLabels := map[string]bool{
-			"黄色坦克": true,
-			"红色卡车": true,
+	if isJobSearch {
+		// 进行空间聚类
+		clusteredItems := s.clusterResults(items, 6.0) // 5米半径
+		var filteredItems []dto.ResultItemDTO
+		// 遍历，手工剔除不符合要求（地理坐标以外、类型不符的）的项
+		for i := range clusteredItems {
+			s.l.Debug("聚类后结果项", slog.Any("item", clusteredItems[i]))
+			//if clusteredItems[i].Lng < -180 || clusteredItems[i].Lng > 180 ||
+			//	clusteredItems[i].Lat < -90 || clusteredItems[i].Lat > 90 {
+			//	s.l.Warn("剔除坐标异常的结果项", slog.Any("item", clusteredItems[i]))
+			//	clusteredItems = append(clusteredItems[:i], clusteredItems[i+1:]...)
+			//	i--
+			//	continue
+			//}
+			validTargetLabels := map[string]bool{
+				"黄色坦克": true,
+				"红色卡车": true,
+			}
+			if validTargetLabels[clusteredItems[i].TargetLabel] {
+				s.l.Warn("符合要求的结果项", slog.Any("item", clusteredItems[i]))
+				filteredItems = append(filteredItems, clusteredItems[i])
+				continue
+			}
 		}
-		if validTargetLabels[clusteredItems[i].TargetLabel] {
-			s.l.Warn("符合要求的结果项", slog.Any("item", clusteredItems[i]))
-			filteredItems = append(filteredItems, clusteredItems[i])
-			continue
+		if len(filteredItems) == 0 {
+			return []dto.ResultItemDTO{}, 0, nil
 		}
-	}
-	if len(filteredItems) == 0 {
-		return []dto.ResultItemDTO{}, 0, nil
-	}
-	s.l.Info("聚类后结果项数", slog.Int("count", len(filteredItems)))
+		s.l.Info("聚类后结果项数", slog.Int("count", len(filteredItems)))
 
-	return filteredItems, int64(len(filteredItems)), nil
+		return filteredItems, int64(len(filteredItems)), nil
+	} else {
+		// 普通搜索，直接返回分页结果
+		return items, total, nil
+	}
 }
 
 func (s *ResultImpl) GetJobOptions(ctx context.Context) ([]dto.JobOption, error) {

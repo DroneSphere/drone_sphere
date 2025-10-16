@@ -45,7 +45,7 @@ func (r *ResultDefaultRepo) List(ctx context.Context, query dto.ResultQuery) ([]
 	var results []po.Result
 	var total int64
 
-	tx := r.tx.WithContext(ctx).Model(&po.Result{}).Where("tb_results.state = ?", 0)
+	tx := r.tx.WithContext(ctx).Model(&po.Result{}).Where("tb_results.state = ?", 0).Order("created_time DESC")
 
 	// 如果提供了JobName，通过关联查询筛选
 	if query.JobName != "" {
@@ -81,7 +81,7 @@ func (r *ResultDefaultRepo) List(ctx context.Context, query dto.ResultQuery) ([]
 		r.l.Error("获取检测结果列表失败", slog.Any("err", err))
 		return nil, 0, err
 	}
-	r.l.Info("结果数量：", slog.Any("count", len(results)))
+	r.l.Info("结果数量：", slog.Any("count", len(results)), slog.Any("total", total))
 
 	return results, total, nil
 }

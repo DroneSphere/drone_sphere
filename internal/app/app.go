@@ -159,7 +159,7 @@ func Run(cfg *configs.Config) {
 		topic := fmt.Sprintf("thing/product/%s/osd", drone.SN)
 
 		token := client.Subscribe(topic, 0, func(c mqtt.Client, m mqtt.Message) {
-			logger.Info("接收无人机 OSD 消息", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
+			//logger.Info("接收无人机 OSD 消息", slog.Any("topic", m.Topic()), slog.Any("message", string(m.Payload())))
 			var p struct {
 				dto.MessageCommon
 				Data dto.DroneMessageProperty `json:"data"`
@@ -169,13 +169,13 @@ func Run(cfg *configs.Config) {
 				return
 			}
 
-			logger.Info("接收无人机 OSD 消息", slog.Any("topic", m.Topic()), slog.Any("payload", p))
+			//logger.Info("接收无人机 OSD 消息", slog.Any("topic", m.Topic()), slog.Any("payload", p))
 
 			if err := droneSvc.UpdateStateBySN(ctx, drone.SN, p.Data); err != nil {
 				logger.Error("更新无人机实时数据失败", slog.Any("err", err))
 				return
 			}
-			logger.Info("更新无人机实时数据成功", slog.Any("droneSN", drone.SN))
+			//logger.Info("更新无人机实时数据成功", slog.Any("droneSN", drone.SN))
 		})
 		if token.Wait() && token.Error() != nil {
 			logger.Error("无人机 OSD 订阅失败", slog.Any("topic", topic), slog.Any("err", token.Error()))
