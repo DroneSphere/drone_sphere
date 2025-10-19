@@ -264,7 +264,19 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 		})
 	}
 	s.l.Info("结果项数", slog.Int("count", len(items)))
-	if isJobSearch {
+if isJobSearch {
+		// 定义矩形区域的四个顶点坐标（按顺序：左下、右下、右上、左上）
+		// 注意：这些坐标需要您根据实际需求修改
+		var boundaryPoints = []struct {
+			Lng float64 `json:"lng"`
+			Lat float64 `json:"lat"`
+		}{
+			{Lng: 117.04429209209722, Lat: 36.596760806499184}, // 左下角
+			{Lng: 117.04501484159785, Lat: 36.596766320635865}, // 右下角
+			{Lng: 117.04501074218794, Lat: 36.59774877796754},  // 右上角
+			{Lng: 117.04428599840564, Lat: 36.59774926469286},  // 左上角
+		}
+
 		// 进行空间聚类
 		clusteredItems := s.clusterResults(items, 6.0) // 5米半径
 		var filteredItems []dto.ResultItemDTO
@@ -283,8 +295,13 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 				"红色卡车": true,
 			}
 			if validTargetLabels[clusteredItems[i].TargetLabel] {
-				s.l.Warn("符合要求的结果项", slog.Any("item", clusteredItems[i]))
-				filteredItems = append(filteredItems, clusteredItems[i])
+				// 检查是否在指定矩形区域内
+				if s.isPointInRectangle(clusteredItems[i].Lng, clusteredItems[i].Lat, boundaryPoints) {
+					s.l.Warn("符合要求的结果项", slog.Any("item", clusteredItems[i]))
+					filteredItems = append(filteredItems, clusteredItems[i])
+				} else {
+					s.l.Info("目标不在指定区域内，已过滤", slog.Any("item", clusteredItems[i]))
+				}
 				continue
 			}
 		}
@@ -312,4 +329,41 @@ func (s *ResultImpl) formatTime(timestamp int64) string {
 // formatCoordinate 将坐标浮点数转换为字符串
 func formatCoordinate(value float64) string {
 	return fmt.Sprintf("%.6f", value) // 保留6位小数的坐标字符串
+}
+
+// isPointInRectangle 检查点是否在矩形区域内
+// 使用射线法判断点是否在任意四边形内
+func (s *ResultImpl) isPointInRectangle(lng, lat float64, boundaryPoints []struct {
+	Lng float64 `json:"lng"`
+	Lat float64 `json:"lat"`
+}) bool {
+	if len(boundaryPoints) != 4 {
+		s.l.Error("边界点数量不正确，需要4个点", slog.Int("count", len(boundaryPoints)))
+		return false
+	}
+
+	// 使用射线法判断点是否在多边形内
+	intersections := 0
+	n := len(boundaryPoints)
+
+	for i := 0; i < n; i++ {
+		j := (i + 1) % n
+
+		// 检查射线是否与边相交
+		if ((boundaryPoints[i].Lat > lat) != (boundaryPoints[j].Lat > lat)) &&
+			(lng < (boundaryPoints[j].Lng-boundaryPoints[i].Lng)*(lat-boundaryPoints[i].Lat)/(boundaryPoints[j].Lat-boundaryPoints[i].Lat)+boundaryPoints[i].Lng) {
+			intersections++
+		}
+	}
+
+	// 如果交点数为奇数，则点在多边形内
+	isInside := intersections%2 == 1
+
+	s.l.Debug("点在矩形区域内判断",
+		slog.Float64("lng", lng),
+		slog.Float64("lat", lat),
+		slog.Bool("is_inside", isInside),
+		slog.Int("intersections", intersections))
+
+	return isInside
 }
