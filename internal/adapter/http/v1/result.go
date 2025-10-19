@@ -39,14 +39,6 @@ func (r *ResultRouter) list(c *fiber.Ctx) error {
 		return c.JSON(Fail(InvalidParams))
 	}
 
-	// 参数校验
-	if query.Page <= 0 {
-		query.Page = 1
-	}
-	if query.PageSize <= 0 {
-		query.PageSize = 10
-	}
-
 	items, total, err := r.svc.List(context.Background(), query)
 	if err != nil {
 		return c.JSON(Fail(InternalError))

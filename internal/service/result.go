@@ -230,16 +230,28 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 	}
 	s.l.Info("查询结果数", slog.Int("count", len(results)))
 
+	// 使用 map 缓存任务和无人机信息，避免重复查询
+	jobMap := make(map[uint]*po.Job)
+	droneMap := make(map[uint]*po.Drone)
+
 	var items []dto.ResultItemDTO
 	for _, r := range results {
-		// 获取任务信息
-		job, err := s.jobRepo.FetchPOByID(ctx, r.JobID)
-		if err != nil {
-			s.l.Error("获取任务信息失败", slog.Any("err", err))
-			continue
+		job, ok := jobMap[r.JobID]
+		if !ok {
+			job, err = s.jobRepo.FetchPOByID(ctx, r.JobID)
+			if err != nil {
+				s.l.Error("获取任务信息失败", slog.Any("err", err))
+				continue
+			}
+			jobMap[r.JobID] = job
 		}
+
 		// 获取无人机信息
-		drone, _ := s.droneRepo.SelectByID(ctx, r.DroneID)
+		drone, ok := droneMap[r.DroneID]
+		if !ok {
+			drone, _ = s.droneRepo.SelectByIDV2(ctx, r.DroneID)
+			droneMap[r.DroneID] = drone
+		}
 
 		// 从 ObjectPosition JSON字段中提取经纬度信息
 		var coordinate struct {
@@ -264,7 +276,7 @@ func (s *ResultImpl) List(ctx context.Context, query dto.ResultQuery) ([]dto.Res
 		})
 	}
 	s.l.Info("结果项数", slog.Int("count", len(items)))
-if isJobSearch {
+	if isJobSearch {
 		// 定义矩形区域的四个顶点坐标（按顺序：左下、右下、右上、左上）
 		// 注意：这些坐标需要您根据实际需求修改
 		var boundaryPoints = []struct {
