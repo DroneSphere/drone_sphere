@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -19,22 +18,30 @@ func Authenticate(c *fiber.Ctx) error {
 			"message": "missing Authorization header",
 		})
 	}
-	fmt.Printf("Authorization header: %s\n", auth)
-	tmp := strings.Split(auth, " ")
-	fmt.Printf("tmp: %v\n", tmp)
-	t := strings.Split(auth, " ")[1]
-	if t == "" {
+
+	// 检查Bearer格式
+	authParts := strings.Split(auth, " ")
+	if len(authParts) != 2 || authParts[0] != "Bearer" {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+			"message": "invalid authorization format",
+		})
+	}
+
+	tokenString := authParts[1]
+	if tokenString == "" {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"message": "missing token",
 		})
 	}
+
 	// 验证 token
-	claims, err := token.ValidateToken(t)
+	claims, err := token.ValidateToken(tokenString)
 	if err != nil {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"message": "invalid token",
 		})
 	}
+
 	// 将 claims 存入上下文
 	c.Locals(UserClaimsKey, claims)
 

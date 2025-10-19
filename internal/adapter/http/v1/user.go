@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/dronesphere/internal/adapter/http/middleware"
 	"github.com/dronesphere/internal/event"
@@ -76,6 +77,7 @@ func newUserRouter(handler fiber.Router, svc service.UserSvc, eb EventBus.Bus, l
 		authenticated.Get("/list", r.listUsers)                  // 获取用户列表
 		authenticated.Post("/change-password", r.changePassword) // 修改密码
 		authenticated.Post("/create", r.createUser)              // 创建用户
+		authenticated.Post("/logout", r.logout)                  // 用户登出
 	}
 }
 
@@ -291,4 +293,39 @@ func (r *UserRouter) createUser(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(Success(res))
+}
+
+// logout 用户登出
+func (r *UserRouter) logout(c *fiber.Ctx) error {
+	// 从请求头中获取token
+	auth := c.Get("Authorization")
+	if auth == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(Fail(ErrorBody{Code: 400, Msg: "缺少Authorization头"}))
+	}
+
+	// 提取Bearer Token
+	tokenParts := strings.Split(auth, " ")
+	if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+		return c.Status(fiber.StatusBadRequest).JSON(Fail(ErrorBody{Code: 400, Msg: "无效的Authorization格式"}))
+	}
+
+	tokenString := tokenParts[1]
+
+	r.l.Info("用户请求登出", slog.String("token_prefix", tokenString[:min(len(tokenString), 20)]+"..."))
+
+	// 调用服务层进行登出
+	if err := r.svc.Logout(tokenString); err != nil {
+		r.l.Warn("用户登出失败", slog.Any("err", err))
+		return c.JSON(Fail(ErrorBody{Code: 500, Msg: err.Error()}))
+	}
+
+	return c.JSON(Success(map[string]string{"message": "登出成功"}))
+}
+
+// min 返回两个整数中的较小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

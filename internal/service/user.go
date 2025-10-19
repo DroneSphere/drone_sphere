@@ -19,6 +19,8 @@ type (
 		ChangePassword(userID uint, oldPassword, newPassword string) error
 		// CreateUser 管理员创建新用户
 		CreateUser(user entity.User) error
+		// Logout 用户登出，将token加入黑名单
+		Logout(tokenString string) error
 	}
 
 	UserRepo interface {
@@ -36,14 +38,16 @@ type (
 )
 
 type UserImpl struct {
-	r UserRepo
-	l *slog.Logger
+	r              UserRepo
+	l              *slog.Logger
+	blacklistSvc   TokenBlacklistService // token黑名单服务
 }
 
 func NewUserSvc(r UserRepo, l *slog.Logger) UserSvc {
 	return &UserImpl{
-		r: r,
-		l: l,
+		r:            r,
+		l:            l,
+		blacklistSvc: NewTokenBlacklistService(),
 	}
 }
 
@@ -51,7 +55,10 @@ func (s *UserImpl) Repo() UserRepo {
 	return s.r
 }
 
-const ErrInvalidPassword = "invalid password"
+const (
+	ErrInvalidPassword = "invalid password"
+	ErrInvalidToken    = "invalid token"
+)
 
 func (s *UserImpl) Login(email, password string) (entity.User, error) {
 	u, err := s.r.SelectByEmail(email)
@@ -59,8 +66,8 @@ func (s *UserImpl) Login(email, password string) (entity.User, error) {
 		return entity.User{}, err
 	}
 	s.l.Info("用户登录", slog.Any("user", u))
-	if misc.ComparePassword(password, u.Password) {
-		s.l.Warn("密码错误", slog.Any("user", u), slog.Any("password", password))
+	if !misc.ComparePassword(password, u.Password) {
+		s.l.Warn("密码错误", slog.Any("user", u))
 		return entity.User{}, errors.New(ErrInvalidPassword)
 	}
 	return entity.User{
@@ -72,10 +79,10 @@ func (s *UserImpl) Login(email, password string) (entity.User, error) {
 }
 
 func (s *UserImpl) Register(user entity.User) error {
-	if err := s.r.SaveUser(user); err != nil {
-		return err
-	}
-	return s.r.UpdatePasswordByUsername(user.Username, misc.EncryptWithBcrypt(user.Password))
+	// 先加密密码，然后一次性保存用户
+	encryptedPassword := misc.EncryptWithBcrypt(user.Password)
+	user.Password = encryptedPassword
+	return s.r.SaveUser(user)
 }
 
 // GetAllUsers 获取所有用户列表
@@ -97,17 +104,17 @@ func (s *UserImpl) GetAllUsers() ([]entity.User, int64, error) {
 // ChangePassword 修改用户密码
 func (s *UserImpl) ChangePassword(userID uint, oldPassword, newPassword string) error {
 	// 查询用户
-	_, err := s.r.SelectByID(userID)
+	user, err := s.r.SelectByID(userID)
 	if err != nil {
 		s.l.Error("查询用户失败", slog.Any("userID", userID), slog.Any("err", err))
 		return err
 	}
 
 	// 验证旧密码
-	// if !misc.ComparePassword(oldPassword, user.Password) {
-	// 	s.l.Warn("旧密码验证失败", slog.Any("userID", userID))
-	// 	return errors.New("旧密码错误")
-	// }
+	if !misc.ComparePassword(oldPassword, user.Password) {
+		s.l.Warn("旧密码验证失败", slog.Any("userID", userID))
+		return errors.New("旧密码错误")
+	}
 
 	// 加密新密码并更新
 	encryptedPassword := misc.EncryptWithBcrypt(newPassword)
@@ -146,4 +153,37 @@ func (s *UserImpl) CreateUser(user entity.User) error {
 
 	// 更新密码（加密）
 	return s.r.UpdatePasswordByUsername(user.Username, misc.EncryptWithBcrypt(user.Password))
+}
+
+// Logout 用户登出，将token加入黑名单
+func (s *UserImpl) Logout(tokenString string) error {
+	if tokenString == "" {
+		return errors.New("token不能为空")
+	}
+
+	// 将token加入黑名单
+	if err := s.blacklistSvc.AddToken(tokenString); err != nil {
+		s.l.Error("将token加入黑名单失败", slog.Any("err", err))
+		return err
+	}
+
+	s.l.Info("用户登出成功，token已加入黑名单", slog.String("token_prefix", tokenString[:min(len(tokenString), 20)]+"..."))
+
+	// 启动一个goroutine来清理过期的token
+	go s.blacklistSvc.RemoveExpiredTokens()
+
+	return nil
+}
+
+// GetBlacklistService 获取token黑名单服务（供中间件使用）
+func (s *UserImpl) GetBlacklistService() TokenBlacklistService {
+	return s.blacklistSvc
+}
+
+// min 返回两个整数中的较小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
